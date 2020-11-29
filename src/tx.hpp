@@ -38,8 +38,8 @@ public:
     void send_session_key(void);
     virtual void select_output(int idx) = 0;
 protected:
+    // What inject_packet does is left to the implementation (e.g. PcapTransmitter)
     virtual void inject_packet(const uint8_t *buf, size_t size) = 0;
-
 private:
     void send_block_fragment(size_t packet_size);
     void make_session_key(void);
