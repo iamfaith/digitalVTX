@@ -59,7 +59,7 @@ private:
     wsession_key_t session_key_packet;
 };
 
-
+// Pcap Transmitter injects packets into the wifi adapter using pcap
 class PcapTransmitter : public Transmitter
 {
 public:
@@ -68,13 +68,17 @@ public:
     virtual void select_output(int idx) { current_output = idx; }
 private:
     virtual void inject_packet(const uint8_t *buf, size_t size);
+    // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
+    // into the one wfb stream
     uint8_t radio_port;
+    // TODO what the heck is this one ?
     int current_output;
     uint16_t ieee80211_seq;
     std::vector<pcap_t*> ppcap;
 };
 
-
+// UdpTransmitter can be used to emulate a wifi bridge without using a wifi adapter
+// Usefully for Testing and Debugging
 class UdpTransmitter : public Transmitter
 {
 public:
