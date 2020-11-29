@@ -45,8 +45,8 @@ private:
     void make_session_key(void);
 
     fec_t* fec_p;
-    int fec_k;  // RS number of primary fragments in block
-    int fec_n;  // RS total number of fragments in block
+    const int fec_k;  // RS number of primary fragments in block
+    const int fec_n;  // RS total number of fragments in block
     uint64_t block_idx; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx;
     uint8_t** block;
@@ -70,7 +70,7 @@ private:
     virtual void inject_packet(const uint8_t *buf, size_t size);
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
-    uint8_t radio_port;
+    const uint8_t radio_port;
     // TODO what the heck is this one ?
     int current_output;
     uint16_t ieee80211_seq;
