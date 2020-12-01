@@ -42,6 +42,49 @@ extern "C"
 
 using namespace std;
 
+
+namespace Helper{
+    // constructs a pcap packet by prefixing data with radiotap and iee header
+    static std::vector<uint8_t> createPcapPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,
+                                                 const uint8_t *buf, size_t size){
+        assert(size <= MAX_FORWARDER_PACKET_SIZE);
+        std::vector<uint8_t> ret;
+        ret.resize(radiotapHeader.getSize()+ieee80211Header.getSize()+size);
+        uint8_t *p = ret.data();
+        // radiotap header
+        memcpy(p,radiotapHeader.getData(),radiotapHeader.getSize());
+        p += radiotapHeader.getSize();
+        // ieee80211 header
+        memcpy(p, ieee80211Header.getData(),ieee80211Header.getSize());
+        p += ieee80211Header.getSize();
+        // data
+        memcpy(p, buf, size);
+        return ret;
+    }
+    // throw runtime exception if injecting pcap packet goes wrong (should never happen)
+    static void injectPacket(pcap_t* pcap,const std::vector<uint8_t>& packetData){
+        if (pcap_inject(pcap,packetData.data(),packetData.size()) != packetData.size()){
+            throw runtime_error(string_format("Unable to inject packet"));
+        }
+    }
+    // copy paste from svpcom
+    static pcap_t* openTxWithPcap(const std::string& wlan){
+        char errbuf[PCAP_ERRBUF_SIZE];
+        pcap_t *p = pcap_create(wlan.c_str(), errbuf);
+        if (p == nullptr){
+            throw runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
+        }
+        if (pcap_set_snaplen(p, 4096) !=0) throw runtime_error("set_snaplen failed");
+        if (pcap_set_promisc(p, 1) != 0) throw runtime_error("set_promisc failed");
+        //if (pcap_set_rfmon(p, 1) !=0) throw runtime_error("set_rfmon failed");
+        if (pcap_set_timeout(p, -1) !=0) throw runtime_error("set_timeout failed");
+        //if (pcap_set_buffer_size(p, 2048) !=0) throw runtime_error("set_buffer_size failed");
+        if (pcap_activate(p) !=0) throw runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
+        //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
+        return p;
+    }
+}
+
 Transmitter::Transmitter(int k, int n, const string &keypair):  fec_k(k), fec_n(n), block_idx(0),
                                                                 fragment_idx(0),
                                                                 max_packet_size(0)
@@ -104,9 +147,11 @@ PcapTransmitter::PcapTransmitter(int k, int n, const string &keypair, uint8_t ra
                                                                                                                         current_output(0),
                                                                                                                         ieee80211_seq(0)
 {
-    char errbuf[PCAP_ERRBUF_SIZE];
-    for(auto it=wlans.begin(); it!=wlans.end(); it++)
-    {
+    for(const std::string& wlan:wlans){
+        ppcap.push_back(Helper::openTxWithPcap(wlan));
+    }
+    /*char errbuf[PCAP_ERRBUF_SIZE];
+    for(auto it=wlans.begin(); it!=wlans.end(); it++){
         pcap_t *p = pcap_create(it->c_str(), errbuf);
         if (p == NULL){
             throw runtime_error(string_format("Unable to open interface %s in pcap: %s", it->c_str(), errbuf));
@@ -120,13 +165,18 @@ PcapTransmitter::PcapTransmitter(int k, int n, const string &keypair, uint8_t ra
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
 
         ppcap.push_back(p);
-    }
+    }*/
 }
 
 
 void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size)
 {
-    uint8_t txbuf[MAX_PACKET_SIZE];
+    std::cout<<"PcapTransmitter::inject_packet\n";
+    mIeee80211Header.writeParams(radio_port,ieee80211_seq);
+    ieee80211_seq += 16;
+    const auto packet=Helper::createPcapPacket(mRadiotapHeader,mIeee80211Header,buf,size);
+    Helper::injectPacket(ppcap[current_output],packet);
+    /*uint8_t txbuf[MAX_PACKET_SIZE];
     uint8_t *p = txbuf;
 
     assert(size <= MAX_FORWARDER_PACKET_SIZE);
@@ -151,7 +201,7 @@ void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size)
     if (pcap_inject(ppcap[current_output], txbuf, p - txbuf) != p - txbuf)
     {
         throw runtime_error(string_format("Unable to inject packet"));
-    }
+    }*/
 }
 
 PcapTransmitter::~PcapTransmitter()
@@ -161,6 +211,31 @@ PcapTransmitter::~PcapTransmitter()
     }
 }
 
+void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
+    std::cout<<"Hello2\n";
+    wrxfwd_t fwd_hdr = { .wlan_idx = (uint8_t)(rand() % 2) };
+
+    memset(fwd_hdr.antenna, 0xff, sizeof(fwd_hdr.antenna));
+    memset(fwd_hdr.rssi, SCHAR_MIN, sizeof(fwd_hdr.rssi));
+
+    fwd_hdr.antenna[0] = (uint8_t)(rand() % 2);
+    fwd_hdr.rssi[0] = (int8_t)(rand() & 0xff);
+
+    struct iovec iov[2] = {{ .iov_base = (void*)&fwd_hdr,
+                                   .iov_len = sizeof(fwd_hdr)},
+                           { .iov_base = (void*)buf,
+                                   .iov_len = size }};
+
+    struct msghdr msghdr = { .msg_name = NULL,
+            .msg_namelen = 0,
+            .msg_iov = iov,
+            .msg_iovlen = 2,
+            .msg_control = NULL,
+            .msg_controllen = 0,
+            .msg_flags = 0};
+
+    sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
+}
 
 void Transmitter::send_block_fragment(size_t packet_size)
 {
@@ -349,51 +424,7 @@ int main(int argc, char * const *argv)
         goto show_usage;
     }
 
-    // Set flags in radiotap header
-    {
-        uint8_t flags = 0;
-        switch(bandwidth) {
-        case 20:
-            flags |= IEEE80211_RADIOTAP_MCS_BW_20;
-            break;
-        case 40:
-            flags |= IEEE80211_RADIOTAP_MCS_BW_40;
-            break;
-        default:
-            fprintf(stderr, "Unsupported bandwidth: %d\n", bandwidth);
-            exit(1);
-        }
 
-        if(short_gi)
-        {
-            flags |= IEEE80211_RADIOTAP_MCS_SGI;
-        }
-
-        switch(stbc) {
-        case 0:
-            break;
-        case 1:
-            flags |= (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
-            break;
-        case 2:
-            flags |= (IEEE80211_RADIOTAP_MCS_STBC_2 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
-            break;
-        case 3:
-            flags |= (IEEE80211_RADIOTAP_MCS_STBC_3 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
-            break;
-        default:
-            fprintf(stderr, "Unsupported STBC type: %d\n", stbc);
-            exit(1);
-        }
-
-        if(ldpc)
-        {
-            flags |= IEEE80211_RADIOTAP_MCS_FEC_LDPC;
-        }
-
-        radiotap_header[MCS_FLAGS_OFF] = flags;
-        radiotap_header[MCS_IDX_OFF] = mcs_index;
-    }
     try
     {
         vector<int> tx_fd;
@@ -405,11 +436,14 @@ int main(int argc, char * const *argv)
             tx_fd.push_back(fd);
             wlans.push_back(string(argv[optind + i]));
         }
-
+//#define DEBUG_TX
 #ifdef DEBUG_TX
-        shared_ptr<Transmitter>t = shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + i));
+        std::cout<<"Hello\n";
+        shared_ptr<Transmitter>t = shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
+        t->mRadiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
 #else
         shared_ptr<Transmitter>t = shared_ptr<PcapTransmitter>(new PcapTransmitter(k, n, keypair, radio_port, wlans));
+        t->mRadiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
 #endif
 
         video_source(t, tx_fd);
@@ -420,3 +454,4 @@ int main(int argc, char * const *argv)
     }
     return 0;
 }
+

@@ -35,7 +35,7 @@
 
 extern "C"
 {
-#include "ieee80211_radiotap.h"
+//#include "ieee80211_radiotap.h"
 #include "fec.h"
 }
 

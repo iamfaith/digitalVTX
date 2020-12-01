@@ -28,6 +28,7 @@
 #include "fec.h"
 #include "wifibroadcast.hpp"
 #include <stdexcept>
+#include <iostream>
 
 class Transmitter
 {
@@ -57,6 +58,11 @@ private:
     uint8_t rx_publickey[crypto_box_PUBLICKEYBYTES];
     uint8_t session_key[crypto_aead_chacha20poly1305_KEYBYTES];
     wsession_key_t session_key_packet;
+    //
+protected:
+    Ieee80211Header mIeee80211Header;
+public:
+    RadiotapHeader mRadiotapHeader;
 };
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap
@@ -72,13 +78,15 @@ private:
     // into the one wfb stream
     const uint8_t radio_port;
     // TODO what the heck is this one ?
+    // I think it is supposed to be the wifi interface data is sent on
     int current_output;
     uint16_t ieee80211_seq;
     std::vector<pcap_t*> ppcap;
 };
 
 // UdpTransmitter can be used to emulate a wifi bridge without using a wifi adapter
-// Usefully for Testing and Debugging
+// Usefully for Testing and Debugging.
+// Use the Aggregator functionality as rx when using UdpTransmitter
 class UdpTransmitter : public Transmitter
 {
 public:
@@ -95,33 +103,9 @@ public:
     virtual void select_output(int /*idx*/){}
 
 private:
-    virtual void inject_packet(const uint8_t *buf, size_t size)
-    {
-        wrxfwd_t fwd_hdr = { .wlan_idx = (uint8_t)(rand() % 2) };
+    virtual void inject_packet(const uint8_t *buf, size_t size);
 
-        memset(fwd_hdr.antenna, 0xff, sizeof(fwd_hdr.antenna));
-        memset(fwd_hdr.rssi, SCHAR_MIN, sizeof(fwd_hdr.rssi));
-
-        fwd_hdr.antenna[0] = (uint8_t)(rand() % 2);
-        fwd_hdr.rssi[0] = (int8_t)(rand() & 0xff);
-
-        struct iovec iov[2] = {{ .iov_base = (void*)&fwd_hdr,
-                                 .iov_len = sizeof(fwd_hdr)},
-                               { .iov_base = (void*)buf,
-                                 .iov_len = size }};
-
-        struct msghdr msghdr = { .msg_name = NULL,
-                                 .msg_namelen = 0,
-                                 .msg_iov = iov,
-                                 .msg_iovlen = 2,
-                                 .msg_control = NULL,
-                                 .msg_controllen = 0,
-                                 .msg_flags = 0};
-
-        sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
-    }
-
-    int open_udp_socket(const std::string &client_addr, int client_port)
+    static int open_udp_socket(const std::string &client_addr, int client_port)
     {
         struct sockaddr_in saddr;
         int fd = socket(AF_INET, SOCK_DGRAM, 0);
