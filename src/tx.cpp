@@ -152,22 +152,6 @@ ieee80211_seq(0)
     for(const std::string& wlan:wlans){
         ppcap.push_back(Helper::openTxWithPcap(wlan));
     }
-    /*char errbuf[PCAP_ERRBUF_SIZE];
-    for(auto it=wlans.begin(); it!=wlans.end(); it++){
-        pcap_t *p = pcap_create(it->c_str(), errbuf);
-        if (p == NULL){
-            throw runtime_error(string_format("Unable to open interface %s in pcap: %s", it->c_str(), errbuf));
-        }
-        if (pcap_set_snaplen(p, 4096) !=0) throw runtime_error("set_snaplen failed");
-        if (pcap_set_promisc(p, 1) != 0) throw runtime_error("set_promisc failed");
-        //if (pcap_set_rfmon(p, 1) !=0) throw runtime_error("set_rfmon failed");
-        if (pcap_set_timeout(p, -1) !=0) throw runtime_error("set_timeout failed");
-        //if (pcap_set_buffer_size(p, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        if (pcap_activate(p) !=0) throw runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
-        //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
-
-        ppcap.push_back(p);
-    }*/
 }
 
 
@@ -178,32 +162,6 @@ void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size)
     ieee80211_seq += 16;
     const auto packet=Helper::createPcapPacket(mRadiotapHeader,mIeee80211Header,buf,size);
     Helper::injectPacket(ppcap[current_output],packet);
-    /*uint8_t txbuf[MAX_PACKET_SIZE];
-    uint8_t *p = txbuf;
-
-    assert(size <= MAX_FORWARDER_PACKET_SIZE);
-
-    // radiotap header
-    memcpy(p, radiotap_header, sizeof(radiotap_header));
-    p += sizeof(radiotap_header);
-
-    // ieee80211 header
-    memcpy(p, ieee80211_header, sizeof(ieee80211_header));
-    p[SRC_MAC_LASTBYTE] = radio_port;
-    p[DST_MAC_LASTBYTE] = radio_port;
-    p[FRAME_SEQ_LB] = ieee80211_seq & 0xff;
-    p[FRAME_SEQ_HB] = (ieee80211_seq >> 8) & 0xff;
-    ieee80211_seq += 16;
-    p += sizeof(ieee80211_header);
-
-    // FEC data
-    memcpy(p, buf, size);
-    p += size;
-
-    if (pcap_inject(ppcap[current_output], txbuf, p - txbuf) != p - txbuf)
-    {
-        throw runtime_error(string_format("Unable to inject packet"));
-    }*/
 }
 
 PcapTransmitter::~PcapTransmitter()
