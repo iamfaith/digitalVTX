@@ -83,6 +83,7 @@ namespace Helper{
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
+    //static void readCrypto(const std::string keypair,)
 }
 
 Transmitter::Transmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair):
@@ -103,12 +104,12 @@ fragment_idx(0),max_packet_size(0)
     {
         throw runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
     }
-    if (fread(tx_secretkey, crypto_box_SECRETKEYBYTES, 1, fp) != 1)
+    if (fread(tx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1)
     {
         fclose(fp);
         throw runtime_error(string_format("Unable to read tx secret key: %s", strerror(errno)));
     }
-    if (fread(rx_publickey, crypto_box_PUBLICKEYBYTES, 1, fp) != 1)
+    if (fread(rx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1)
     {
         fclose(fp);
         throw runtime_error(string_format("Unable to read rx public key: %s", strerror(errno)));
@@ -132,11 +133,11 @@ Transmitter::~Transmitter()
 
 void Transmitter::make_session_key(void)
 {
-    randombytes_buf(session_key, sizeof(session_key));
+    randombytes_buf(session_key.data(), sizeof(session_key));
     session_key_packet.packet_type = WFB_PACKET_KEY;
     randombytes_buf(session_key_packet.session_key_nonce, sizeof(session_key_packet.session_key_nonce));
-    if (crypto_box_easy(session_key_packet.session_key_data, session_key, sizeof(session_key),
-                        session_key_packet.session_key_nonce, rx_publickey, tx_secretkey) != 0)
+    if (crypto_box_easy(session_key_packet.session_key_data, session_key.data(), sizeof(session_key),
+                        session_key_packet.session_key_nonce, rx_publickey.data(), tx_secretkey.data()) != 0)
     {
         throw runtime_error("Unable to make session key!");
     }
@@ -212,7 +213,7 @@ void Transmitter::send_block_fragment(size_t packet_size)
     crypto_aead_chacha20poly1305_encrypt(ciphertext + sizeof(wblock_hdr_t), &ciphertext_len,
                                          block[fragment_idx], packet_size,
                                          (uint8_t*)block_hdr, sizeof(wblock_hdr_t),
-                                         NULL, (uint8_t*)(&(block_hdr->nonce)), session_key);
+                                         NULL, (uint8_t*)(&(block_hdr->nonce)), session_key.data());
 
     inject_packet(ciphertext, sizeof(wblock_hdr_t) + ciphertext_len);
 }

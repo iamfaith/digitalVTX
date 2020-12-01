@@ -55,9 +55,9 @@ private:
     size_t max_packet_size;
 
     // tx->rx keypair
-    uint8_t tx_secretkey[crypto_box_SECRETKEYBYTES];
-    uint8_t rx_publickey[crypto_box_PUBLICKEYBYTES];
-    uint8_t session_key[crypto_aead_chacha20poly1305_KEYBYTES];
+    std::array<uint8_t,crypto_box_SECRETKEYBYTES> tx_secretkey;
+    std::array<uint8_t,crypto_box_PUBLICKEYBYTES> rx_publickey;
+    std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
     wsession_key_t session_key_packet;
     //
 protected:
