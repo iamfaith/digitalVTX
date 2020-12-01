@@ -33,7 +33,7 @@
 class Transmitter
 {
 public:
-    Transmitter(int k, int m, const std::string &keypair);
+    Transmitter(RadiotapHeader radiotapHeader,int k, int m, const std::string &keypair);
     virtual ~Transmitter();
     void send_packet(const uint8_t *buf, size_t size);
     void send_session_key(void);
@@ -62,14 +62,14 @@ private:
 protected:
     Ieee80211Header mIeee80211Header;
 public:
-    RadiotapHeader mRadiotapHeader;
+    const RadiotapHeader mRadiotapHeader;
 };
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap
 class PcapTransmitter : public Transmitter
 {
 public:
-    PcapTransmitter(int k, int m, const std::string &keypair, uint8_t radio_port, const std::vector<std::string> &wlans);
+    PcapTransmitter(RadiotapHeader radiotapHeader,int k, int m, const std::string &keypair, uint8_t radio_port, const std::vector<std::string> &wlans);
     virtual ~PcapTransmitter();
     virtual void select_output(int idx) { current_output = idx; }
 private:
@@ -90,7 +90,7 @@ private:
 class UdpTransmitter : public Transmitter
 {
 public:
-    UdpTransmitter(int k, int m, const std::string &keypair, const std::string &client_addr, int client_port) : Transmitter(k, m, keypair)
+    UdpTransmitter(int k, int m, const std::string &keypair, const std::string &client_addr, int client_port) : Transmitter({},k, m, keypair)
     {
         sockfd = open_udp_socket(client_addr, client_port);
     }

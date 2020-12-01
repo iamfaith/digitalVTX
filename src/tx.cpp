@@ -85,9 +85,10 @@ namespace Helper{
     }
 }
 
-Transmitter::Transmitter(int k, int n, const string &keypair):  fec_k(k), fec_n(n), block_idx(0),
-                                                                fragment_idx(0),
-                                                                max_packet_size(0)
+Transmitter::Transmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair):
+mRadiotapHeader(std::move(radiotapHeader)),
+fec_k(k), fec_n(n), block_idx(0),
+fragment_idx(0),max_packet_size(0)
 {
     fec_p = fec_new(fec_k, fec_n);
 
@@ -142,10 +143,11 @@ void Transmitter::make_session_key(void)
 }
 
 
-PcapTransmitter::PcapTransmitter(int k, int n, const string &keypair, uint8_t radio_port, const vector<string> &wlans) : Transmitter(k, n, keypair),
-                                                                                                                        radio_port(radio_port),
-                                                                                                                        current_output(0),
-                                                                                                                        ieee80211_seq(0)
+PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair, uint8_t radio_port, const vector<string> &wlans) :
+Transmitter(radiotapHeader,k, n, keypair),
+radio_port(radio_port),
+current_output(0),
+ieee80211_seq(0)
 {
     for(const std::string& wlan:wlans){
         ppcap.push_back(Helper::openTxWithPcap(wlan));
@@ -423,8 +425,8 @@ int main(int argc, char * const *argv)
     if (optind >= argc) {
         goto show_usage;
     }
-
-
+    RadiotapHeader radiotapHeader;
+    radiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
     try
     {
         vector<int> tx_fd;
@@ -442,8 +444,7 @@ int main(int argc, char * const *argv)
         shared_ptr<Transmitter>t = shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
         t->mRadiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
 #else
-        shared_ptr<Transmitter>t = shared_ptr<PcapTransmitter>(new PcapTransmitter(k, n, keypair, radio_port, wlans));
-        t->mRadiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
+        shared_ptr<Transmitter>t = shared_ptr<PcapTransmitter>(new PcapTransmitter(radiotapHeader,k, n, keypair, radio_port, wlans));
 #endif
 
         video_source(t, tx_fd);
