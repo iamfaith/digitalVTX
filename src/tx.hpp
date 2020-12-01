@@ -62,6 +62,7 @@ private:
 protected:
     Ieee80211Header mIeee80211Header;
 public:
+    // const since params like bandwidth never change !
     const RadiotapHeader mRadiotapHeader;
 };
 
