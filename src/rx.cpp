@@ -110,6 +110,8 @@ void Receiver::loop_iter() {
         if (pkt == NULL) {
             break;
         }
+        //
+        printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
 
         int pktlen = hdr.caplen;
         // int pkt_rate = 0
