@@ -45,8 +45,6 @@ extern "C"
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
 
-using namespace std;
-
 
 Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port, BaseAggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
     char errbuf[PCAP_ERRBUF_SIZE];
@@ -54,20 +52,20 @@ Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port, BaseAggregato
     ppcap = pcap_create(wlan, errbuf);
 
     if (ppcap == NULL) {
-        throw runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan, errbuf));
+        throw std::runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan, errbuf));
     }
 
-    if (pcap_set_snaplen(ppcap, 4096) != 0) throw runtime_error("set_snaplen failed");
-    if (pcap_set_promisc(ppcap, 1) != 0) throw runtime_error("set_promisc failed");
+    if (pcap_set_snaplen(ppcap, 4096) != 0) throw std::runtime_error("set_snaplen failed");
+    if (pcap_set_promisc(ppcap, 1) != 0) throw std::runtime_error("set_promisc failed");
     //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
-    if (pcap_set_timeout(ppcap, -1) != 0) throw runtime_error("set_timeout failed");
+    if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
     //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
-    if (pcap_activate(ppcap) != 0) throw runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(ppcap)));
-    if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
+    if (pcap_activate(ppcap) != 0) throw std::runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(ppcap)));
+    if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(string_format("set_nonblock failed: %s", errbuf));
 
     int link_encap = pcap_datalink(ppcap);
     struct bpf_program bpfprogram;
-    string program;
+    std::string program;
 
     switch (link_encap) {
         case DLT_PRISM_HEADER:
@@ -81,15 +79,15 @@ Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port, BaseAggregato
             break;
 
         default:
-            throw runtime_error(string_format("unknown encapsulation on %s", wlan));
+            throw std::runtime_error(string_format("unknown encapsulation on %s", wlan));
     }
 
     if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
-        throw runtime_error(string_format("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
+        throw std::runtime_error(string_format("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
     }
 
     if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
-        throw runtime_error(string_format("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
+        throw std::runtime_error(string_format("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
     }
 
     pcap_freecode(&bpfprogram);
@@ -200,7 +198,7 @@ void Receiver::loop_iter(void) {
 }
 
 
-Aggregator::Aggregator(const string &client_addr, int client_port, int k, int n, const string &keypair) :
+Aggregator::Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair) :
         mDecryptor(keypair),
         fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),
         count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
@@ -235,7 +233,7 @@ Aggregator::~Aggregator() {
 }
 
 
-Forwarder::Forwarder(const string &client_addr, int client_port) {
+Forwarder::Forwarder(const std::string &client_addr, int client_port) {
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
 }
 
@@ -306,7 +304,7 @@ int Aggregator::get_block_ring_idx(uint64_t block_idx) {
         return -1;
     }
 
-    int new_blocks = (int) min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
+    int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
                                (uint64_t) RX_RING_SIZE);
     assert (new_blocks > 0);
 
@@ -570,8 +568,8 @@ void Aggregator::apply_fec(int ring_idx) {
 }
 
 void
-radio_loop(int argc, char *const *argv, int optind, int radio_port, shared_ptr<BaseAggregator> agg, int log_interval) {
-    int nfds = min(argc - optind, MAX_RX_INTERFACES);
+radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<BaseAggregator> agg, int log_interval) {
+    int nfds = std::min(argc - optind, MAX_RX_INTERFACES);
     uint64_t log_send_ts = 0;
     struct pollfd fds[MAX_RX_INTERFACES];
     Receiver *rx[MAX_RX_INTERFACES];
@@ -590,7 +588,7 @@ radio_loop(int argc, char *const *argv, int optind, int radio_port, shared_ptr<B
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
-            throw runtime_error(string_format("Poll error: %s", strerror(errno)));
+            throw std::runtime_error(string_format("Poll error: %s", strerror(errno)));
         }
 
         cur_ts = get_time_ms();
@@ -604,7 +602,7 @@ radio_loop(int argc, char *const *argv, int optind, int radio_port, shared_ptr<B
 
         for (int i = 0; rc > 0 && i < nfds; i++) {
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
-                throw runtime_error("socket error!");
+                throw std::runtime_error("socket error!");
             }
             if (fds[i].revents & POLLIN) {
                 rx[i]->loop_iter();
@@ -624,7 +622,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
     int fd = open_udp_socket_for_rx(srv_port);
 
     if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-        throw runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
+        throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
     }
 
     memset(fds, '\0', sizeof(fds));
@@ -637,7 +635,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
-            throw runtime_error(string_format("poll error: %s", strerror(errno)));
+            throw std::runtime_error(string_format("poll error: %s", strerror(errno)));
         }
 
         cur_ts = get_time_ms();
@@ -651,7 +649,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
 
         // some events detected
         if (fds[0].revents & (POLLERR | POLLNVAL)) {
-            throw runtime_error(string_format("socket error: %s", strerror(errno)));
+            throw std::runtime_error(string_format("socket error: %s", strerror(errno)));
         }
 
         if (fds[0].revents & POLLIN) {
@@ -684,7 +682,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
                 agg.process_packet(buf, rsize - sizeof(wrxfwd_t), fwd_hdr.wlan_idx, fwd_hdr.antenna, fwd_hdr.rssi,
                                    &sockaddr);
             }
-            if (errno != EWOULDBLOCK) throw runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
+            if (errno != EWOULDBLOCK) throw std::runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
         }
     }
 }
@@ -695,9 +693,9 @@ int main(int argc, char *const *argv) {
     int log_interval = 1000;
     int client_port = 5600;
     int srv_port = 0;
-    string client_addr = "127.0.0.1";
+    std::string client_addr = "127.0.0.1";
     rx_mode_t rx_mode = LOCAL;
-    string keypair = "rx.key";
+    std::string keypair = "rx.key";
 
     while ((opt = getopt(argc, argv, "K:fa:k:n:c:u:p:l:")) != -1) {
         switch (opt) {
@@ -718,7 +716,7 @@ int main(int argc, char *const *argv) {
                 n = atoi(optarg);
                 break;
             case 'c':
-                client_addr = string(optarg);
+                client_addr = std::string(optarg);
                 break;
             case 'u':
                 client_port = atoi(optarg);
@@ -753,11 +751,11 @@ int main(int argc, char *const *argv) {
         if (rx_mode == LOCAL || rx_mode == FORWARDER) {
             if (optind >= argc) goto show_usage;
 
-            shared_ptr<BaseAggregator> agg;
+            std::shared_ptr<BaseAggregator> agg;
             if (rx_mode == LOCAL) {
-                agg = shared_ptr<Aggregator>(new Aggregator(client_addr, client_port, k, n, keypair));
+                agg = std::shared_ptr<Aggregator>(new Aggregator(client_addr, client_port, k, n, keypair));
             } else {
-                agg = shared_ptr<Forwarder>(new Forwarder(client_addr, client_port));
+                agg = std::shared_ptr<Forwarder>(new Forwarder(client_addr, client_port));
             }
 
             radio_loop(argc, argv, optind, radio_port, agg, log_interval);
@@ -767,9 +765,9 @@ int main(int argc, char *const *argv) {
 
             network_loop(srv_port, agg, log_interval);
         } else {
-            throw runtime_error(string_format("Unknown rx_mode=%d", rx_mode));
+            throw std::runtime_error(string_format("Unknown rx_mode=%d", rx_mode));
         }
-    } catch (runtime_error &e) {
+    } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
     }
