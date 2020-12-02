@@ -214,7 +214,6 @@ count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
 count_p_lost(0), count_p_bad(0){
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
     fec_p = fec_new(fec_k, fec_n);
-    //memset(session_key.data(), '\0', sizeof(session_key));
 
     for(int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++)
     {
@@ -229,23 +228,6 @@ count_p_lost(0), count_p_bad(0){
         rx_ring[ring_idx].fragment_map = new uint8_t[fec_n];
         memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
     }
-
-    /*FILE *fp;
-    if((fp = fopen(keypair.c_str(), "r")) == NULL)
-    {
-        throw runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
-    }
-    if (fread(rx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1)
-    {
-        fclose(fp);
-        throw runtime_error(string_format("Unable to read rx secret key: %s", strerror(errno)));
-    }
-    if (fread(tx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1)
-    {
-        fclose(fp);
-        throw runtime_error(string_format("Unable to read tx public key: %s", strerror(errno)));
-    }
-    fclose(fp);*/
 }
 
 

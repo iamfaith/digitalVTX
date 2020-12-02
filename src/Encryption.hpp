@@ -81,7 +81,6 @@ public:
         fclose(fp);
         memset(session_key.data(), '\0', sizeof(session_key));
     }
-
 public:
     std::array<uint8_t,crypto_box_SECRETKEYBYTES> rx_secretkey;
 public:

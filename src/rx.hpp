@@ -94,7 +94,7 @@ static inline int modN(int x, int base)
 class antennaItem
 {
 public:
-    antennaItem(void) : count_all(0), rssi_sum(0), rssi_min(0), rssi_max(0) {}
+    antennaItem() : count_all(0), rssi_sum(0), rssi_min(0), rssi_max(0) {}
 
     void log_rssi(int8_t rssi){
         if(count_all == 0){
@@ -128,7 +128,7 @@ private:
     void apply_fec(int ring_idx);
     void log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi);
     int get_block_ring_idx(uint64_t block_idx);
-    int rx_ring_push(void);
+    int rx_ring_push();
     fec_t* fec_p;
     int fec_k;  // RS number of primary fragments in block
     int fec_n;  // RS total number of fragments in block
@@ -159,10 +159,10 @@ class Receiver
 public:
     Receiver(const char* wlan, int wlan_idx, int port, BaseAggregator* agg);
     ~Receiver();
-    void loop_iter(void);
-    int getfd(void){ return fd; }
+    void loop_iter();
+    int getfd() const{ return fd; }
 private:
-    int wlan_idx;
+    const int wlan_idx;
     BaseAggregator *agg;
     int fd;
     pcap_t *ppcap;
