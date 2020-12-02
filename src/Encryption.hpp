@@ -53,10 +53,11 @@ public:
     }
     // create a wfb packet by copying the header and
     // then putting the encrypted data right behind
+    // the wblock_hdr_t is needed for calling the encryption method since it contains the 'nonce' for the message
     std::vector<uint8_t>
     makeEncryptedPacket2(const wblock_hdr_t& wblockHdr,const uint8_t* data,std::size_t dataSize) {
         std::vector<uint8_t> ret;
-        ret.resize(MAX_FORWARDER_PACKET_SIZE);
+        ret.resize(sizeof(wblock_hdr_t)+dataSize+ crypto_aead_chacha20poly1305_ABYTES);
         // copy the wblockHdr data (this part is not encrypted)
         memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
         // pointer to where the encrypted data begins
@@ -68,7 +69,10 @@ public:
                                              (uint8_t *) &wblockHdr, sizeof(wblock_hdr_t),
                                              NULL,
                                              (uint8_t *) (&(wblockHdr.nonce)), session_key.data());
-        ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
+        // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
+        // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
+        assert(ret.size()==sizeof(wblock_hdr_t)+ciphertext_len);
+        //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
     }
 
