@@ -359,7 +359,6 @@ int main(int argc, char * const *argv)
 #ifdef DEBUG_TX
         std::cout<<"Hello\n";
         shared_ptr<Transmitter>t = shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
-        t->mRadiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
 #else
         shared_ptr<Transmitter>t = shared_ptr<PcapTransmitter>(new PcapTransmitter(radiotapHeader,k, n, keypair, radio_port, wlans));
 #endif
