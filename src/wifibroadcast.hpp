@@ -164,14 +164,9 @@ typedef struct {
 
 class XBlock{
 public:
-    std::vector<uint8_t> data;
-public:
-    explicit XBlock(std::vector<uint8_t> data1):
-    data(std::move(data1))
-    {}
-    void writeParams(uint8_t packetType,uint64_t nonce){
-
-    }
+    wblock_hdr_t header;
+    uint8_t* payload;
+    std::size_t payloadSize;
 };
 
 
