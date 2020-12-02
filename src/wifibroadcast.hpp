@@ -172,7 +172,7 @@ typedef struct {
 #define MAX_FORWARDER_PACKET_SIZE (MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header))
 
 int open_udp_socket_for_rx(int port);
-uint64_t get_time_ms(void);
+uint64_t get_time_ms();
 
 // Wrapper around the radiotap header (declared as raw array initially)
 class RadiotapHeader{
