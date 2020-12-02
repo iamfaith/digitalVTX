@@ -8,9 +8,18 @@
 #include <vector>
 #include <optional>
 
+// For developing or when encryption is not important, you can use this default seed to
+// create deterministic rx and tx keys
+static const std::array<uint8_t,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
+// enable a default deterministic encryption key by using this flag
+//#define CREATE_DEFAULT_ENCRYPTION_KEYS
+
 class Encryptor {
 public:
     explicit Encryptor(const std::string &keypair) {
+#ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
+        crypto_box_seed_keypair(rx_publickey.data(),tx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+#else
         FILE *fp;
         if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
             throw std::runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
@@ -24,6 +33,7 @@ public:
             throw std::runtime_error(string_format("Unable to read rx public key: %s", strerror(errno)));
         }
         fclose(fp);
+#endif
     }
 
     void makeSessionKey() {
@@ -70,6 +80,9 @@ public:
 class Decryptor {
 public:
     explicit Decryptor(const std::string &keypair) {
+#ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
+        crypto_box_seed_keypair(tx_publickey.data(),rx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+#else
         FILE *fp;
         if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
             throw std::runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
@@ -83,6 +96,7 @@ public:
             throw std::runtime_error(string_format("Unable to read tx public key: %s", strerror(errno)));
         }
         fclose(fp);
+#endif
         memset(session_key.data(), '\0', sizeof(session_key));
     }
 
