@@ -207,31 +207,10 @@ FECDecoder(k,n),
         count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
         count_p_lost(0), count_p_bad(0) {
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
-    /*fec_p = fec_new(fec_k, fec_n);
-
-    for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
-        rx_ring[ring_idx].block_idx = 0;
-        rx_ring[ring_idx].send_fragment_idx = 0;
-        rx_ring[ring_idx].has_fragments = 0;
-        rx_ring[ring_idx].fragments = new uint8_t *[fec_n];
-        for (int i = 0; i < fec_n; i++) {
-            rx_ring[ring_idx].fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
-        }
-        rx_ring[ring_idx].fragment_map = new uint8_t[fec_n];
-        memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-    }*/
 }
 
 
 Aggregator::~Aggregator() {
-
-    /*for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
-        delete rx_ring[ring_idx].fragment_map;
-        for (int i = 0; i < fec_n; i++) {
-            delete rx_ring[ring_idx].fragments[i];
-        }
-        delete rx_ring[ring_idx].fragments;
-    }*/
     close(sockfd);
 }
 
@@ -270,35 +249,6 @@ Forwarder::~Forwarder() {
     close(sockfd);
 }
 
-
-
-/*int Aggregator::get_block_ring_idx(uint64_t block_idx) {
-    // check if block is already to the ring
-    for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
-        if (rx_ring[i].block_idx == block_idx) return i;
-    }
-
-    // check if block is already known and not in the ring then it is already processed
-    if (last_known_block != (uint64_t) -1 && block_idx <= last_known_block) {
-        return -1;
-    }
-
-    int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
-                               (uint64_t) FECDecoder::RX_RING_SIZE);
-    assert (new_blocks > 0);
-
-    last_known_block = block_idx;
-    int ring_idx = -1;
-
-    for (int i = 0; i < new_blocks; i++) {
-        ring_idx = rx_ring_push();
-        rx_ring[ring_idx].block_idx = block_idx + i + 1 - new_blocks;
-        rx_ring[ring_idx].send_fragment_idx = 0;
-        rx_ring[ring_idx].has_fragments = 0;
-        memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-    }
-    return ring_idx;
-}*/
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
@@ -340,8 +290,6 @@ void Aggregator::log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const u
 
 void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna,
                                 const int8_t *rssi, sockaddr_in *sockaddr) {
-    //uint8_t new_session_key[sizeof(mDecryptor.session_key)];
-    //std::array<uint8_t,sizeof(mDecryptor.session_key)> new_session_key;
     count_p_all += 1;
 
     if (size == 0) return;
@@ -526,32 +474,6 @@ void Aggregator::send_packet(int ring_idx, int fragment_idx) {
         send(sockfd, payload, packet_size, MSG_DONTWAIT);
     }
 }
-
-/*void Aggregator::apply_fec(int ring_idx) {
-    unsigned index[fec_k];
-    uint8_t *in_blocks[fec_k];
-    uint8_t *out_blocks[fec_n - fec_k];
-    int j = fec_k;
-    int ob_idx = 0;
-
-    for (int i = 0; i < fec_k; i++) {
-        if (rx_ring[ring_idx].fragment_map[i]) {
-            in_blocks[i] = rx_ring[ring_idx].fragments[i];
-            index[i] = i;
-        } else {
-            for (; j < fec_n; j++) {
-                if (rx_ring[ring_idx].fragment_map[j]) {
-                    in_blocks[i] = rx_ring[ring_idx].fragments[j];
-                    out_blocks[ob_idx++] = rx_ring[ring_idx].fragments[i];
-                    index[i] = j;
-                    j++;
-                    break;
-                }
-            }
-        }
-    }
-    fec_decode(fec_p, (const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
-}*/
 
 void
 radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<BaseAggregator> agg, int log_interval) {
