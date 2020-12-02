@@ -46,29 +46,13 @@ public:
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size=0;
 public:
-    /*void encode(const uint8_t *buf, size_t size){
-        wpacket_hdr_t packet_hdr;
+    // This method always returns data,e.g. and FEC block for sending out
+    std::vector<uint8_t> encodePacket(const uint8_t *buf, size_t size){
         assert(size <= MAX_PAYLOAD_SIZE);
+        wpacket_hdr_t packet_hdr;
+    }
 
-        packet_hdr.packet_size = htobe16(size);
-        memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
-        memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
-        memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
-        send_block_fragment(sizeof(packet_hdr) + size);
-        max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
-        fragment_idx += 1;
 
-        if (fragment_idx < fec_k) return;
-
-        fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
-        while (fragment_idx < fec_n) {
-            //send_block_fragment(max_packet_size);
-            fragment_idx += 1;
-        }
-        block_idx += 1;
-        fragment_idx = 0;
-        max_packet_size = 0;
-    }*/
 };
 
 typedef struct {
@@ -198,6 +182,7 @@ protected:
         }
         fec_decode(fec_p, (const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
     }
+
 };
 
 #endif //WIFIBROADCAST_FEC_HPP

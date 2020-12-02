@@ -391,10 +391,10 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 
-    uint64_t block_idx = be64toh(block_hdr->nonce) >> 8;
-    uint8_t fragment_idx = (uint8_t) (be64toh(block_hdr->nonce) & 0xff);
+    const uint64_t block_idx = be64toh(block_hdr->nonce) >> 8;
+    const uint8_t fragment_idx = (uint8_t) (be64toh(block_hdr->nonce) & 0xff);
 
-    // Should never happend due to generating new session key on tx side
+    // Should never happen due to generating new session key on tx side
     if (block_idx > MAX_BLOCK_IDX) {
         fprintf(stderr, "block_idx overflow\n");
         count_p_bad += 1;

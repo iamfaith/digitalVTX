@@ -41,7 +41,7 @@ public:
         fclose(fp);
 #endif
     }
-
+    // Don't forget to send the session key after creating a new one
     void makeSessionKey() {
         randombytes_buf(session_key.data(), sizeof(session_key));
         session_key_packet.packet_type = WFB_PACKET_KEY;
@@ -74,6 +74,16 @@ public:
         return std::vector<uint8_t>(ciphertext, ciphertext + (sizeof(wblock_hdr_t) + ciphertext_len));
     }
 
+    /*void encryptBlock(XBlock& block) {
+        assert(block.data.size()<=MAX_FEC_PAYLOAD);
+        uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
+        long long unsigned int ciphertext_len;
+
+        crypto_aead_chacha20poly1305_encrypt(ciphertext + sizeof(wblock_hdr_t), &ciphertext_len,
+                                             block[fragment_idx], packet_size,
+                                             (uint8_t *) block_hdr, sizeof(wblock_hdr_t),
+                                             NULL, (uint8_t *) (&(block_hdr->nonce)), session_key.data());
+    }*/
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey;
@@ -114,7 +124,6 @@ public:
     std::array<uint8_t, crypto_box_PUBLICKEYBYTES> tx_publickey;
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key;
 public:
-    // TODO what the heck does this exactly ?
     // return true on success
     bool onNewPacketWfbKey(const uint8_t *buf) {
         std::array<uint8_t, sizeof(session_key)> new_session_key{};

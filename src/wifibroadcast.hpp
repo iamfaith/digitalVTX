@@ -35,6 +35,7 @@
 #include <sodium.h>
 #include <endian.h>
 #include <string>
+#include <vector>
 
 extern "C"{
 #include "ieee80211_radiotap.h"
@@ -160,6 +161,19 @@ typedef struct {
     uint8_t packet_type;
     uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
 }  __attribute__ ((packed)) wblock_hdr_t;
+
+class XBlock{
+public:
+    std::vector<uint8_t> data;
+public:
+    explicit XBlock(std::vector<uint8_t> data1):
+    data(std::move(data1))
+    {}
+    void writeParams(uint8_t packetType,uint64_t nonce){
+
+    }
+};
+
 
 // Plain data packet after FEC decode
 

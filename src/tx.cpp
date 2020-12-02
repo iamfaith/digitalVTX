@@ -182,8 +182,8 @@ void Transmitter::send_session_key() {
 
 void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     std::cout << "Transmitter::send_packet\n";
-    wpacket_hdr_t packet_hdr;
     assert(size <= MAX_PAYLOAD_SIZE);
+    wpacket_hdr_t packet_hdr;
 
     packet_hdr.packet_size = htobe16(size);
     memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
