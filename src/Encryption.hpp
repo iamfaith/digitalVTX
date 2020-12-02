@@ -10,7 +10,8 @@
 
 // For developing or when encryption is not important, you can use this default seed to
 // create deterministic rx and tx keys
-static const std::array<uint8_t,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
+static const std::array<uint8_t,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED_TX={0};
+static const std::array<uint8_t,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED_RX={1};
 // enable a default deterministic encryption key by using this flag
 //#define CREATE_DEFAULT_ENCRYPTION_KEYS
 
@@ -18,7 +19,7 @@ class Encryptor {
 public:
     explicit Encryptor(const std::string &keypair) {
 #ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
-        crypto_box_seed_keypair(rx_publickey.data(),tx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+        crypto_box_seed_keypair(rx_publickey.data(),tx_secretkey.data(),DEFAULT_ENCRYPTION_SEED_TX.data());
         std::cout<<"Using default keypair\n";
 #else
         FILE *fp;
@@ -82,7 +83,7 @@ class Decryptor {
 public:
     explicit Decryptor(const std::string &keypair) {
 #ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
-        crypto_box_seed_keypair(tx_publickey.data(),rx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+        crypto_box_seed_keypair(tx_publickey.data(),rx_secretkey.data(),DEFAULT_ENCRYPTION_SEED_RX.data());
         std::cout<<"Using default keypair\n";
 #else
         FILE *fp;
