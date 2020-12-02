@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdexcept>
 #include <vector>
+#include <optional>
 
 class Encryptor{
 public:
@@ -80,9 +81,31 @@ public:
         fclose(fp);
         memset(session_key.data(), '\0', sizeof(session_key));
     }
+
+public:
     std::array<uint8_t,crypto_box_SECRETKEYBYTES> rx_secretkey;
+public:
     std::array<uint8_t,crypto_box_PUBLICKEYBYTES> tx_publickey;
     std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
+public:
+    // TODO what the heck does this exactly ?
+    // return true on success
+    bool onNewPacketWfbKey(const uint8_t* buf){
+        std::array<uint8_t,sizeof(session_key)> new_session_key{};
+        if(crypto_box_open_easy(new_session_key.data(),
+                                ((wsession_key_t*)buf)->session_key_data, sizeof(wsession_key_t::session_key_data),
+                                ((wsession_key_t*)buf)->session_key_nonce,
+                                tx_publickey.data(), rx_secretkey.data()) != 0){
+            fprintf(stderr, "unable to decrypt session key\n");
+            return false;
+        }
+        if (memcmp(session_key.data(), new_session_key.data(), sizeof(session_key)) != 0) {
+            fprintf(stderr, "New session detected\n");
+            session_key = new_session_key;
+            return true;
+        }
+        return false;
+    }
 };
 
 #endif //ENCRYPTION_HPP

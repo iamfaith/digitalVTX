@@ -401,20 +401,19 @@ void Aggregator::log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const u
 
 void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi, sockaddr_in *sockaddr)
 {
-    uint8_t new_session_key[sizeof(mDecryptor.session_key)];
+    //uint8_t new_session_key[sizeof(mDecryptor.session_key)];
+    //std::array<uint8_t,sizeof(mDecryptor.session_key)> new_session_key;
     count_p_all += 1;
 
     if(size == 0) return;
 
-    if (size > MAX_FORWARDER_PACKET_SIZE)
-    {
+    if (size > MAX_FORWARDER_PACKET_SIZE){
         fprintf(stderr, "long packet (fec payload)\n");
         count_p_bad += 1;
         return;
     }
 
-    switch(buf[0])
-    {
+    switch(buf[0]){
     case WFB_PACKET_DATA:
         if(size < sizeof(wblock_hdr_t) + sizeof(wpacket_hdr_t))
         {
@@ -425,29 +424,39 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
         break;
 
     case WFB_PACKET_KEY:
-        if(size != sizeof(wsession_key_t))
-        {
+        if(size != sizeof(wsession_key_t)){
             fprintf(stderr, "invalid session key packet\n");
             count_p_bad += 1;
             return;
         }
-
-        if(crypto_box_open_easy(new_session_key,
+        if(mDecryptor.onNewPacketWfbKey(buf)){
+            count_p_dec_ok += 1;
+            rx_ring_front = 0;
+            rx_ring_alloc = 0;
+            last_known_block = (uint64_t)-1;
+            seq = 0;
+            for(int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++){
+                rx_ring[ring_idx].block_idx = 0;
+                rx_ring[ring_idx].send_fragment_idx = 0;
+                rx_ring[ring_idx].has_fragments = 0;
+                memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
+            }
+        }else{
+            count_p_dec_err += 1;
+        }
+        return;
+        /*if(crypto_box_open_easy(new_session_key.data(),
                                 ((wsession_key_t*)buf)->session_key_data, sizeof(wsession_key_t::session_key_data),
                                 ((wsession_key_t*)buf)->session_key_nonce,
-                                mDecryptor.tx_publickey.data(), mDecryptor.rx_secretkey.data()) != 0)
-        {
+                                mDecryptor.tx_publickey.data(), mDecryptor.rx_secretkey.data()) != 0){
             fprintf(stderr, "unable to decrypt session key\n");
             count_p_dec_err += 1;
             return;
         }
-
         count_p_dec_ok += 1;
-
-        if (memcmp(mDecryptor.session_key.data(), new_session_key, sizeof(mDecryptor.session_key)) != 0)
-        {
+        if (memcmp(mDecryptor.session_key.data(), new_session_key.data(), sizeof(mDecryptor.session_key)) != 0){
             fprintf(stderr, "New session detected\n");
-            memcpy(mDecryptor.session_key.data(), new_session_key, sizeof(mDecryptor.session_key));
+            memcpy(mDecryptor.session_key.data(), new_session_key.data(), sizeof(mDecryptor.session_key));
 
             rx_ring_front = 0;
             rx_ring_alloc = 0;
@@ -461,7 +470,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
                 memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
             }
         }
-        return;
+        return;*/
 
     default:
         fprintf(stderr, "Unknown packet type 0x%x\n", buf[0]);
