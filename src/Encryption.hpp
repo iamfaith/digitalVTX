@@ -19,6 +19,7 @@ public:
     explicit Encryptor(const std::string &keypair) {
 #ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
         crypto_box_seed_keypair(rx_publickey.data(),tx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+        std::cout<<"Using default keypair\n";
 #else
         FILE *fp;
         if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
@@ -82,6 +83,7 @@ public:
     explicit Decryptor(const std::string &keypair) {
 #ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
         crypto_box_seed_keypair(tx_publickey.data(),rx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+        std::cout<<"Using default keypair\n";
 #else
         FILE *fp;
         if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
