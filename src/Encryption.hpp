@@ -51,11 +51,31 @@ public:
             throw std::runtime_error("Unable to make session key!");
         }
     }
+    // create a wfb packet by copying the header and
+    // then putting the encrypted data right behind
+    std::vector<uint8_t>
+    makeEncryptedPacket2(const wblock_hdr_t& wblockHdr,const uint8_t* data,std::size_t dataSize) {
+        std::vector<uint8_t> ret;
+        ret.resize(MAX_FORWARDER_PACKET_SIZE);
+        // copy the wblockHdr data (this part is not encrypted)
+        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
+        // pointer to where the encrypted data begins
+        uint8_t* cyphertext=&ret.data()[sizeof(wblock_hdr_t)];
+        long long unsigned int ciphertext_len;
+
+        crypto_aead_chacha20poly1305_encrypt(cyphertext, &ciphertext_len,
+                                             data, dataSize,
+                                             (uint8_t *) &wblockHdr, sizeof(wblock_hdr_t),
+                                             NULL,
+                                             (uint8_t *) (&(wblockHdr.nonce)), session_key.data());
+        ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
+        return ret;
+    }
 
     //TODO fixme this is still really messy (what about all the params ?!)
     std::vector<uint8_t>
     makeEncryptedPacket(uint64_t block_idx, uint8_t fragment_idx, uint8_t **block, std::size_t packet_size) {
-        uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
+        /*uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
         wblock_hdr_t *block_hdr = (wblock_hdr_t *) ciphertext;
         long long unsigned int ciphertext_len;
 
@@ -71,7 +91,12 @@ public:
                                              (uint8_t *) block_hdr, sizeof(wblock_hdr_t),
                                              NULL, (uint8_t *) (&(block_hdr->nonce)), session_key.data());
         //TODO fixme use std::vector with proper size originally
-        return std::vector<uint8_t>(ciphertext, ciphertext + (sizeof(wblock_hdr_t) + ciphertext_len));
+        return std::vector<uint8_t>(ciphertext, ciphertext + (sizeof(wblock_hdr_t) + ciphertext_len));*/
+        wblock_hdr_t wblockHdr{};
+        wblockHdr.packet_type = WFB_PACKET_DATA;
+        wblockHdr.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        const uint8_t* data=block[fragment_idx];
+        return makeEncryptedPacket2(wblockHdr,data,packet_size);
     }
 
     /*void encryptBlock(XBlock& block) {

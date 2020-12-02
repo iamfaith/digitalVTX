@@ -46,8 +46,8 @@ public:
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size=0;
 public:
-    // This method always returns data,e.g. and FEC block for sending out
-    std::vector<uint8_t> encodePacket(const uint8_t *buf, size_t size){
+
+    void encodePacket(const uint8_t *buf, size_t size){
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
     }

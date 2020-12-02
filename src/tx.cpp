@@ -171,7 +171,12 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
 
 void Transmitter::send_block_fragment(size_t packet_size) {
     std::cout << "Transmitter::send_block_fragment\n";
-    const auto data = mEncryptor.makeEncryptedPacket(block_idx, fragment_idx, block, packet_size);
+    wblock_hdr_t wblockHdr{};
+    wblockHdr.packet_type = WFB_PACKET_DATA;
+    wblockHdr.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+    const uint8_t* dataP=block[fragment_idx];
+    const auto data= mEncryptor.makeEncryptedPacket2(wblockHdr,dataP,packet_size);
+    //const auto data = mEncryptor.makeEncryptedPacket(block_idx, fragment_idx, block, packet_size);
     inject_packet(data.data(), data.size());
 }
 
