@@ -139,9 +139,9 @@ private:
     uint64_t last_known_block;  //id of last known block
 
     // rx->tx keypair
-    uint8_t rx_secretkey[crypto_box_SECRETKEYBYTES];
-    uint8_t tx_publickey[crypto_box_PUBLICKEYBYTES];
-    uint8_t session_key[crypto_aead_chacha20poly1305_KEYBYTES];
+    std::array<uint8_t,crypto_box_SECRETKEYBYTES> rx_secretkey;
+    std::array<uint8_t,crypto_box_PUBLICKEYBYTES> tx_publickey;
+    std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
 
     antenna_stat_t antenna_stat;
     uint32_t count_p_all;

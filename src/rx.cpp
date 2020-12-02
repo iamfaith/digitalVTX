@@ -213,7 +213,7 @@ Aggregator::Aggregator(const string &client_addr, int client_port, int k, int n,
 {
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
     fec_p = fec_new(fec_k, fec_n);
-    memset(session_key, '\0', sizeof(session_key));
+    memset(session_key.data(), '\0', sizeof(session_key));
 
     for(int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++)
     {
@@ -234,12 +234,12 @@ Aggregator::Aggregator(const string &client_addr, int client_port, int k, int n,
     {
         throw runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
     }
-    if (fread(rx_secretkey, crypto_box_SECRETKEYBYTES, 1, fp) != 1)
+    if (fread(rx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1)
     {
         fclose(fp);
         throw runtime_error(string_format("Unable to read rx secret key: %s", strerror(errno)));
     }
-    if (fread(tx_publickey, crypto_box_PUBLICKEYBYTES, 1, fp) != 1)
+    if (fread(tx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1)
     {
         fclose(fp);
         throw runtime_error(string_format("Unable to read tx public key: %s", strerror(errno)));
@@ -434,7 +434,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
         if(crypto_box_open_easy(new_session_key,
                                 ((wsession_key_t*)buf)->session_key_data, sizeof(wsession_key_t::session_key_data),
                                 ((wsession_key_t*)buf)->session_key_nonce,
-                                tx_publickey, rx_secretkey) != 0)
+                                tx_publickey.data(), rx_secretkey.data()) != 0)
         {
             fprintf(stderr, "unable to decrypt session key\n");
             count_p_dec_err += 1;
@@ -443,10 +443,10 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
 
         count_p_dec_ok += 1;
 
-        if (memcmp(session_key, new_session_key, sizeof(session_key)) != 0)
+        if (memcmp(session_key.data(), new_session_key, sizeof(session_key)) != 0)
         {
             fprintf(stderr, "New session detected\n");
-            memcpy(session_key, new_session_key, sizeof(session_key));
+            memcpy(session_key.data(), new_session_key, sizeof(session_key));
 
             rx_ring_front = 0;
             rx_ring_alloc = 0;
@@ -477,7 +477,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
                                              buf + sizeof(wblock_hdr_t), size - sizeof(wblock_hdr_t),
                                              buf,
                                              sizeof(wblock_hdr_t),
-                                             (uint8_t*)(&(block_hdr->nonce)), session_key) != 0)
+                                             (uint8_t*)(&(block_hdr->nonce)), session_key.data()) != 0)
     {
         fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
         count_p_dec_err += 1;
