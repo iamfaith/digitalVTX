@@ -101,7 +101,7 @@ Receiver::~Receiver() {
 }
 
 
-void Receiver::loop_iter(void) {
+void Receiver::loop_iter() {
     for (;;) // loop while incoming queue is not empty
     {
         struct pcap_pkthdr hdr;
@@ -267,7 +267,7 @@ Forwarder::~Forwarder() {
     close(sockfd);
 }
 
-int Aggregator::rx_ring_push(void) {
+int Aggregator::rx_ring_push() {
     if (rx_ring_alloc < RX_RING_SIZE) {
         int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
         rx_ring_alloc += 1;

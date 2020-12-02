@@ -24,7 +24,7 @@ std::string string_format(const char *format, ...)
     return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
 
-uint64_t get_time_ms(void) // in milliseconds
+uint64_t get_time_ms() // in milliseconds
 {
     struct timespec ts;
     int rc = clock_gettime(CLOCK_MONOTONIC, &ts);

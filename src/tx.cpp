@@ -111,7 +111,7 @@ Transmitter::~Transmitter() {
 }
 
 
-void Transmitter::make_session_key(void) {
+void Transmitter::make_session_key() {
     mEncryptor.makeSessionKey();
 }
 
