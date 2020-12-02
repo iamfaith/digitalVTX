@@ -55,9 +55,9 @@ public:
     // then putting the encrypted data right behind
     // the wblock_hdr_t is needed for calling the encryption method since it contains the 'nonce' for the message
     std::vector<uint8_t>
-    makeEncryptedPacket2(const wblock_hdr_t& wblockHdr,const uint8_t* data,std::size_t dataSize) {
+    makeEncryptedPacket(const wblock_hdr_t& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
         std::vector<uint8_t> ret;
-        ret.resize(sizeof(wblock_hdr_t)+dataSize+ crypto_aead_chacha20poly1305_ABYTES);
+        ret.resize(sizeof(wblock_hdr_t)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
         // copy the wblockHdr data (this part is not encrypted)
         memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
         // pointer to where the encrypted data begins
@@ -65,7 +65,7 @@ public:
         long long unsigned int ciphertext_len;
 
         crypto_aead_chacha20poly1305_encrypt(cyphertext, &ciphertext_len,
-                                             data, dataSize,
+                                             payload, payloadSize,
                                              (uint8_t *) &wblockHdr, sizeof(wblock_hdr_t),
                                              NULL,
                                              (uint8_t *) (&(wblockHdr.nonce)), session_key.data());
@@ -75,44 +75,6 @@ public:
         //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
     }
-
-    //TODO fixme this is still really messy (what about all the params ?!)
-    std::vector<uint8_t>
-    makeEncryptedPacket(uint64_t block_idx, uint8_t fragment_idx, uint8_t **block, std::size_t packet_size) {
-        /*uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
-        wblock_hdr_t *block_hdr = (wblock_hdr_t *) ciphertext;
-        long long unsigned int ciphertext_len;
-
-        assert(packet_size <= MAX_FEC_PAYLOAD);
-
-        block_hdr->packet_type = WFB_PACKET_DATA;
-        block_hdr->nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
-
-        // encrypted payload
-        // TODO I think the encrypted payload begins after the wblock_hdr_t but I still don't really understand everything
-        crypto_aead_chacha20poly1305_encrypt(ciphertext + sizeof(wblock_hdr_t), &ciphertext_len,
-                                             block[fragment_idx], packet_size,
-                                             (uint8_t *) block_hdr, sizeof(wblock_hdr_t),
-                                             NULL, (uint8_t *) (&(block_hdr->nonce)), session_key.data());
-        //TODO fixme use std::vector with proper size originally
-        return std::vector<uint8_t>(ciphertext, ciphertext + (sizeof(wblock_hdr_t) + ciphertext_len));*/
-        wblock_hdr_t wblockHdr{};
-        wblockHdr.packet_type = WFB_PACKET_DATA;
-        wblockHdr.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
-        const uint8_t* data=block[fragment_idx];
-        return makeEncryptedPacket2(wblockHdr,data,packet_size);
-    }
-
-    /*void encryptBlock(XBlock& block) {
-        assert(block.data.size()<=MAX_FEC_PAYLOAD);
-        uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
-        long long unsigned int ciphertext_len;
-
-        crypto_aead_chacha20poly1305_encrypt(ciphertext + sizeof(wblock_hdr_t), &ciphertext_len,
-                                             block[fragment_idx], packet_size,
-                                             (uint8_t *) block_hdr, sizeof(wblock_hdr_t),
-                                             NULL, (uint8_t *) (&(block_hdr->nonce)), session_key.data());
-    }*/
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey;
@@ -172,21 +134,20 @@ public:
     }
 
     // returns decrypted data on success
-    std::optional<std::vector<uint8_t>> decryptPacket(const uint8_t *buf, size_t size) {
-        uint8_t decrypted[MAX_FEC_PAYLOAD];
-        long long unsigned int decrypted_len;
-        auto *block_hdr = (wblock_hdr_t *) buf;
+    std::optional<std::vector<uint8_t>> decryptPacket(const wblock_hdr_t& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
+        std::vector<uint8_t> decrypted;
+        decrypted.resize(payloadSize-crypto_aead_chacha20poly1305_ABYTES);
 
-        if (crypto_aead_chacha20poly1305_decrypt(decrypted, &decrypted_len, NULL,
-                                                 buf + sizeof(wblock_hdr_t), size - sizeof(wblock_hdr_t), buf,
-                                                 sizeof(wblock_hdr_t),
-                                                 (uint8_t *) (&(block_hdr->nonce)), session_key.data()) != 0) {
+        long long unsigned int decrypted_len;
+
+        if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len, NULL,
+                                                 payload,payloadSize,
+                                                 (uint8_t*)&wblockHdr,sizeof(wblock_hdr_t),
+                                                 (uint8_t *) (&(wblockHdr.nonce)), session_key.data()) != 0) {
             return std::nullopt;
         }
-        std::vector<uint8_t> decryptedData;
-        decryptedData.resize(decrypted_len);
-        memcpy(decryptedData.data(), decrypted, decrypted_len);
-        return decryptedData;
+        assert(decrypted.size()==decrypted_len);
+        return decrypted;
     }
 };
 

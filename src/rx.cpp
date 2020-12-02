@@ -363,23 +363,9 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
             count_p_bad += 1;
             return;
     }
-    const auto decrypted=mDecryptor.decryptPacket(buf,size);
-
-    /*uint8_t decrypted[MAX_FEC_PAYLOAD];
-    long long unsigned int decrypted_len;
     wblock_hdr_t *block_hdr = (wblock_hdr_t *) buf;
+    const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&buf[sizeof(wblock_hdr_t)],size-sizeof(wblock_hdr_t));
 
-    if (crypto_aead_chacha20poly1305_decrypt(decrypted, &decrypted_len,
-                                             NULL,
-                                             buf + sizeof(wblock_hdr_t), size - sizeof(wblock_hdr_t),
-                                             buf,
-                                             sizeof(wblock_hdr_t),
-                                             (uint8_t *) (&(block_hdr->nonce)), mDecryptor.session_key.data()) != 0) {
-        fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
-        count_p_dec_err += 1;
-        return;
-    }*/
-    wblock_hdr_t *block_hdr = (wblock_hdr_t *) buf;
     if(decrypted==std::nullopt){
         fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
         count_p_dec_err += 1;
