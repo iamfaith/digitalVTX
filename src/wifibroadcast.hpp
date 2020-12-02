@@ -165,10 +165,9 @@ typedef struct {
 class XBlock{
 public:
     wblock_hdr_t header;
-    uint8_t* payload;
     std::size_t payloadSize;
+    uint8_t* payload;
 };
-
 
 // Plain data packet after FEC decode
 

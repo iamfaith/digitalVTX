@@ -90,25 +90,11 @@ namespace Helper {
 Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair) :
         FECEncoder(k,n),
         mEncryptor(keypair),
-        mRadiotapHeader(radiotapHeader)/*,
-        fec_k(k), fec_n(n), block_idx(0),
-        fragment_idx(0), max_packet_size(0)*/{
-    /*fec_p = fec_new(fec_k, fec_n);
-
-    block = new uint8_t *[fec_n];
-    for (int i = 0; i < fec_n; i++) {
-        block[i] = new uint8_t[MAX_FEC_PAYLOAD];
-    }*/
+        mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
 }
 
 Transmitter::~Transmitter() {
-    /*for (int i = 0; i < fec_n; i++) {
-        delete block[i];
-    }
-    delete block;
-
-    fec_free(fec_p);*/
 }
 
 
