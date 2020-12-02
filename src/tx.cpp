@@ -83,7 +83,6 @@ namespace Helper{
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
-    //static void readCrypto(const std::string keypair,)
 }
 
 Transmitter::Transmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair):

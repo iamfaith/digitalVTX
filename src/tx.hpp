@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include <iostream>
 
+#include "Encryption.hpp"
 
 class Transmitter
 {
@@ -65,6 +66,8 @@ protected:
 public:
     // const since params like bandwidth never change !
     const RadiotapHeader mRadiotapHeader;
+    // ----------
+    Encryptor mEncryptor;
 };
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap
