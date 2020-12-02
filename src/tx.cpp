@@ -170,16 +170,18 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
 }
 
 void Transmitter::send_block_fragment(size_t packet_size) {
-    auto data = mEncryptor.makeEncryptedPacket(block_idx, fragment_idx, block, packet_size);
+    std::cout << "Transmitter::send_block_fragment\n";
+    const auto data = mEncryptor.makeEncryptedPacket(block_idx, fragment_idx, block, packet_size);
     inject_packet(data.data(), data.size());
 }
 
 void Transmitter::send_session_key() {
-    //fprintf(stderr, "Announce session key\n");
+    std::cout << "Transmitter::send_session_key\n";
     inject_packet((uint8_t *) &mEncryptor.session_key_packet, sizeof(mEncryptor.session_key_packet));
 }
 
 void Transmitter::send_packet(const uint8_t *buf, size_t size) {
+    std::cout << "Transmitter::send_packet\n";
     wpacket_hdr_t packet_hdr;
     assert(size <= MAX_PAYLOAD_SIZE);
 
@@ -191,7 +193,10 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
     fragment_idx += 1;
 
-    if (fragment_idx < fec_k) return;
+    //std::cout<<"Fragment index is "<<(int)fragment_idx<<"fec_k"<<(int)fec_k<<"\n";
+    if (fragment_idx < fec_k){
+        return;
+    }
 
     fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
     while (fragment_idx < fec_n) {

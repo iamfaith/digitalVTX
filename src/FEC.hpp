@@ -25,6 +25,10 @@ public:
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
+        /*block.resize(fec_n);
+        for(int i=0;i<fec_n;i++){
+            block[i].resize(MAX_FEC_PAYLOAD);
+        }*/
     }
     ~FECEncoder(){
         for (int i = 0; i < fec_n; i++) {
@@ -34,11 +38,12 @@ public:
         fec_free(fec_p);
     }
     fec_t* fec_p;
-    const int fec_k;  // RS number of primary fragments in block
-    const int fec_n;  // RS total number of fragments in block
+    const int fec_k;  // RS number of primary fragments in block default 8
+    const int fec_n;  // RS total number of fragments in block default 12
     uint64_t block_idx=0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx=0;
     uint8_t** block;
+    //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size=0;
 public:
     /*void encode(const uint8_t *buf, size_t size){

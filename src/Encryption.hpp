@@ -80,6 +80,7 @@ private:
     std::array<uint8_t, crypto_box_PUBLICKEYBYTES> rx_publickey;
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key;
 public:
+    // re-send this packet each time a new session key is created
     wsession_key_t session_key_packet;
 };
 
