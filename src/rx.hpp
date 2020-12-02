@@ -30,6 +30,7 @@
 #include "wifibroadcast.hpp"
 #include <stdexcept>
 #include "Encryption.hpp"
+#include "FEC.hpp"
 
 typedef enum {
     LOCAL,
@@ -75,21 +76,6 @@ private:
 };
 
 
-typedef struct {
-    uint64_t block_idx;
-    uint8_t** fragments;
-    uint8_t *fragment_map;
-    uint8_t send_fragment_idx;
-    uint8_t has_fragments;
-} rx_ring_item_t;
-
-
-#define RX_RING_SIZE 40
-
-static inline int modN(int x, int base)
-{
-    return (base + (x % base)) % base;
-}
 
 class antennaItem
 {
@@ -116,7 +102,7 @@ public:
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 
-class Aggregator : public BaseAggregator
+class Aggregator : public BaseAggregator, public FECDecoder
 {
 public:
     Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair);
@@ -125,19 +111,19 @@ public:
     virtual void dump_stats(FILE *fp);
 private:
     void send_packet(int ring_idx, int fragment_idx);
-    void apply_fec(int ring_idx);
+    //void apply_fec(int ring_idx);
     void log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi);
-    int get_block_ring_idx(uint64_t block_idx);
-    int rx_ring_push();
-    fec_t* fec_p;
+    //int get_block_ring_idx(uint64_t block_idx);
+    //int rx_ring_push();
+    int sockfd;
+    /*fec_t* fec_p;
     int fec_k;  // RS number of primary fragments in block
     int fec_n;  // RS total number of fragments in block
-    int sockfd;
     uint32_t seq;
     rx_ring_item_t rx_ring[RX_RING_SIZE];
     int rx_ring_front; // current packet
     int rx_ring_alloc; // number of allocated entries
-    uint64_t last_known_block;  //id of last known block
+    uint64_t last_known_block;  //id of last known block*/
 
     // rx->tx keypair
     /*std::array<uint8_t,crypto_box_SECRETKEYBYTES> rx_secretkey;

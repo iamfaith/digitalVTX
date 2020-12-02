@@ -201,12 +201,13 @@ void Receiver::loop_iter() {
 
 
 Aggregator::Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair) :
+FECDecoder(k,n),
         mDecryptor(keypair),
-        fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),
+        /*fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),*/
         count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
         count_p_lost(0), count_p_bad(0) {
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
-    fec_p = fec_new(fec_k, fec_n);
+    /*fec_p = fec_new(fec_k, fec_n);
 
     for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
         rx_ring[ring_idx].block_idx = 0;
@@ -218,19 +219,19 @@ Aggregator::Aggregator(const std::string &client_addr, int client_port, int k, i
         }
         rx_ring[ring_idx].fragment_map = new uint8_t[fec_n];
         memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-    }
+    }*/
 }
 
 
 Aggregator::~Aggregator() {
 
-    for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
+    /*for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
         delete rx_ring[ring_idx].fragment_map;
         for (int i = 0; i < fec_n; i++) {
             delete rx_ring[ring_idx].fragments[i];
         }
         delete rx_ring[ring_idx].fragments;
-    }
+    }*/
     close(sockfd);
 }
 
@@ -269,35 +270,11 @@ Forwarder::~Forwarder() {
     close(sockfd);
 }
 
-int Aggregator::rx_ring_push() {
-    if (rx_ring_alloc < RX_RING_SIZE) {
-        int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
-        rx_ring_alloc += 1;
-        return idx;
-    }
-
-    // override existing data
-    int idx = rx_ring_front;
-
-    /*
-      Ring overflow. This means that there are more unfinished blocks than ring size
-      Possible solutions:
-      1. Increase ring size. Do this if you have large variance of packet travel time throught WiFi card or network stack.
-         Some cards can do this due to packet reordering inside, diffent chipset and/or firmware or your RX hosts have different CPU power.
-      2. Reduce packet injection speed or try to unify RX hardware.
-    */
-
-    fprintf(stderr, "override block 0x%" PRIx64 " with %d fragments\n", rx_ring[idx].block_idx,
-            rx_ring[idx].has_fragments);
-
-    rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
-    return idx;
-}
 
 
-int Aggregator::get_block_ring_idx(uint64_t block_idx) {
+/*int Aggregator::get_block_ring_idx(uint64_t block_idx) {
     // check if block is already to the ring
-    for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, RX_RING_SIZE), c--) {
+    for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
         if (rx_ring[i].block_idx == block_idx) return i;
     }
 
@@ -307,7 +284,7 @@ int Aggregator::get_block_ring_idx(uint64_t block_idx) {
     }
 
     int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
-                               (uint64_t) RX_RING_SIZE);
+                               (uint64_t) FECDecoder::RX_RING_SIZE);
     assert (new_blocks > 0);
 
     last_known_block = block_idx;
@@ -321,7 +298,7 @@ int Aggregator::get_block_ring_idx(uint64_t block_idx) {
         memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
     }
     return ring_idx;
-}
+}*/
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
@@ -396,7 +373,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
                 rx_ring_alloc = 0;
                 last_known_block = (uint64_t) -1;
                 seq = 0;
-                for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
+                for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
                     rx_ring[ring_idx].block_idx = 0;
                     rx_ring[ring_idx].send_fragment_idx = 0;
                     rx_ring[ring_idx].has_fragments = 0;
@@ -520,9 +497,9 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
     }
 
     if (p->send_fragment_idx == fec_k) {
-        int nrm = modN(ring_idx - rx_ring_front, RX_RING_SIZE);
+        int nrm = modN(ring_idx - rx_ring_front, FECDecoder::RX_RING_SIZE);
         for (int i = 0; i <= nrm; i++) {
-            rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
+            rx_ring_front = modN(rx_ring_front + 1, FECDecoder::RX_RING_SIZE);
             rx_ring_alloc -= 1;
         }
         assert(rx_ring_alloc >= 0);
@@ -550,7 +527,7 @@ void Aggregator::send_packet(int ring_idx, int fragment_idx) {
     }
 }
 
-void Aggregator::apply_fec(int ring_idx) {
+/*void Aggregator::apply_fec(int ring_idx) {
     unsigned index[fec_k];
     uint8_t *in_blocks[fec_k];
     uint8_t *out_blocks[fec_n - fec_k];
@@ -574,7 +551,7 @@ void Aggregator::apply_fec(int ring_idx) {
         }
     }
     fec_decode(fec_p, (const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
-}
+}*/
 
 void
 radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<BaseAggregator> agg, int log_interval) {
