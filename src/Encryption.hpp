@@ -63,7 +63,7 @@ public:
 
 class Decryptor{
 public:
-    Decryptor(const std::string& keypair){
+    explicit Decryptor(const std::string& keypair){
         FILE *fp;
         if((fp = fopen(keypair.c_str(), "r")) == NULL){
             throw std::runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
@@ -77,10 +77,11 @@ public:
             throw std::runtime_error(string_format("Unable to read tx public key: %s", strerror(errno)));
         }
         fclose(fp);
+        memset(session_key.data(), '\0', sizeof(session_key));
     }
-    uint8_t rx_secretkey[crypto_box_SECRETKEYBYTES];
-    uint8_t tx_publickey[crypto_box_PUBLICKEYBYTES];
-    uint8_t session_key[crypto_aead_chacha20poly1305_KEYBYTES];
+    std::array<uint8_t,crypto_box_SECRETKEYBYTES> rx_secretkey;
+    std::array<uint8_t,crypto_box_PUBLICKEYBYTES> tx_publickey;
+    std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
 };
 
 #endif ENCRYPTION_HPP

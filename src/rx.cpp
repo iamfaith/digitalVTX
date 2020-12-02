@@ -207,10 +207,10 @@ void Receiver::loop_iter(void)
 }
 
 
-Aggregator::Aggregator(const string &client_addr, int client_port, int k, int n, const string &keypair) : fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t)-1),
-                                                                                                          count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
-                                                                                                          count_p_lost(0), count_p_bad(0)
-{
+Aggregator::Aggregator(const string &client_addr, int client_port, int k, int n, const string &keypair) :
+fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t)-1),
+count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
+count_p_lost(0), count_p_bad(0){
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
     fec_p = fec_new(fec_k, fec_n);
     memset(session_key.data(), '\0', sizeof(session_key));
