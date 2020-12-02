@@ -43,68 +43,67 @@ extern "C"
 using namespace std;
 
 
-namespace Helper{
+namespace Helper {
     // constructs a pcap packet by prefixing data with radiotap and iee header
-    static std::vector<uint8_t> createPcapPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,
-                                                 const uint8_t *buf, size_t size){
+    static std::vector<uint8_t>
+    createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
+                     const uint8_t *buf, size_t size) {
         assert(size <= MAX_FORWARDER_PACKET_SIZE);
         std::vector<uint8_t> ret;
-        ret.resize(radiotapHeader.getSize()+ieee80211Header.getSize()+size);
+        ret.resize(radiotapHeader.getSize() + ieee80211Header.getSize() + size);
         uint8_t *p = ret.data();
         // radiotap header
-        memcpy(p,radiotapHeader.getData(),radiotapHeader.getSize());
+        memcpy(p, radiotapHeader.getData(), radiotapHeader.getSize());
         p += radiotapHeader.getSize();
         // ieee80211 header
-        memcpy(p, ieee80211Header.getData(),ieee80211Header.getSize());
+        memcpy(p, ieee80211Header.getData(), ieee80211Header.getSize());
         p += ieee80211Header.getSize();
         // data
         memcpy(p, buf, size);
         return ret;
     }
+
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
-    static void injectPacket(pcap_t* pcap,const std::vector<uint8_t>& packetData){
-        if (pcap_inject(pcap,packetData.data(),packetData.size()) != packetData.size()){
+    static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
+        if (pcap_inject(pcap, packetData.data(), packetData.size()) != packetData.size()) {
             throw runtime_error(string_format("Unable to inject packet"));
         }
     }
+
     // copy paste from svpcom
-    static pcap_t* openTxWithPcap(const std::string& wlan){
+    static pcap_t *openTxWithPcap(const std::string &wlan) {
         char errbuf[PCAP_ERRBUF_SIZE];
         pcap_t *p = pcap_create(wlan.c_str(), errbuf);
-        if (p == nullptr){
+        if (p == nullptr) {
             throw runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
         }
-        if (pcap_set_snaplen(p, 4096) !=0) throw runtime_error("set_snaplen failed");
+        if (pcap_set_snaplen(p, 4096) != 0) throw runtime_error("set_snaplen failed");
         if (pcap_set_promisc(p, 1) != 0) throw runtime_error("set_promisc failed");
         //if (pcap_set_rfmon(p, 1) !=0) throw runtime_error("set_rfmon failed");
-        if (pcap_set_timeout(p, -1) !=0) throw runtime_error("set_timeout failed");
+        if (pcap_set_timeout(p, -1) != 0) throw runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(p, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        if (pcap_activate(p) !=0) throw runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
+        if (pcap_activate(p) != 0) throw runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
 }
 
-Transmitter::Transmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair):
-mEncryptor(keypair),
-mRadiotapHeader(radiotapHeader),
-fec_k(k), fec_n(n), block_idx(0),
-fragment_idx(0),max_packet_size(0)
-{
+Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const string &keypair) :
+        mEncryptor(keypair),
+        mRadiotapHeader(radiotapHeader),
+        fec_k(k), fec_n(n), block_idx(0),
+        fragment_idx(0), max_packet_size(0) {
     fec_p = fec_new(fec_k, fec_n);
 
-    block = new uint8_t*[fec_n];
-    for(int i=0; i < fec_n; i++)
-    {
+    block = new uint8_t *[fec_n];
+    for (int i = 0; i < fec_n; i++) {
         block[i] = new uint8_t[MAX_FEC_PAYLOAD];
     }
     mEncryptor.makeSessionKey();
 }
 
-Transmitter::~Transmitter()
-{
-    for(int i=0; i < fec_n; i++)
-    {
+Transmitter::~Transmitter() {
+    for (int i = 0; i < fec_n; i++) {
         delete block[i];
     }
     delete block;
@@ -113,55 +112,53 @@ Transmitter::~Transmitter()
 }
 
 
-void Transmitter::make_session_key(void){
+void Transmitter::make_session_key(void) {
     mEncryptor.makeSessionKey();
 }
 
 
-PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair, uint8_t radio_port, const vector<string> &wlans) :
-Transmitter(radiotapHeader,k, n, keypair),
-radio_port(radio_port),
-current_output(0),
-ieee80211_seq(0)
-{
-    for(const std::string& wlan:wlans){
+PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const string &keypair, uint8_t radio_port,
+                                 const vector<string> &wlans) :
+        Transmitter(radiotapHeader, k, n, keypair),
+        radio_port(radio_port),
+        current_output(0),
+        ieee80211_seq(0) {
+    for (const std::string &wlan:wlans) {
         ppcap.push_back(Helper::openTxWithPcap(wlan));
     }
 }
 
 
-void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size)
-{
-    std::cout<<"PcapTransmitter::inject_packet\n";
-    mIeee80211Header.writeParams(radio_port,ieee80211_seq);
+void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
+    std::cout << "PcapTransmitter::inject_packet\n";
+    mIeee80211Header.writeParams(radio_port, ieee80211_seq);
     ieee80211_seq += 16;
-    const auto packet=Helper::createPcapPacket(mRadiotapHeader,mIeee80211Header,buf,size);
-    Helper::injectPacket(ppcap[current_output],packet);
+    const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
+    Helper::injectPacket(ppcap[current_output], packet);
 }
 
-PcapTransmitter::~PcapTransmitter()
-{
-    for(auto it=ppcap.begin(); it != ppcap.end(); it++){
+PcapTransmitter::~PcapTransmitter() {
+    for (auto it = ppcap.begin(); it != ppcap.end(); it++) {
         pcap_close(*it);
     }
 }
 
 void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
-    std::cout<<"Hello2\n";
-    wrxfwd_t fwd_hdr = { .wlan_idx = (uint8_t)(rand() % 2) };
+    std::cout << "Hello2\n";
+    wrxfwd_t fwd_hdr = {.wlan_idx = (uint8_t) (rand() % 2)};
 
     memset(fwd_hdr.antenna, 0xff, sizeof(fwd_hdr.antenna));
     memset(fwd_hdr.rssi, SCHAR_MIN, sizeof(fwd_hdr.rssi));
 
-    fwd_hdr.antenna[0] = (uint8_t)(rand() % 2);
-    fwd_hdr.rssi[0] = (int8_t)(rand() & 0xff);
+    fwd_hdr.antenna[0] = (uint8_t) (rand() % 2);
+    fwd_hdr.rssi[0] = (int8_t) (rand() & 0xff);
 
-    struct iovec iov[2] = {{ .iov_base = (void*)&fwd_hdr,
+    struct iovec iov[2] = {{.iov_base = (void *) &fwd_hdr,
                                    .iov_len = sizeof(fwd_hdr)},
-                           { .iov_base = (void*)buf,
-                                   .iov_len = size }};
+                           {.iov_base = (void *) buf,
+                                   .iov_len = size}};
 
-    struct msghdr msghdr = { .msg_name = NULL,
+    struct msghdr msghdr = {.msg_name = NULL,
             .msg_namelen = 0,
             .msg_iov = iov,
             .msg_iovlen = 2,
@@ -172,18 +169,17 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
     sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
 }
 
-void Transmitter::send_block_fragment(size_t packet_size){
-    auto data=mEncryptor.makeEncryptedPacket(block_idx,fragment_idx,block,packet_size);
-    inject_packet(data.data(),data.size());
+void Transmitter::send_block_fragment(size_t packet_size) {
+    auto data = mEncryptor.makeEncryptedPacket(block_idx, fragment_idx, block, packet_size);
+    inject_packet(data.data(), data.size());
 }
 
-void Transmitter::send_session_key(){
+void Transmitter::send_session_key() {
     //fprintf(stderr, "Announce session key\n");
-    inject_packet((uint8_t*)&mEncryptor.session_key_packet, sizeof(mEncryptor.session_key_packet));
+    inject_packet((uint8_t *) &mEncryptor.session_key_packet, sizeof(mEncryptor.session_key_packet));
 }
 
-void Transmitter::send_packet(const uint8_t *buf, size_t size)
-{
+void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     wpacket_hdr_t packet_hdr;
     assert(size <= MAX_PAYLOAD_SIZE);
 
@@ -195,11 +191,10 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size)
     max_packet_size = max(max_packet_size, sizeof(packet_hdr) + size);
     fragment_idx += 1;
 
-    if (fragment_idx < fec_k)  return;
+    if (fragment_idx < fec_k) return;
 
-    fec_encode(fec_p, (const uint8_t**)block, block + fec_k, max_packet_size);
-    while (fragment_idx < fec_n)
-    {
+    fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
+    while (fragment_idx < fec_n) {
         send_block_fragment(max_packet_size);
         fragment_idx += 1;
     }
@@ -208,26 +203,22 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size)
     max_packet_size = 0;
 
     // Generate new session key after MAX_BLOCK_IDX blocks
-    if (block_idx > MAX_BLOCK_IDX)
-    {
+    if (block_idx > MAX_BLOCK_IDX) {
         make_session_key();
         send_session_key();
         block_idx = 0;
     }
 }
 
-void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd)
-{
+void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd) {
     int nfds = tx_fd.size();
     struct pollfd fds[nfds];
     memset(fds, '\0', sizeof(fds));
 
     int i = 0;
-    for(auto it=tx_fd.begin(); it != tx_fd.end(); it++, i++)
-    {
+    for (auto it = tx_fd.begin(); it != tx_fd.end(); it++, i++) {
         int fd = *it;
-        if(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0)
-        {
+        if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
             throw runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
         }
 
@@ -237,55 +228,49 @@ void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd)
 
     uint64_t session_key_announce_ts = 0;
 
-    for(;;)
-    {
+    for (;;) {
         int rc = poll(fds, nfds, -1);
 
-        if (rc < 0){
+        if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
             throw runtime_error(string_format("poll error: %s", strerror(errno)));
         }
 
         if (rc == 0) continue;  // timeout expired
 
-        for(i = 0; i < nfds; i++)
-        {
+        for (i = 0; i < nfds; i++) {
             // some events detected
-            if (fds[i].revents & (POLLERR | POLLNVAL))
-            {
+            if (fds[i].revents & (POLLERR | POLLNVAL)) {
                 throw runtime_error(string_format("socket error: %s", strerror(errno)));
             }
 
-            if (fds[i].revents & POLLIN)
-            {
+            if (fds[i].revents & POLLIN) {
                 uint8_t buf[MAX_PAYLOAD_SIZE];
                 ssize_t rsize;
                 int fd = tx_fd[i];
 
                 t->select_output(i);
-                while((rsize = recv(fd, buf, sizeof(buf), 0)) >= 0)
-                {
+                while ((rsize = recv(fd, buf, sizeof(buf), 0)) >= 0) {
                     uint64_t cur_ts = get_time_ms();
-                    if (cur_ts >= session_key_announce_ts)
-                    {
+                    if (cur_ts >= session_key_announce_ts) {
                         // Announce session key
                         t->send_session_key();
                         session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_MSEC;
                     }
                     t->send_packet(buf, rsize);
                 }
-                if(errno != EWOULDBLOCK) throw runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
+                if (errno != EWOULDBLOCK)
+                    throw runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
             }
         }
     }
 }
 
 
-int main(int argc, char * const *argv)
-{
+int main(int argc, char *const *argv) {
     int opt;
-    uint8_t k=8, n=12, radio_port=1;
-    int udp_port=5600;
+    uint8_t k = 8, n = 12, radio_port = 1;
+    int udp_port = 5600;
 
     int bandwidth = 20;
     int short_gi = 0;
@@ -297,45 +282,50 @@ int main(int argc, char * const *argv)
 
     while ((opt = getopt(argc, argv, "K:k:n:u:r:p:B:G:S:L:M:")) != -1) {
         switch (opt) {
-        case 'K':
-            keypair = optarg;
-            break;
-        case 'k':
-            k = atoi(optarg);
-            break;
-        case 'n':
-            n = atoi(optarg);
-            break;
-        case 'u':
-            udp_port = atoi(optarg);
-            break;
-        case 'p':
-            radio_port = atoi(optarg);
-            break;
-        case 'B':
-            bandwidth = atoi(optarg);
-            break;
-        case 'G':
-            short_gi = (optarg[0] == 's' || optarg[0] == 'S') ? 1 : 0;
-            break;
-        case 'S':
-            stbc = atoi(optarg);
-            break;
-        case 'L':
-            ldpc = atoi(optarg);
-            break;
-        case 'M':
-            mcs_index = atoi(optarg);
-            break;
-        default: /* '?' */
-        show_usage:
-            fprintf(stderr, "Usage: %s [-K tx_key] [-k RS_K] [-n RS_N] [-u udp_port] [-p radio_port] [-B bandwidth] [-G guard_interval] [-S stbc] [-L ldpc] [-M mcs_index] interface1 [interface2] ...\n",
-                    argv[0]);
-            fprintf(stderr, "Default: K='%s', k=%d, n=%d, udp_port=%d, radio_port=%d bandwidth=%d guard_interval=%s stbc=%d ldpc=%d mcs_index=%d\n",
-                    keypair.c_str(), k, n, udp_port, radio_port, bandwidth, short_gi ? "short" : "long", stbc, ldpc, mcs_index);
-            fprintf(stderr, "Radio MTU: %lu\n", (unsigned long)MAX_PAYLOAD_SIZE);
-            fprintf(stderr, "WFB version " WFB_VERSION "\n");
-            exit(1);
+            case 'K':
+                keypair = optarg;
+                break;
+            case 'k':
+                k = atoi(optarg);
+                break;
+            case 'n':
+                n = atoi(optarg);
+                break;
+            case 'u':
+                udp_port = atoi(optarg);
+                break;
+            case 'p':
+                radio_port = atoi(optarg);
+                break;
+            case 'B':
+                bandwidth = atoi(optarg);
+                break;
+            case 'G':
+                short_gi = (optarg[0] == 's' || optarg[0] == 'S') ? 1 : 0;
+                break;
+            case 'S':
+                stbc = atoi(optarg);
+                break;
+            case 'L':
+                ldpc = atoi(optarg);
+                break;
+            case 'M':
+                mcs_index = atoi(optarg);
+                break;
+            default: /* '?' */
+            show_usage:
+                fprintf(stderr,
+                        "Usage: %s [-K tx_key] [-k RS_K] [-n RS_N] [-u udp_port] [-p radio_port] [-B bandwidth] [-G guard_interval] [-S stbc] [-L ldpc] [-M mcs_index] interface1 [interface2] ...\n",
+                        argv[0]);
+                fprintf(stderr,
+                        "Default: K='%s', k=%d, n=%d, udp_port=%d, radio_port=%d bandwidth=%d guard_interval=%s stbc=%d ldpc=%d mcs_index=%d\n",
+                        keypair.c_str(), k, n, udp_port, radio_port, bandwidth, short_gi ? "short" : "long", stbc, ldpc,
+                        mcs_index);
+                fprintf(stderr, "Radio MTU: %lu\n", (unsigned long) MAX_PAYLOAD_SIZE);
+                fprintf(stderr, "WFB version "
+                WFB_VERSION
+                "\n");
+                exit(1);
         }
     }
 
@@ -343,13 +333,11 @@ int main(int argc, char * const *argv)
         goto show_usage;
     }
     RadiotapHeader radiotapHeader;
-    radiotapHeader.writeParams(bandwidth,short_gi,stbc,ldpc,mcs_index);
-    try
-    {
+    radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
+    try {
         vector<int> tx_fd;
         vector<string> wlans;
-        for(int i = 0; optind + i < argc; i++)
-        {
+        for (int i = 0; optind + i < argc; i++) {
             int fd = open_udp_socket_for_rx(udp_port + i);
             fprintf(stderr, "Listen on %d for %s\n", udp_port + i, argv[optind + i]);
             tx_fd.push_back(fd);
@@ -360,12 +348,12 @@ int main(int argc, char * const *argv)
         std::cout<<"Hello\n";
         shared_ptr<Transmitter>t = shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
 #else
-        shared_ptr<Transmitter>t = shared_ptr<PcapTransmitter>(new PcapTransmitter(radiotapHeader,k, n, keypair, radio_port, wlans));
+        shared_ptr<Transmitter> t = shared_ptr<PcapTransmitter>(
+                new PcapTransmitter(radiotapHeader, k, n, keypair, radio_port, wlans));
 #endif
 
         video_source(t, tx_fd);
-    }catch(runtime_error &e)
-    {
+    } catch (runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
     }
