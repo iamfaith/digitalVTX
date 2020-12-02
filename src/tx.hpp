@@ -31,8 +31,9 @@
 #include <iostream>
 
 #include "Encryption.hpp"
+#include "FEC.hpp"
 
-class Transmitter
+class Transmitter: public FECEncoder
 {
 public:
     Transmitter(RadiotapHeader radiotapHeader,int k, int m, const std::string &keypair);
@@ -47,13 +48,14 @@ private:
     void send_block_fragment(size_t packet_size);
     void make_session_key();
 
-    fec_t* fec_p;
+    /*fec_t* fec_p;
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
     uint64_t block_idx; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx;
     uint8_t** block;
-    size_t max_packet_size;
+    size_t max_packet_size;*/
+    //FECEncoder mFECEncoder;
     Encryptor mEncryptor;
 protected:
     Ieee80211Header mIeee80211Header;

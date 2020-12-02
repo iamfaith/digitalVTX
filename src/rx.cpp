@@ -438,8 +438,9 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
             count_p_bad += 1;
             return;
     }
+    const auto decrypted=mDecryptor.decryptPacket(buf,size);
 
-    uint8_t decrypted[MAX_FEC_PAYLOAD];
+    /*uint8_t decrypted[MAX_FEC_PAYLOAD];
     long long unsigned int decrypted_len;
     wblock_hdr_t *block_hdr = (wblock_hdr_t *) buf;
 
@@ -452,12 +453,18 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
         fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
         count_p_dec_err += 1;
         return;
+    }*/
+    wblock_hdr_t *block_hdr = (wblock_hdr_t *) buf;
+    if(decrypted==std::nullopt){
+        fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
+        count_p_dec_err += 1;
+        return;
     }
 
     count_p_dec_ok += 1;
     log_rssi(sockaddr, wlan_idx, antenna, rssi);
 
-    assert(decrypted_len <= MAX_FEC_PAYLOAD);
+    assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 
     uint64_t block_idx = be64toh(block_hdr->nonce) >> 8;
     uint8_t fragment_idx = (uint8_t) (be64toh(block_hdr->nonce) & 0xff);
@@ -488,7 +495,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
     if (p->fragment_map[fragment_idx]) return;
 
     memset(p->fragments[fragment_idx], '\0', MAX_FEC_PAYLOAD);
-    memcpy(p->fragments[fragment_idx], decrypted, decrypted_len);
+    memcpy(p->fragments[fragment_idx], decrypted->data(), decrypted->size());
 
     p->fragment_map[fragment_idx] = 1;
     p->has_fragments += 1;

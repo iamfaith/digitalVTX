@@ -132,8 +132,8 @@ public:
         return false;
     }
 
-    // returns true on success
-    std::optional<std::vector<uint8_t>> decryptPacket(const uint8_t *buf, size_t size, std::vector<uint8_t> &decryptedData) {
+    // returns decrypted data on success
+    std::optional<std::vector<uint8_t>> decryptPacket(const uint8_t *buf, size_t size) {
         uint8_t decrypted[MAX_FEC_PAYLOAD];
         long long unsigned int decrypted_len;
         auto *block_hdr = (wblock_hdr_t *) buf;
@@ -144,9 +144,10 @@ public:
                                                  (uint8_t *) (&(block_hdr->nonce)), session_key.data()) != 0) {
             return std::nullopt;
         }
+        std::vector<uint8_t> decryptedData;
         decryptedData.resize(decrypted_len);
         memcpy(decryptedData.data(), decrypted, decrypted_len);
-        return std::nullopt;
+        return decryptedData;
     }
 };
 
