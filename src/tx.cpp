@@ -40,7 +40,6 @@ extern "C"
 #include "wifibroadcast.hpp"
 #include "tx.hpp"
 
-using namespace std;
 
 
 namespace Helper {
@@ -66,7 +65,7 @@ namespace Helper {
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
         if (pcap_inject(pcap, packetData.data(), packetData.size()) != packetData.size()) {
-            throw runtime_error(string_format("Unable to inject packet"));
+            throw std::runtime_error(string_format("Unable to inject packet"));
         }
     }
 
@@ -75,20 +74,20 @@ namespace Helper {
         char errbuf[PCAP_ERRBUF_SIZE];
         pcap_t *p = pcap_create(wlan.c_str(), errbuf);
         if (p == nullptr) {
-            throw runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
+            throw std::runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
         }
-        if (pcap_set_snaplen(p, 4096) != 0) throw runtime_error("set_snaplen failed");
-        if (pcap_set_promisc(p, 1) != 0) throw runtime_error("set_promisc failed");
+        if (pcap_set_snaplen(p, 4096) != 0) throw std::runtime_error("set_snaplen failed");
+        if (pcap_set_promisc(p, 1) != 0) throw std::runtime_error("set_promisc failed");
         //if (pcap_set_rfmon(p, 1) !=0) throw runtime_error("set_rfmon failed");
-        if (pcap_set_timeout(p, -1) != 0) throw runtime_error("set_timeout failed");
+        if (pcap_set_timeout(p, -1) != 0) throw std::runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(p, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        if (pcap_activate(p) != 0) throw runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
+        if (pcap_activate(p) != 0) throw std::runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
 }
 
-Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const string &keypair) :
+Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair) :
         mEncryptor(keypair),
         mRadiotapHeader(radiotapHeader),
         fec_k(k), fec_n(n), block_idx(0),
@@ -117,8 +116,8 @@ void Transmitter::make_session_key(void) {
 }
 
 
-PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const string &keypair, uint8_t radio_port,
-                                 const vector<string> &wlans) :
+PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,
+                                 const std::vector<std::string> &wlans) :
         Transmitter(radiotapHeader, k, n, keypair),
         radio_port(radio_port),
         current_output(0),
@@ -188,7 +187,7 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
     memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
     send_block_fragment(sizeof(packet_hdr) + size);
-    max_packet_size = max(max_packet_size, sizeof(packet_hdr) + size);
+    max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
     fragment_idx += 1;
 
     if (fragment_idx < fec_k) return;
@@ -210,7 +209,7 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     }
 }
 
-void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd) {
+void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
     int nfds = tx_fd.size();
     struct pollfd fds[nfds];
     memset(fds, '\0', sizeof(fds));
@@ -219,7 +218,7 @@ void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd) {
     for (auto it = tx_fd.begin(); it != tx_fd.end(); it++, i++) {
         int fd = *it;
         if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-            throw runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
+            throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
         }
 
         fds[i].fd = fd;
@@ -233,7 +232,7 @@ void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd) {
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
-            throw runtime_error(string_format("poll error: %s", strerror(errno)));
+            throw std::runtime_error(string_format("poll error: %s", strerror(errno)));
         }
 
         if (rc == 0) continue;  // timeout expired
@@ -241,7 +240,7 @@ void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd) {
         for (i = 0; i < nfds; i++) {
             // some events detected
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
-                throw runtime_error(string_format("socket error: %s", strerror(errno)));
+                throw std::runtime_error(string_format("socket error: %s", strerror(errno)));
             }
 
             if (fds[i].revents & POLLIN) {
@@ -260,7 +259,7 @@ void video_source(shared_ptr<Transmitter> &t, vector<int> &tx_fd) {
                     t->send_packet(buf, rsize);
                 }
                 if (errno != EWOULDBLOCK)
-                    throw runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
+                    throw std::runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
             }
         }
     }
@@ -278,7 +277,7 @@ int main(int argc, char *const *argv) {
     int ldpc = 0;
     int mcs_index = 1;
 
-    string keypair = "tx.key";
+    std::string keypair = "tx.key";
 
     while ((opt = getopt(argc, argv, "K:k:n:u:r:p:B:G:S:L:M:")) != -1) {
         switch (opt) {
@@ -335,25 +334,25 @@ int main(int argc, char *const *argv) {
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
     try {
-        vector<int> tx_fd;
-        vector<string> wlans;
+        std::vector<int> tx_fd;
+        std::vector<std::string> wlans;
         for (int i = 0; optind + i < argc; i++) {
             int fd = open_udp_socket_for_rx(udp_port + i);
             fprintf(stderr, "Listen on %d for %s\n", udp_port + i, argv[optind + i]);
             tx_fd.push_back(fd);
-            wlans.push_back(string(argv[optind + i]));
+            wlans.push_back(std::string(argv[optind + i]));
         }
 //#define DEBUG_TX
 #ifdef DEBUG_TX
         std::cout<<"Hello\n";
-        shared_ptr<Transmitter>t = shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
+        std::shared_ptr<Transmitter>t = std::shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
 #else
-        shared_ptr<Transmitter> t = shared_ptr<PcapTransmitter>(
+        std::shared_ptr<Transmitter> t = std::shared_ptr<PcapTransmitter>(
                 new PcapTransmitter(radiotapHeader, k, n, keypair, radio_port, wlans));
 #endif
 
         video_source(t, tx_fd);
-    } catch (runtime_error &e) {
+    } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
     }
