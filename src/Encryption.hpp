@@ -106,6 +106,22 @@ public:
         }
         return false;
     }
+    // returns true on success
+    bool decryptPacket(const uint8_t* buf, size_t size,std::vector<uint8_t>& decryptedData){
+        uint8_t decrypted[MAX_FEC_PAYLOAD];
+        long long unsigned int decrypted_len;
+        auto *block_hdr = (wblock_hdr_t*)buf;
+
+        if (crypto_aead_chacha20poly1305_decrypt(decrypted, &decrypted_len,NULL,
+                                                 buf + sizeof(wblock_hdr_t), size - sizeof(wblock_hdr_t),buf,
+                                                 sizeof(wblock_hdr_t),
+                                                 (uint8_t*)(&(block_hdr->nonce)), session_key.data()) != 0){
+            return false;
+        }
+        decryptedData.resize(decrypted_len),
+        memcpy(decryptedData.data(),decrypted,decrypted_len);
+        return true;
+    }
 };
 
 #endif //ENCRYPTION_HPP
