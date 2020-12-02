@@ -60,6 +60,7 @@ private:
     std::array<uint8_t,crypto_box_SECRETKEYBYTES> tx_secretkey;
     std::array<uint8_t,crypto_box_PUBLICKEYBYTES> rx_publickey;
     std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
+public:
     wsession_key_t session_key_packet;
 };
 

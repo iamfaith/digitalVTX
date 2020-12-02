@@ -56,18 +56,18 @@ private:
     size_t max_packet_size;
 
     // tx->rx keypair
-    std::array<uint8_t,crypto_box_SECRETKEYBYTES> tx_secretkey;
+    /*std::array<uint8_t,crypto_box_SECRETKEYBYTES> tx_secretkey;
     std::array<uint8_t,crypto_box_PUBLICKEYBYTES> rx_publickey;
     std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
-    wsession_key_t session_key_packet;
+    wsession_key_t session_key_packet;*/
+    // ----------
+    Encryptor mEncryptor;
     //
 protected:
     Ieee80211Header mIeee80211Header;
 public:
     // const since params like bandwidth never change !
     const RadiotapHeader mRadiotapHeader;
-    // ----------
-    Encryptor mEncryptor;
 };
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap

@@ -86,6 +86,7 @@ namespace Helper{
 }
 
 Transmitter::Transmitter(RadiotapHeader radiotapHeader,int k, int n, const string &keypair):
+mEncryptor(keypair),
 mRadiotapHeader(radiotapHeader),
 fec_k(k), fec_n(n), block_idx(0),
 fragment_idx(0),max_packet_size(0)
@@ -98,7 +99,7 @@ fragment_idx(0),max_packet_size(0)
         block[i] = new uint8_t[MAX_FEC_PAYLOAD];
     }
 
-    FILE *fp;
+    /*FILE *fp;
     if((fp = fopen(keypair.c_str(), "r")) == NULL)
     {
         throw runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
@@ -115,7 +116,8 @@ fragment_idx(0),max_packet_size(0)
     }
     fclose(fp);
 
-    make_session_key();
+    make_session_key();*/
+    mEncryptor.makeSessionKey();
 }
 
 Transmitter::~Transmitter()
@@ -132,14 +134,15 @@ Transmitter::~Transmitter()
 
 void Transmitter::make_session_key(void)
 {
-    randombytes_buf(session_key.data(), sizeof(session_key));
+    /*randombytes_buf(session_key.data(), sizeof(session_key));
     session_key_packet.packet_type = WFB_PACKET_KEY;
     randombytes_buf(session_key_packet.session_key_nonce, sizeof(session_key_packet.session_key_nonce));
     if (crypto_box_easy(session_key_packet.session_key_data, session_key.data(), sizeof(session_key),
                         session_key_packet.session_key_nonce, rx_publickey.data(), tx_secretkey.data()) != 0)
     {
         throw runtime_error("Unable to make session key!");
-    }
+    }*/
+    mEncryptor.makeSessionKey();
 }
 
 
@@ -199,7 +202,7 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
 
 void Transmitter::send_block_fragment(size_t packet_size)
 {
-    uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
+    /*uint8_t ciphertext[MAX_FORWARDER_PACKET_SIZE];
     wblock_hdr_t *block_hdr = (wblock_hdr_t*)ciphertext;
     long long unsigned int ciphertext_len;
 
@@ -214,13 +217,16 @@ void Transmitter::send_block_fragment(size_t packet_size)
                                          (uint8_t*)block_hdr, sizeof(wblock_hdr_t),
                                          NULL, (uint8_t*)(&(block_hdr->nonce)), session_key.data());
 
-    inject_packet(ciphertext, sizeof(wblock_hdr_t) + ciphertext_len);
+    inject_packet(ciphertext, sizeof(wblock_hdr_t) + ciphertext_len);*/
+    auto data=mEncryptor.makeEncryptedPacket(block_idx,fragment_idx,block,packet_size);
+    inject_packet(data.data(),data.size());
 }
 
 void Transmitter::send_session_key(void)
 {
     //fprintf(stderr, "Announce session key\n");
-    inject_packet((uint8_t*)&session_key_packet, sizeof(session_key_packet));
+    //inject_packet((uint8_t*)&session_key_packet, sizeof(session_key_packet));
+    inject_packet((uint8_t*)&mEncryptor.session_key_packet, sizeof(mEncryptor.session_key_packet));
 }
 
 void Transmitter::send_packet(const uint8_t *buf, size_t size)
