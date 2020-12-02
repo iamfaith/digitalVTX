@@ -5,6 +5,7 @@
 #include "wifibroadcast.hpp"
 #include <stdio.h>
 #include <stdexcept>
+#include <vector>
 
 class Encryptor{
 public:
@@ -84,4 +85,4 @@ public:
     std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES> session_key;
 };
 
-#endif ENCRYPTION_HPP
+#endif //ENCRYPTION_HPP
