@@ -21,7 +21,6 @@ class FECEncoder{
 public:
     explicit FECEncoder(int k, int n):fec_k(k),fec_n(n){
         fec_p = fec_new(fec_k, fec_n);
-
         block = new uint8_t *[fec_n];
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
@@ -32,7 +31,6 @@ public:
             delete block[i];
         }
         delete block;
-
         fec_free(fec_p);
     }
     fec_t* fec_p;
