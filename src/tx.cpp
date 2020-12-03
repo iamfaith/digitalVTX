@@ -64,7 +64,7 @@ namespace Helper {
 
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
-        if (pcap_inject(pcap, packetData.data(), packetData.size()) != packetData.size()) {
+        if (pcap_inject(pcap, packetData.data(), packetData.size()) != (int)packetData.size()) {
             throw std::runtime_error(string_format("Unable to inject packet"));
         }
     }
@@ -93,10 +93,6 @@ Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const std:
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
 }
-
-Transmitter::~Transmitter() {
-}
-
 
 void Transmitter::make_session_key() {
     mEncryptor.makeSessionKey();

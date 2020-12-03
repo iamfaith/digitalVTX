@@ -61,7 +61,7 @@ public:
         // copy the wblockHdr data (this part is not encrypted)
         memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
         // pointer to where the encrypted data begins
-        uint8_t* cyphertext=&ret.data()[sizeof(wblock_hdr_t)];
+        uint8_t* cyphertext=&ret[sizeof(wblock_hdr_t)];
         long long unsigned int ciphertext_len;
 
         crypto_aead_chacha20poly1305_encrypt(cyphertext, &ciphertext_len,

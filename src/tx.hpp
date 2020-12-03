@@ -37,7 +37,7 @@ class Transmitter: public FECEncoder
 {
 public:
     Transmitter(RadiotapHeader radiotapHeader,int k, int m, const std::string &keypair);
-    virtual ~Transmitter();
+    ~Transmitter()=default;
     void send_packet(const uint8_t *buf, size_t size);
     void send_session_key();
     virtual void select_output(int idx) = 0;

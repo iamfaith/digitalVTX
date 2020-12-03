@@ -47,7 +47,7 @@ public:
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size=0;
 public:
-    typedef std::function<void(const uint8_t* data,std::size_t dataSize)> SEND_PAYLOAD_CALLBACK;
+    typedef std::function<void(const XBlock& xBlock)> SEND_PAYLOAD_CALLBACK;
     void processPacket(const uint8_t *buf, size_t size){
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;

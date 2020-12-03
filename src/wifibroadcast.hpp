@@ -165,8 +165,8 @@ typedef struct {
 class XBlock{
 public:
     wblock_hdr_t header;
-    std::size_t payloadSize;
     uint8_t* payload;
+    std::size_t payloadSize;
 };
 
 // Plain data packet after FEC decode
@@ -273,7 +273,7 @@ public:
     // default constructor
     Ieee80211Header()=default;
     // write the port re-using the MAC address (which is unused for broadcast)
-    // write sequence number
+    // write sequence number (not used on rx right now)
     void writeParams(uint8_t radioPort,uint16_t seqenceNumber){
         data[SRC_MAC_LASTBYTE] = radioPort;
         data[DST_MAC_LASTBYTE] = radioPort;
