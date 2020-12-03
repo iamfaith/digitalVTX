@@ -41,6 +41,7 @@ extern "C"
 
 #include <string>
 #include <memory>
+#include <chrono>
 
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
@@ -252,11 +253,11 @@ Forwarder::~Forwarder() {
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
-    uint64_t ts = get_time_ms();
+    const uint64_t ts = get_time_ms();
 
-    for (antenna_stat_t::iterator it = antenna_stat.begin(); it != antenna_stat.end(); it++) {
-        fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", ts, it->first, it->second.count_all,
-                it->second.rssi_min, it->second.rssi_sum / it->second.count_all, it->second.rssi_max);
+    for (auto & it : antenna_stat) {
+        fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", ts, it.first, it.second.count_all,
+                it.second.rssi_min, it.second.rssi_sum / it.second.count_all, it.second.rssi_max);
     }
     antenna_stat.clear();
 
