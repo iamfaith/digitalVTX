@@ -161,6 +161,12 @@ typedef struct {
     uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
 }  __attribute__ ((packed)) wblock_hdr_t;
 
+// Plain data packet after FEC decode
+
+typedef struct {
+    uint16_t packet_size; // big endian
+}  __attribute__ ((packed)) wpacket_hdr_t;
+
 class XBlock{
 public:
     wblock_hdr_t header;
@@ -168,11 +174,6 @@ public:
     std::size_t payloadSize;
 };
 
-// Plain data packet after FEC decode
-
-typedef struct {
-    uint16_t packet_size; // big endian
-}  __attribute__ ((packed)) wpacket_hdr_t;
 
 static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t));
 static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);

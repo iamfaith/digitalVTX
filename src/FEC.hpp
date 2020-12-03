@@ -52,10 +52,55 @@ public:
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size=0;
 public:
-    typedef std::function<void(const XBlock& xBlock)> SEND_PAYLOAD_CALLBACK;
-    void processPacket(const uint8_t *buf, size_t size){
+    typedef std::function<void(const XBlock& xBlock)> SEND_BLOCK_FRAGMENT;
+    SEND_BLOCK_FRAGMENT callback;
+    void encodePacket(const uint8_t *buf, size_t size){
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
+
+        packet_hdr.packet_size = htobe16(size);
+        memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
+        memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
+        memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
+        // send immediately before calculating the FECs
+        send_block_fragment(sizeof(packet_hdr) + size);
+        max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
+        fragment_idx += 1;
+
+        //std::cout<<"Fragment index is "<<(int)fragment_idx<<"fec_k"<<(int)fec_k<<"\n";
+        if (fragment_idx < fec_k){
+            return;
+        }
+
+        fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
+        while (fragment_idx < fec_n) {
+            send_block_fragment(max_packet_size);
+            fragment_idx += 1;
+        }
+        block_idx += 1;
+        fragment_idx = 0;
+        max_packet_size = 0;
+    }
+    // returns true if the block_idx has reached its maximum
+    // You want to send a new session key in this case
+    bool resetOnOverflow(){
+        if (block_idx > MAX_BLOCK_IDX) {
+            block_idx = 0;
+            return true;
+        }
+        return false;
+    }
+private:
+    // construct WB FEC data, either DATA blocks or FEC blocks
+    // then forward via the callback
+    void send_block_fragment(const std::size_t packet_size)const{
+        XBlock xBlock{};
+        xBlock.header.packet_type = WFB_PACKET_DATA;
+        xBlock.header.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        uint8_t* dataP=block[fragment_idx];
+        xBlock.payload=dataP;
+        xBlock.payloadSize=packet_size;
+        callback(xBlock);
     }
 };
 

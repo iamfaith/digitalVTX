@@ -92,6 +92,7 @@ Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const std:
         mEncryptor(keypair),
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
+    callback=std::bind(&Transmitter::sendFecBlock, this, std::placeholders::_1);
 }
 
 void Transmitter::make_session_key() {
@@ -120,8 +121,8 @@ void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
 }
 
 PcapTransmitter::~PcapTransmitter() {
-    for (auto it = ppcap.begin(); it != ppcap.end(); it++) {
-        pcap_close(*it);
+    for (auto & it : ppcap) {
+        pcap_close(it);
     }
 }
 
@@ -158,6 +159,11 @@ void Transmitter::send_block_fragment(size_t packet_size) {
     wblockHdr.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
     const uint8_t* dataP=block[fragment_idx];
     const auto data= mEncryptor.makeEncryptedPacket(wblockHdr,dataP,packet_size);
+    inject_packet(data.data(), data.size());
+}
+
+void Transmitter::sendFecBlock(const XBlock &xBlock) {
+    const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());
 }
 
@@ -333,7 +339,7 @@ int main(int argc, char *const *argv) {
             int fd = open_udp_socket_for_rx(udp_port + i);
             fprintf(stderr, "Listen on %d for %s\n", udp_port + i, argv[optind + i]);
             tx_fd.push_back(fd);
-            wlans.push_back(std::string(argv[optind + i]));
+            wlans.emplace_back(argv[optind + i]);
         }
 //#define DEBUG_TX
 #ifdef DEBUG_TX

@@ -75,6 +75,9 @@ public:
         //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
     }
+    std::vector<uint8_t> makeEncryptedPacket(const XBlock& xBlock) {
+        return makeEncryptedPacket(xBlock.header,xBlock.payload,xBlock.payloadSize);
+    }
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey;

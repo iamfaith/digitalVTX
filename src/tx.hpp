@@ -51,6 +51,7 @@ protected:
 
 private:
     void send_block_fragment(size_t packet_size);
+    void sendFecBlock(const XBlock& xBlock);
 
     void make_session_key();
 
