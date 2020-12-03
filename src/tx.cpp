@@ -85,6 +85,20 @@ namespace Helper {
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
+    static std::vector<pollfd> udpPortsToPollFd(const std::vector<int> &tx_fd){
+        std::vector<pollfd> ret;
+        ret.resize(tx_fd.size());
+        memset(ret.data(), '\0', ret.size()*sizeof(pollfd));
+        for(std::size_t i=0;i<tx_fd.size();i++){
+            int fd=tx_fd[i];
+            if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
+                throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
+            }
+            ret[i].fd = fd;
+            ret[i].events = POLLIN;
+        }
+        return ret;
+    }
 }
 
 Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair) :
@@ -175,37 +189,7 @@ void Transmitter::send_session_key() {
 
 void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     std::cout << "Transmitter::send_packet\n";
-    /*assert(size <= MAX_PAYLOAD_SIZE);
-    wpacket_hdr_t packet_hdr;
-
-    packet_hdr.packet_size = htobe16(size);
-    memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
-    memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
-    memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
-    send_block_fragment(sizeof(packet_hdr) + size);
-    max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
-    fragment_idx += 1;
-
-    //std::cout<<"Fragment index is "<<(int)fragment_idx<<"fec_k"<<(int)fec_k<<"\n";
-    if (fragment_idx < fec_k){
-        return;
-    }
-
-    fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
-    while (fragment_idx < fec_n) {
-        send_block_fragment(max_packet_size);
-        fragment_idx += 1;
-    }
-    block_idx += 1;
-    fragment_idx = 0;
-    max_packet_size = 0;
-
-    // Generate new session key after MAX_BLOCK_IDX blocks
-    if (block_idx > MAX_BLOCK_IDX) {
-        make_session_key();
-        send_session_key();
-        block_idx = 0;
-    }*/
+    // this calls a callback internally
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
         make_session_key();
@@ -214,7 +198,7 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
 }
 
 void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
-    int nfds = tx_fd.size();
+    /*int nfds = tx_fd.size();
     struct pollfd fds[nfds];
     memset(fds, '\0', sizeof(fds));
 
@@ -227,13 +211,14 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
 
         fds[i].fd = fd;
         fds[i].events = POLLIN;
-    }
+    }*/
+    auto fds=Helper::udpPortsToPollFd(tx_fd);
 
     //uint64_t session_key_announce_ts = 0;
     std::chrono::steady_clock::time_point session_key_announce_ts{};
 
     for (;;) {
-        int rc = poll(fds, nfds, -1);
+        int rc = poll(fds.data(), fds.size(), -1);
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
@@ -242,7 +227,7 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
 
         if (rc == 0) continue;  // timeout expired
 
-        for (i = 0; i < nfds; i++) {
+        for (int i = 0; i < fds.size(); i++) {
             // some events detected
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
                 throw std::runtime_error(string_format("socket error: %s", strerror(errno)));

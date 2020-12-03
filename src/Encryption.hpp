@@ -119,9 +119,9 @@ public:
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key;
 public:
     // return true on success
-    bool onNewPacketWfbKey(const XBlock& xBlock) {
+    /*bool onNewPacketWfbKey(const XBlock& xBlock) {
 
-    }
+    }*/
     bool onNewPacketWfbKey(const uint8_t *buf) {
         std::array<uint8_t, sizeof(session_key)> new_session_key{};
         if (crypto_box_open_easy(new_session_key.data(),
