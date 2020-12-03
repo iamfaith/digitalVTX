@@ -172,7 +172,7 @@ public:
     wblock_hdr_t header;
     uint8_t* payload;
     std::size_t payloadSize;
-};
+}__attribute__ ((packed));
 
 
 static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t));

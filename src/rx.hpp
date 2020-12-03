@@ -121,6 +121,10 @@ public:
 private:
     void send_packet(int ring_idx, int fragment_idx);
 
+    void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize){
+        send(sockfd,packet,packetSize, MSG_DONTWAIT);
+    }
+
     void log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi);
 
     int sockfd;
@@ -130,8 +134,8 @@ private:
     uint32_t count_p_dec_err;
     uint32_t count_p_dec_ok;
     uint32_t count_p_fec_recovered;
-    uint32_t count_p_lost;
-    uint32_t count_p_bad;
+    //uint32_t count_p_lost;
+    //uint32_t count_p_bad;
 };
 
 class Receiver {

@@ -85,6 +85,7 @@ namespace Helper {
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
+    // @param tx_fd: UDP port
     static std::vector<pollfd> udpPortsToPollFd(const std::vector<int> &tx_fd){
         std::vector<pollfd> ret;
         ret.resize(tx_fd.size());
@@ -166,16 +167,6 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
     sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
 }
 
-/*void Transmitter::send_block_fragment(size_t packet_size) {
-    std::cout << "Transmitter::send_block_fragment\n";
-    wblock_hdr_t wblockHdr{};
-    wblockHdr.packet_type = WFB_PACKET_DATA;
-    wblockHdr.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
-    const uint8_t* dataP=block[fragment_idx];
-    const auto data= mEncryptor.makeEncryptedPacket(wblockHdr,dataP,packet_size);
-    inject_packet(data.data(), data.size());
-}*/
-
 void Transmitter::sendFecBlock(const XBlock &xBlock) {
     std::cout << "Transmitter::sendFecBlock\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
@@ -198,20 +189,6 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
 }
 
 void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
-    /*int nfds = tx_fd.size();
-    struct pollfd fds[nfds];
-    memset(fds, '\0', sizeof(fds));
-
-    int i = 0;
-    for (auto it = tx_fd.begin(); it != tx_fd.end(); it++, i++) {
-        int fd = *it;
-        if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-            throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
-        }
-
-        fds[i].fd = fd;
-        fds[i].events = POLLIN;
-    }*/
     auto fds=Helper::udpPortsToPollFd(tx_fd);
 
     //uint64_t session_key_announce_ts = 0;
@@ -227,7 +204,7 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
 
         if (rc == 0) continue;  // timeout expired
 
-        for (int i = 0; i < fds.size(); i++) {
+        for (std::size_t i = 0; i < fds.size(); i++) {
             // some events detected
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
                 throw std::runtime_error(string_format("socket error: %s", strerror(errno)));

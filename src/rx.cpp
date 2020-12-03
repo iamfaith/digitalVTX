@@ -46,52 +46,54 @@ extern "C"
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
 
+namespace Helper{
+    // copy paste from svpcom
+    // I think this one opens the rx interface with pcap and then sets a filter such that only packets pass through for the selected radio port
+    static pcap_t* openRxWithPcap(const std::string& wlan,const int radio_port){
+        pcap_t* ppcap;
+        char errbuf[PCAP_ERRBUF_SIZE];
+        ppcap = pcap_create(wlan.c_str(), errbuf);
+        if (ppcap == NULL) {
+            throw std::runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
+        }
+        if (pcap_set_snaplen(ppcap, 4096) != 0) throw std::runtime_error("set_snaplen failed");
+        if (pcap_set_promisc(ppcap, 1) != 0) throw std::runtime_error("set_promisc failed");
+        //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
+        if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
+        //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
+        if (pcap_activate(ppcap) != 0) throw std::runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(ppcap)));
+        if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(string_format("set_nonblock failed: %s", errbuf));
+
+        int link_encap = pcap_datalink(ppcap);
+        struct bpf_program bpfprogram{};
+        std::string program;
+        switch (link_encap) {
+            case DLT_PRISM_HEADER:
+                fprintf(stderr, "%s has DLT_PRISM_HEADER Encap\n", wlan.c_str());
+                program = string_format("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
+                break;
+
+            case DLT_IEEE802_11_RADIO:
+                fprintf(stderr, "%s has DLT_IEEE802_11_RADIO Encap\n", wlan.c_str());
+                program = string_format("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
+                break;
+
+            default:
+                throw std::runtime_error(string_format("unknown encapsulation on %s", wlan.c_str()));
+        }
+        if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
+            throw std::runtime_error(string_format("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
+        }
+        if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
+            throw std::runtime_error(string_format("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
+        }
+        pcap_freecode(&bpfprogram);
+        return ppcap;
+    }
+}
 
 Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port, BaseAggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
-    char errbuf[PCAP_ERRBUF_SIZE];
-
-    ppcap = pcap_create(wlan, errbuf);
-
-    if (ppcap == NULL) {
-        throw std::runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan, errbuf));
-    }
-
-    if (pcap_set_snaplen(ppcap, 4096) != 0) throw std::runtime_error("set_snaplen failed");
-    if (pcap_set_promisc(ppcap, 1) != 0) throw std::runtime_error("set_promisc failed");
-    //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
-    if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
-    //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
-    if (pcap_activate(ppcap) != 0) throw std::runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(ppcap)));
-    if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(string_format("set_nonblock failed: %s", errbuf));
-
-    int link_encap = pcap_datalink(ppcap);
-    struct bpf_program bpfprogram;
-    std::string program;
-
-    switch (link_encap) {
-        case DLT_PRISM_HEADER:
-            fprintf(stderr, "%s has DLT_PRISM_HEADER Encap\n", wlan);
-            program = string_format("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
-            break;
-
-        case DLT_IEEE802_11_RADIO:
-            fprintf(stderr, "%s has DLT_IEEE802_11_RADIO Encap\n", wlan);
-            program = string_format("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
-            break;
-
-        default:
-            throw std::runtime_error(string_format("unknown encapsulation on %s", wlan));
-    }
-
-    if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
-        throw std::runtime_error(string_format("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
-    }
-
-    if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
-        throw std::runtime_error(string_format("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
-    }
-
-    pcap_freecode(&bpfprogram);
+    ppcap=Helper::openRxWithPcap(std::string(wlan),radio_port);
     fd = pcap_get_selectable_fd(ppcap);
 }
 
@@ -205,9 +207,9 @@ Aggregator::Aggregator(const std::string &client_addr, int client_port, int k, i
 FECDecoder(k,n),
         mDecryptor(keypair),
         /*fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),*/
-        count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0),
-        count_p_lost(0), count_p_bad(0) {
+        count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0){
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
+    callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
 }
 
 
@@ -323,33 +325,6 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
                 count_p_dec_err += 1;
             }
             return;
-            /*if(crypto_box_open_easy(new_session_key.data(),
-                                    ((wsession_key_t*)buf)->session_key_data, sizeof(wsession_key_t::session_key_data),
-                                    ((wsession_key_t*)buf)->session_key_nonce,
-                                    mDecryptor.tx_publickey.data(), mDecryptor.rx_secretkey.data()) != 0){
-                fprintf(stderr, "unable to decrypt session key\n");
-                count_p_dec_err += 1;
-                return;
-            }
-            count_p_dec_ok += 1;
-            if (memcmp(mDecryptor.session_key.data(), new_session_key.data(), sizeof(mDecryptor.session_key)) != 0){
-                fprintf(stderr, "New session detected\n");
-                memcpy(mDecryptor.session_key.data(), new_session_key.data(), sizeof(mDecryptor.session_key));
-
-                rx_ring_front = 0;
-                rx_ring_alloc = 0;
-                last_known_block = (uint64_t)-1;
-                seq = 0;
-                for(int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++)
-                {
-                    rx_ring[ring_idx].block_idx = 0;
-                    rx_ring[ring_idx].send_fragment_idx = 0;
-                    rx_ring[ring_idx].has_fragments = 0;
-                    memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-                }
-            }
-            return;*/
-
         default:
             fprintf(stderr, "Unknown packet type 0x%x\n", buf[0]);
             count_p_bad += 1;
