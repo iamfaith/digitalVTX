@@ -43,6 +43,7 @@ public:
         delete block;
         fec_free(fec_p);
     }
+private:
     fec_t* fec_p;
     const int fec_k;  // RS number of primary fragments in block default 8
     const int fec_n;  // RS total number of fragments in block default 12
@@ -71,7 +72,7 @@ public:
         if (fragment_idx < fec_k){
             return;
         }
-
+        // once enough data has been buffered, create and send all the FEC packets
         fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
         while (fragment_idx < fec_n) {
             send_block_fragment(max_packet_size);

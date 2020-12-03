@@ -152,7 +152,7 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
     sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
 }
 
-void Transmitter::send_block_fragment(size_t packet_size) {
+/*void Transmitter::send_block_fragment(size_t packet_size) {
     std::cout << "Transmitter::send_block_fragment\n";
     wblock_hdr_t wblockHdr{};
     wblockHdr.packet_type = WFB_PACKET_DATA;
@@ -160,9 +160,10 @@ void Transmitter::send_block_fragment(size_t packet_size) {
     const uint8_t* dataP=block[fragment_idx];
     const auto data= mEncryptor.makeEncryptedPacket(wblockHdr,dataP,packet_size);
     inject_packet(data.data(), data.size());
-}
+}*/
 
 void Transmitter::sendFecBlock(const XBlock &xBlock) {
+    std::cout << "Transmitter::sendFecBlock\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());
 }
@@ -174,7 +175,7 @@ void Transmitter::send_session_key() {
 
 void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     std::cout << "Transmitter::send_packet\n";
-    assert(size <= MAX_PAYLOAD_SIZE);
+    /*assert(size <= MAX_PAYLOAD_SIZE);
     wpacket_hdr_t packet_hdr;
 
     packet_hdr.packet_size = htobe16(size);
@@ -204,6 +205,11 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
         make_session_key();
         send_session_key();
         block_idx = 0;
+    }*/
+    FECEncoder::encodePacket(buf,size);
+    if(FECEncoder::resetOnOverflow()){
+        make_session_key();
+        send_session_key();
     }
 }
 
