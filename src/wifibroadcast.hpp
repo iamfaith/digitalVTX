@@ -41,8 +41,8 @@ extern "C"{
 #include "ieee80211_radiotap.h"
 };
 
-#define MAX_PACKET_SIZE 1510
-#define MAX_RX_INTERFACES 8
+static constexpr const auto MAX_PACKET_SIZE=1510;
+static constexpr const auto MAX_RX_INTERFACES=8;
 
 extern std::string string_format(const char *format, ...);
 
@@ -96,14 +96,14 @@ static uint8_t radiotap_header[]  __attribute__((unused)) = {
 static_assert(sizeof(radiotap_header)==sizeof(radiotap_header2),"ALWAYS TRUE");*/
 
 // offset of MCS_FLAGS and MCS index
-#define MCS_FLAGS_OFF 11
-#define MCS_IDX_OFF 12
+static constexpr const auto MCS_FLAGS_OFF=11;
+static constexpr const auto MCS_IDX_OFF=12;
 
 //the last byte of the mac address is recycled as a port number
-#define SRC_MAC_LASTBYTE 15
-#define DST_MAC_LASTBYTE 21
-#define FRAME_SEQ_LB 22
-#define FRAME_SEQ_HB 23
+static constexpr const auto SRC_MAC_LASTBYTE=15;
+static constexpr const auto DST_MAC_LASTBYTE=21;
+static constexpr const auto FRAME_SEQ_LB=22;
+static constexpr const auto FRAME_SEQ_HB=23;
 
 static uint8_t ieee80211_header[] __attribute__((unused)) = {
     0x08, 0x01, 0x00, 0x00,
@@ -130,12 +130,11 @@ static uint8_t ieee80211_header[] __attribute__((unused)) = {
 #define BLOCK_IDX_MASK ((1LLU << 56) - 1)
 #define MAX_BLOCK_IDX ((1LLU << 55) - 1)
 
+static constexpr const uint8_t WFB_PACKET_DATA=0x1;
+static constexpr const uint8_t WFB_PACKET_KEY=0x2;
 
-#define WFB_PACKET_DATA 0x1
-#define WFB_PACKET_KEY 0x2
-
-#define SESSION_KEY_ANNOUNCE_MSEC 1000
-#define RX_ANT_MAX  4
+static constexpr const auto SESSION_KEY_ANNOUNCE_MSEC=1000;
+static constexpr const auto RX_ANT_MAX=4;
 
 // Header for forwarding raw packets from RX host to Aggregator in UDP packets
 typedef struct {
@@ -175,9 +174,9 @@ typedef struct {
     uint16_t packet_size; // big endian
 }  __attribute__ ((packed)) wpacket_hdr_t;
 
-#define MAX_PAYLOAD_SIZE (MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t))
-#define MAX_FEC_PAYLOAD  (MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES)
-#define MAX_FORWARDER_PACKET_SIZE (MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header))
+static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t));
+static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);
+static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header));
 
 int open_udp_socket_for_rx(int port);
 uint64_t get_time_ms();
