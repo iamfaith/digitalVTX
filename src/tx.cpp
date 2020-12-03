@@ -39,7 +39,7 @@ extern "C"
 
 #include "wifibroadcast.hpp"
 #include "tx.hpp"
-
+#include <chrono>
 
 
 namespace Helper {
@@ -217,7 +217,8 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
         fds[i].events = POLLIN;
     }
 
-    uint64_t session_key_announce_ts = 0;
+    //uint64_t session_key_announce_ts = 0;
+    std::chrono::steady_clock::time_point session_key_announce_ts{};
 
     for (;;) {
         int rc = poll(fds, nfds, -1);
@@ -242,11 +243,11 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
 
                 t->select_output(i);
                 while ((rsize = recv(fd, buf, sizeof(buf), 0)) >= 0) {
-                    uint64_t cur_ts = get_time_ms();
+                    auto cur_ts=std::chrono::steady_clock::now();
                     if (cur_ts >= session_key_announce_ts) {
                         // Announce session key
                         t->send_session_key();
-                        session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_MSEC;
+                        session_key_announce_ts = cur_ts + std::chrono::milliseconds(SESSION_KEY_ANNOUNCE_MSEC);
                     }
                     t->send_packet(buf, rsize);
                 }
