@@ -146,7 +146,8 @@ static constexpr auto RX_RING_SIZE=40;
             delete rx_ring[ring_idx].fragments;
         }
     }
-public:
+
+protected:
     fec_t* fec_p;
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
@@ -231,6 +232,19 @@ protected:
             }
         }
         fec_decode(fec_p, (const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
+    }
+    // call on new session key ?!
+    void reset(){
+        rx_ring_front = 0;
+        rx_ring_alloc = 0;
+        last_known_block = (uint64_t) -1;
+        seq = 0;
+        for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
+            rx_ring[ring_idx].block_idx = 0;
+            rx_ring[ring_idx].send_fragment_idx = 0;
+            rx_ring[ring_idx].has_fragments = 0;
+            memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
+        }
     }
 };
 

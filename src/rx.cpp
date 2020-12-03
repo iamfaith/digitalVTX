@@ -318,16 +318,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
             }
             if (mDecryptor.onNewPacketWfbKey(buf)) {
                 count_p_dec_ok += 1;
-                rx_ring_front = 0;
-                rx_ring_alloc = 0;
-                last_known_block = (uint64_t) -1;
-                seq = 0;
-                for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
-                    rx_ring[ring_idx].block_idx = 0;
-                    rx_ring[ring_idx].send_fragment_idx = 0;
-                    rx_ring[ring_idx].has_fragments = 0;
-                    memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-                }
+                FECDecoder::reset();
             } else {
                 count_p_dec_err += 1;
             }
