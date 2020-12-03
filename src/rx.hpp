@@ -38,14 +38,16 @@ typedef enum {
     AGGREGATOR
 } rx_mode_t;
 
-class BaseAggregator
-{
+class BaseAggregator {
 public:
-    virtual void process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi, sockaddr_in *sockaddr) = 0;
+    virtual void
+    process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
+                   sockaddr_in *sockaddr) = 0;
+
     virtual void dump_stats(FILE *fp) = 0;
+
 protected:
-    int open_udp_socket_for_tx(const std::string &client_addr, int client_port)
-    {
+    int open_udp_socket_for_tx(const std::string &client_addr, int client_port) {
         struct sockaddr_in saddr;
         int fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (fd < 0) throw std::runtime_error(string_format("Error opening socket: %s", strerror(errno)));
@@ -53,10 +55,9 @@ protected:
         bzero((char *) &saddr, sizeof(saddr));
         saddr.sin_family = AF_INET;
         saddr.sin_addr.s_addr = inet_addr(client_addr.c_str());
-        saddr.sin_port = htons((unsigned short)client_port);
+        saddr.sin_port = htons((unsigned short) client_port);
 
-        if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
-        {
+        if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
             throw std::runtime_error(string_format("Connect error: %s", strerror(errno)));
         }
         return fd;
@@ -64,26 +65,29 @@ protected:
 };
 
 
-class Forwarder : public BaseAggregator
-{
+class Forwarder : public BaseAggregator {
 public:
     Forwarder(const std::string &client_addr, int client_port);
+
     ~Forwarder();
-    virtual void process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi, sockaddr_in *sockaddr);
+
+    virtual void
+    process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
+                   sockaddr_in *sockaddr);
+
     virtual void dump_stats(FILE *) {}
+
 private:
     int sockfd;
 };
 
 
-
-class antennaItem
-{
+class antennaItem {
 public:
     antennaItem() : count_all(0), rssi_sum(0), rssi_min(0), rssi_max(0) {}
 
-    void log_rssi(int8_t rssi){
-        if(count_all == 0){
+    void log_rssi(int8_t rssi) {
+        if (count_all == 0) {
             rssi_min = rssi;
             rssi_max = rssi;
         } else {
@@ -102,16 +106,23 @@ public:
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 
-class Aggregator : public BaseAggregator, public FECDecoder
-{
+class Aggregator : public BaseAggregator, public FECDecoder {
 public:
     Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair);
+
     ~Aggregator();
-    virtual void process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi, sockaddr_in *sockaddr);
+
+    virtual void
+    process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
+                   sockaddr_in *sockaddr);
+
     virtual void dump_stats(FILE *fp);
+
 private:
     void send_packet(int ring_idx, int fragment_idx);
+
     void log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi);
+
     int sockfd;
     Decryptor mDecryptor;
     antenna_stat_t antenna_stat;
@@ -123,13 +134,16 @@ private:
     uint32_t count_p_bad;
 };
 
-class Receiver
-{
+class Receiver {
 public:
-    Receiver(const char* wlan, int wlan_idx, int port, BaseAggregator* agg);
+    Receiver(const char *wlan, int wlan_idx, int port, BaseAggregator *agg);
+
     ~Receiver();
+
     void loop_iter();
-    int getfd() const{ return fd; }
+
+    int getfd() const { return fd; }
+
 private:
     const int wlan_idx;
     BaseAggregator *agg;

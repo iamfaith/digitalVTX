@@ -18,6 +18,11 @@
 #include <iostream>
 #include <functional>
 
+/**
+ * All this code was originally written in svpcom/wifibroadcast
+ * Myself I don't understand everything, but it works pretty good
+ */
+
 class FECEncoder{
 public:
     explicit FECEncoder(int k, int n):fec_k(k),fec_n(n){
@@ -181,7 +186,6 @@ protected:
         }
         fec_decode(fec_p, (const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
     }
-
 };
 
 #endif //WIFIBROADCAST_FEC_HPP

@@ -33,19 +33,25 @@
 #include "Encryption.hpp"
 #include "FEC.hpp"
 
-class Transmitter: public FECEncoder
-{
+class Transmitter : public FECEncoder {
 public:
-    Transmitter(RadiotapHeader radiotapHeader,int k, int m, const std::string &keypair);
-    ~Transmitter()=default;
+    Transmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair);
+
+    ~Transmitter() = default;
+
     void send_packet(const uint8_t *buf, size_t size);
+
     void send_session_key();
+
     virtual void select_output(int idx) = 0;
+
 protected:
     // What inject_packet does is left to the implementation (e.g. PcapTransmitter)
     virtual void inject_packet(const uint8_t *buf, size_t size) = 0;
+
 private:
     void send_block_fragment(size_t packet_size);
+
     void make_session_key();
 
     Encryptor mEncryptor;
@@ -57,14 +63,18 @@ public:
 };
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap
-class PcapTransmitter : public Transmitter
-{
+class PcapTransmitter : public Transmitter {
 public:
-    PcapTransmitter(RadiotapHeader radiotapHeader,int k, int m, const std::string &keypair, uint8_t radio_port, const std::vector<std::string> &wlans);
+    PcapTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
+                    const std::vector<std::string> &wlans);
+
     virtual ~PcapTransmitter();
+
     virtual void select_output(int idx) { current_output = idx; }
+
 private:
     virtual void inject_packet(const uint8_t *buf, size_t size);
+
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t radio_port;
@@ -72,32 +82,29 @@ private:
     // I think it is supposed to be the wifi interface data is sent on
     int current_output;
     uint16_t ieee80211_seq;
-    std::vector<pcap_t*> ppcap;
+    std::vector<pcap_t *> ppcap;
 };
 
 // UdpTransmitter can be used to emulate a wifi bridge without using a wifi adapter
 // Usefully for Testing and Debugging.
 // Use the Aggregator functionality as rx when using UdpTransmitter
-class UdpTransmitter : public Transmitter
-{
+class UdpTransmitter : public Transmitter {
 public:
-    UdpTransmitter(int k, int m, const std::string &keypair, const std::string &client_addr, int client_port) : Transmitter({},k, m, keypair)
-    {
+    UdpTransmitter(int k, int m, const std::string &keypair, const std::string &client_addr, int client_port)
+            : Transmitter({}, k, m, keypair) {
         sockfd = open_udp_socket(client_addr, client_port);
     }
 
-    virtual ~UdpTransmitter()
-    {
+    virtual ~UdpTransmitter() {
         close(sockfd);
     }
 
-    virtual void select_output(int /*idx*/){}
+    virtual void select_output(int /*idx*/) {}
 
 private:
     virtual void inject_packet(const uint8_t *buf, size_t size);
 
-    static int open_udp_socket(const std::string &client_addr, int client_port)
-    {
+    static int open_udp_socket(const std::string &client_addr, int client_port) {
         struct sockaddr_in saddr;
         int fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (fd < 0) throw std::runtime_error(string_format("Error opening socket: %s", strerror(errno)));
@@ -105,10 +112,9 @@ private:
         bzero((char *) &saddr, sizeof(saddr));
         saddr.sin_family = AF_INET;
         saddr.sin_addr.s_addr = inet_addr(client_addr.c_str());
-        saddr.sin_port = htons((unsigned short)client_port);
+        saddr.sin_port = htons((unsigned short) client_port);
 
-        if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
-        {
+        if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
             throw std::runtime_error(string_format("Connect error: %s", strerror(errno)));
         }
         return fd;
