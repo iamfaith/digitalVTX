@@ -389,14 +389,14 @@ namespace TestFEC{
 
     static void test(const int k,const int n,const std::vector<std::vector<uint8_t>>& testIn){
         std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
-        static FECEncoder encoder(k,n);
-        static FECDecoder decoder(k,n);
-        static std::vector<std::vector<uint8_t>> testOut;
+        FECEncoder encoder(k,n);
+        FECDecoder decoder(k,n);
+        std::vector<std::vector<uint8_t>> testOut;
 
-        const auto cb1=[](const XBlock &xBlock) {
+        const auto cb1=[&decoder](const XBlock &xBlock)mutable {
             decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
         };
-        const auto cb2=[](const uint8_t * payload,std::size_t payloadSize){
+        const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
             testOut.emplace_back(payload,payload+payloadSize);
         };
         encoder.callback=cb1;
@@ -405,27 +405,18 @@ namespace TestFEC{
         for(int i=0;i<testIn.size();i++){
             const auto& in=testIn[i];
             encoder.encodePacket(in.data(),in.size());
-        }
-        for(int i=0;i<testIn.size();i++){
-            const auto& in=testIn[i];
             const auto& out=testOut[i];
             assert(compareVectors(in,out)==true);
         }
     }
 
-    static void test1(const int k,const int n){
+    static void test(const int k,const int n,const int N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
-        testIn.push_back(createRandomDataBuffer(20));
-        test(k,n,testIn);
-    }
-    static void test2(const int k,const int n){
-        std::vector<std::vector<uint8_t>> testIn;
-        for(int i=0;i<10;i++){
+        for(int i=0;i<N_PACKETS;i++){
             testIn.push_back(createRandomDataBuffer(20));
         }
         test(k,n,testIn);
     }
-
 }
 
 #endif //WIFIBROADCAST_FEC_HPP
