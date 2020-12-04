@@ -128,16 +128,14 @@ typedef struct {
 }  __attribute__ ((packed)) wblock_hdr_t;
 
 
-
-// Plain data packet after FEC decode
-
-class wpacket_hdr_t {
+// this header is written before the data of each FEC data packet
+class FECDataHeader {
 private:
     // private member to make sure it has always the right endian
     uint16_t packet_size; // big endian
 public:
-    // convert to big endian if needed
-    void set(std::size_t packetSize1){
+    explicit FECDataHeader(std::size_t packetSize1){
+        // convert to big endian if needed
         packet_size=htobe16(packetSize1);
     }
     // convert from big endian if needed
@@ -145,7 +143,8 @@ public:
         return be16toh(packet_size);
     }
 }  __attribute__ ((packed));
-static_assert(sizeof(wpacket_hdr_t)==2,"ALWAYS_TRUE");
+static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
+
 
 class XBlock{
 public:
@@ -153,19 +152,6 @@ public:
     uint8_t* payload;
     std::size_t payloadSize;
 }__attribute__ ((packed));
-
-class XBlock2{
-public:
-    wblock_hdr_t header;
-    const uint8_t* payload;
-    std::size_t payloadSize;
-    XBlock2(const uint8_t* buff,std::size_t buffSize){
-        memcpy(&header,buff,sizeof(wblock_hdr_t));
-        payload=&buff[sizeof(wblock_hdr_t)];
-        payloadSize=buffSize-sizeof(wblock_hdr_t);
-    }
-}__attribute__ ((packed));
-
 
 
 int open_udp_socket_for_rx(int port);
@@ -286,7 +272,7 @@ public:
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
 
 
-static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t));
+static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
 static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);
 static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES);
 

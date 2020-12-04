@@ -63,8 +63,7 @@ private:
 public:
     void encodePacket(const uint8_t *buf, size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
-        wpacket_hdr_t packet_hdr;
-        packet_hdr.set(size);
+        FECDataHeader packet_hdr(size);
         // write the size of the data part into each packet.
         // This is needed for the 'up to n bytes' workaround
         memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
@@ -72,7 +71,7 @@ public:
         memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
         // zero out the remaining bytes such that FEC always sees zeroes
         // same is done on the rx. These zero bytes are never transmitted via wifi
-        const auto writtenDataSize=sizeof(wpacket_hdr_t)+size;
+        const auto writtenDataSize= sizeof(FECDataHeader) + size;
         memset(block[fragment_idx]+writtenDataSize, '\0', MAX_FEC_PAYLOAD-writtenDataSize);
 
         // send immediately before calculating the FECs
@@ -264,9 +263,9 @@ private:
     }
     // this one calls the callback with reconstructed data and payload in order
     void send_packet(int ring_idx, int fragment_idx){
-        const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
+        const FECDataHeader *packet_hdr = (FECDataHeader *) (rx_ring[ring_idx].fragments[fragment_idx]);
 
-        const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
+        const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(FECDataHeader);
         const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
         const uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
 
