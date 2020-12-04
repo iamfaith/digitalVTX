@@ -39,7 +39,7 @@ public:
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
-        actualDataSizeOfBlock.resize(fec_n);
+        //actualDataSizeOfBlock.resize(fec_n);
     }
 
     ~FECEncoder() {
@@ -64,7 +64,8 @@ private:
     // changed by Constantin:
     // instead of writing the packet size as duplikate in the payload,
     // keep track of it inside a local member variable
-    std::vector<uint8_t> actualDataSizeOfBlock;
+    // XXX that is impossible ! https://github.com/svpcom/wifibroadcast/issues/67
+    //std::vector<uint8_t> actualDataSizeOfBlock;
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size = 0;
 public:
@@ -72,10 +73,16 @@ public:
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
         packet_hdr.set(size);
-        actualDataSizeOfBlock[fragment_idx]=size;
-        memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
+        // write the size of the data part into each packet.
+        // This is needed for the 'up to n bytes' workaround
         memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
+        // write the actual data
         memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
+        // zero out the remaining bytes such that FEC always sees zeroes
+        // same is done on the rx. These zero bytes are never transmitted via wifi
+        const auto writtenDataSize=sizeof(wpacket_hdr_t)+size;
+        memset(block[fragment_idx]+writtenDataSize, '\0', MAX_FEC_PAYLOAD-writtenDataSize);
+
         // send immediately before calculating the FECs
         send_block_fragment(sizeof(packet_hdr) + size);
         max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
@@ -133,7 +140,8 @@ typedef struct {
     // changed by Constantin:
     // instead of writing the packet size as duplikate in the payload,
     // keep track of it inside a local member variable
-    std::vector<uint8_t> actualSizeOfFragments;
+    // XXX that is impossible ! https://github.com/svpcom/wifibroadcast/issues/67
+    //std::vector<uint8_t> actualSizeOfFragments;
 } rx_ring_item_t;
 
 static inline int modN(int x, int base) {
@@ -163,8 +171,8 @@ public:
             }
             rx_ring[ring_idx].fragment_map = new uint8_t[fec_n];
             memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-            // development
-            rx_ring[ring_idx].actualSizeOfFragments.resize(fec_n);
+            // XXX
+            //rx_ring[ring_idx].actualSizeOfFragments.resize(fec_n);
         }
     }
 
@@ -272,9 +280,9 @@ private:
     // this one calls the callback with reconstructed data and payload in order
     void send_packet(int ring_idx, int fragment_idx){
         const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
-        // testing
-        const auto tmp=rx_ring[ring_idx].actualSizeOfFragments[fragment_idx];
-        assert(tmp==packet_hdr->get());
+        // XXX
+        //const auto tmp=rx_ring[ring_idx].actualSizeOfFragments[fragment_idx];
+        //assert(tmp==packet_hdr->get());
 
         const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
         const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
@@ -338,8 +346,11 @@ public:
         //ignore already processed fragments
         if (p->fragment_map[fragment_idx]) return;
 
-        memset(p->fragments[fragment_idx], '\0', MAX_FEC_PAYLOAD);
+
+        // write the data where first two bytes are the actual packet size
         memcpy(p->fragments[fragment_idx], decrypted.data(), decrypted.size());
+        // set the rest to zero such that FEC works
+        memset(p->fragments[fragment_idx]+decrypted.size(), '\0', MAX_FEC_PAYLOAD-decrypted.size());
 
         p->fragment_map[fragment_idx] = 1;
         p->has_fragments += 1;
