@@ -61,6 +61,9 @@ private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
+    // changed by Constantin:
+    // instead of writing the packet size as duplikate in the payload,
+    // keep track of it inside a local member variable
     std::vector<uint8_t> actualDataSizeOfBlock;
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size = 0;
@@ -69,8 +72,7 @@ public:
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
         packet_hdr.set(size);
-        //actualDataSizeOfBlock[fragment_idx]=size;
-        //packet_hdr.packet_size = htobe16(size);
+        actualDataSizeOfBlock[fragment_idx]=size;
         memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
         memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
         memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
@@ -128,6 +130,10 @@ typedef struct {
     uint8_t *fragment_map;
     uint8_t send_fragment_idx;
     uint8_t has_fragments;
+    // changed by Constantin:
+    // instead of writing the packet size as duplikate in the payload,
+    // keep track of it inside a local member variable
+    std::vector<uint8_t> actualSizeOfFragments;
 } rx_ring_item_t;
 
 static inline int modN(int x, int base) {
@@ -157,6 +163,8 @@ public:
             }
             rx_ring[ring_idx].fragment_map = new uint8_t[fec_n];
             memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
+            // development
+            rx_ring[ring_idx].actualSizeOfFragments.resize(fec_n);
         }
     }
 
@@ -264,6 +272,10 @@ private:
     // this one calls the callback with reconstructed data and payload in order
     void send_packet(int ring_idx, int fragment_idx){
         const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
+        // testing
+        const auto tmp=rx_ring[ring_idx].actualSizeOfFragments[fragment_idx];
+        assert(tmp==packet_hdr->get());
+
         const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
         const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
         const uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
