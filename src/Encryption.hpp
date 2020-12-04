@@ -145,10 +145,11 @@ public:
         decrypted.resize(payloadSize-crypto_aead_chacha20poly1305_ABYTES);
 
         long long unsigned int decrypted_len;
+        const unsigned long long int cLen=payloadSize;
 
         if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len,
                                                  nullptr,
-                                                 payload,payloadSize,
+                                                 payload,cLen,
                                                  (uint8_t*)&wblockHdr,sizeof(wblock_hdr_t),
                                                  (uint8_t *) (&(wblockHdr.nonce)), session_key.data()) != 0) {
             return std::nullopt;

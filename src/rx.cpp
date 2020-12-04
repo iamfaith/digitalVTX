@@ -291,7 +291,7 @@ void Aggregator::log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const u
 }
 
 
-void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna,
+void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wlan_idx, const uint8_t *antenna,
                                 const int8_t *rssi, sockaddr_in *sockaddr) {
     count_p_all += 1;
 
@@ -338,6 +338,8 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
         count_p_dec_err += 1;
         return;
     }
+    const auto tmp=(wpacket_hdr_t*)decrypted->data();
+    std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get());
 
     count_p_dec_ok += 1;
     log_rssi(sockaddr, wlan_idx, antenna, rssi);

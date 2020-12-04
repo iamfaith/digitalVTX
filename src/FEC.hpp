@@ -105,9 +105,9 @@ private:
         xBlock.header.packet_type = WFB_PACKET_DATA;
         xBlock.header.nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
         uint8_t *dataP = block[fragment_idx];
-        const auto tmp=(wpacket_hdr_t*)dataP;
+        //const auto tmp=(wpacket_hdr_t*)dataP;
         //assert(packet_size==tmp->packet_size);
-        std::cout<<(int)packet_size<<" "<<(int)tmp->get();
+        //std::cout<<(int)packet_size<<" "<<(int)tmp->get();
 
         xBlock.payload = dataP;
         xBlock.payloadSize = packet_size;
@@ -134,6 +134,8 @@ static inline int modN(int x, int base) {
 class FECDecoder {
 public:
     static constexpr auto RX_RING_SIZE = 40;
+    typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
+    SEND_DECODED_PACKET callback;
 
     explicit FECDecoder(int k, int n) : fec_k(k), fec_n(n) {
         fec_p = fec_new(fec_k, fec_n);
@@ -170,7 +172,8 @@ private:
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
     uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
-protected:
+    // TODO documentation
+    // copy paste from svpcom
     int rx_ring_push() {
         if (rx_ring_alloc < RX_RING_SIZE) {
             int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
@@ -195,7 +198,8 @@ protected:
         rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
         return idx;
     }
-
+    // TODO documentation
+    // copy paste from svpcom
     int get_block_ring_idx(uint64_t block_idx) {
         // check if block is already to the ring
         for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
@@ -223,7 +227,8 @@ protected:
         }
         return ring_idx;
     }
-
+    // TODO documentation
+    // copy paste from svpcom
     void apply_fec(int ring_idx) {
         unsigned index[fec_k];
         uint8_t *in_blocks[fec_k];
@@ -249,7 +254,29 @@ protected:
         }
         fec_decode(fec_p, (const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
     }
+    // this one calls the callback with reconstructed data and payload in order
+    void send_packet(int ring_idx, int fragment_idx){
+        const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
+        const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
+        const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
+        const uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
 
+        if (packet_seq > seq + 1) {
+            fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
+            count_p_lost += (packet_seq - seq - 1);
+        }
+
+        seq = packet_seq;
+
+        if (packet_size > MAX_PAYLOAD_SIZE) {
+            fprintf(stderr, "corrupted packet %u\n", seq);
+            count_p_bad += 1;
+        } else {
+            //send(sockfd, payload, packet_size, MSG_DONTWAIT);
+            callback(payload,packet_size);
+        }
+    }
+public:
     // call on new session key ?!
     void reset() {
         rx_ring_front = 0;
@@ -263,9 +290,6 @@ protected:
             memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
         }
     }
-    typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
-    SEND_DECODED_PACKET callback;
-
     void processPacket(const wblock_hdr_t& wblockHdr,const std::vector<uint8_t>& decrypted){
         const uint64_t block_idx = be64toh(wblockHdr.nonce) >> 8;
         const uint8_t fragment_idx = (uint8_t) (be64toh(wblockHdr.nonce) & 0xff);
@@ -329,29 +353,6 @@ protected:
             assert(rx_ring_alloc >= 0);
         }
     }
-
-    void send_packet(int ring_idx, int fragment_idx){
-        const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
-        const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
-        const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
-        const uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
-
-        if (packet_seq > seq + 1) {
-            fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
-            count_p_lost += (packet_seq - seq - 1);
-        }
-
-        seq = packet_seq;
-
-        if (packet_size > MAX_PAYLOAD_SIZE) {
-            fprintf(stderr, "corrupted packet %u\n", seq);
-            count_p_bad += 1;
-        } else {
-            //send(sockfd, payload, packet_size, MSG_DONTWAIT);
-            callback(payload,packet_size);
-        }
-    }
-
 protected:
     uint32_t count_p_fec_recovered=0;
     uint32_t count_p_lost=0;

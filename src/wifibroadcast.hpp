@@ -167,7 +167,7 @@ typedef struct {
 
 class wpacket_hdr_t {
 private:
-    // private member to make sure it is always the right endianess
+    // private member to make sure it has always the right endian
     uint16_t packet_size; // big endian
 public:
     // convert to big endian if needed
