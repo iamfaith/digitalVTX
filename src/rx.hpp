@@ -119,7 +119,7 @@ public:
     virtual void dump_stats(FILE *fp);
 
 private:
-    void send_packet(int ring_idx, int fragment_idx);
+    //void send_packet(int ring_idx, int fragment_idx);
 
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize){
         send(sockfd,packet,packetSize, MSG_DONTWAIT);

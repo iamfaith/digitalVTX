@@ -347,27 +347,6 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
     FECDecoder::processPacket(*block_hdr, *decrypted);
 }
 
-void Aggregator::send_packet(int ring_idx, int fragment_idx) {
-    wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
-    uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
-    uint16_t packet_size = be16toh(packet_hdr->packet_size);
-    uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
-
-    if (packet_seq > seq + 1) {
-        fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
-        count_p_lost += (packet_seq - seq - 1);
-    }
-
-    seq = packet_seq;
-
-    if (packet_size > MAX_PAYLOAD_SIZE) {
-        fprintf(stderr, "corrupted packet %u\n", seq);
-        count_p_bad += 1;
-    } else {
-        send(sockfd, payload, packet_size, MSG_DONTWAIT);
-    }
-}
-
 void
 radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<BaseAggregator> agg, int log_interval) {
     int nfds = std::min(argc - optind, MAX_RX_INTERFACES);
