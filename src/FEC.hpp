@@ -189,7 +189,7 @@ private:
         }
 
         // override existing data
-        int idx = rx_ring_front;
+        const int idx = rx_ring_front;
 
         /*
           Ring overflow. This means that there are more unfinished blocks than ring size

@@ -85,7 +85,7 @@ namespace Helper {
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
-    // @param tx_fd: UDP port
+    // @param tx_fd: UDP ports
     static std::vector<pollfd> udpPortsToPollFd(const std::vector<int> &tx_fd){
         std::vector<pollfd> ret;
         ret.resize(tx_fd.size());
@@ -234,8 +234,6 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
 
 
 int main(int argc, char *const *argv) {
-    //
-
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     int udp_port = 5600;
