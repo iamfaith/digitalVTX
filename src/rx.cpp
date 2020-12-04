@@ -339,7 +339,7 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
         return;
     }
     const auto tmp=(wpacket_hdr_t*)decrypted->data();
-    std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get());
+    std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
 
     count_p_dec_ok += 1;
     log_rssi(sockaddr, wlan_idx, antenna, rssi);
