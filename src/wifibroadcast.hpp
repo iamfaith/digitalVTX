@@ -145,10 +145,18 @@ public:
 }  __attribute__ ((packed));
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
+template<typename IS_DATA_PACKET>
+class FECPacket{
+public:
+    uint8_t* data;
+    std::size_t dataSize;
+};
 
 class XBlock{
 public:
     wblock_hdr_t header;
+    // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
+    // If this is an FEC correction packet, that's not the case
     uint8_t* payload;
     std::size_t payloadSize;
 }__attribute__ ((packed));
