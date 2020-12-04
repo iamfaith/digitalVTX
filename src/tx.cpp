@@ -221,7 +221,7 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
                     if (cur_ts >= session_key_announce_ts) {
                         // Announce session key
                         t->send_session_key();
-                        session_key_announce_ts = cur_ts + std::chrono::milliseconds(SESSION_KEY_ANNOUNCE_MSEC);
+                        session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
                     }
                     t->send_packet(buf, rsize);
                 }

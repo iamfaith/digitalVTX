@@ -36,6 +36,7 @@
 #include <endian.h>
 #include <string>
 #include <vector>
+#include <chrono>
 
 extern "C"{
 #include "ieee80211_radiotap.h"
@@ -133,7 +134,8 @@ static uint8_t ieee80211_header[] __attribute__((unused)) = {
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
 
-static constexpr const auto SESSION_KEY_ANNOUNCE_MSEC=1000;
+//static constexpr const auto SESSION_KEY_ANNOUNCE_MSEC=1000;
+static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(100);
 static constexpr const auto RX_ANT_MAX=4;
 
 // Header for forwarding raw packets from RX host to Aggregator in UDP packets
@@ -163,9 +165,21 @@ typedef struct {
 
 // Plain data packet after FEC decode
 
-typedef struct {
+class wpacket_hdr_t {
+private:
+    // private member to make sure it is always the right endianess
     uint16_t packet_size; // big endian
-}  __attribute__ ((packed)) wpacket_hdr_t;
+public:
+    // convert to big endian if needed
+    void set(std::size_t packetSize1){
+        packet_size=htobe16(packetSize1);
+    }
+    // convert from big endian if needed
+    std::size_t get()const{
+        return be16toh(packet_size);
+    }
+}  __attribute__ ((packed));
+static_assert(sizeof(wpacket_hdr_t)==2,"ALWAYS_TRUE");
 
 class XBlock{
 public:

@@ -62,8 +62,8 @@ public:
     void encodePacket(const uint8_t *buf, size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
-
-        packet_hdr.packet_size = htobe16(size);
+        packet_hdr.set(size);
+        //packet_hdr.packet_size = htobe16(size);
         memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
         memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
         memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
@@ -105,6 +105,10 @@ private:
         xBlock.header.packet_type = WFB_PACKET_DATA;
         xBlock.header.nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
         uint8_t *dataP = block[fragment_idx];
+        const auto tmp=(wpacket_hdr_t*)dataP;
+        //assert(packet_size==tmp->packet_size);
+        std::cout<<(int)packet_size<<" "<<(int)tmp->get();
+
         xBlock.payload = dataP;
         xBlock.payloadSize = packet_size;
         callback(xBlock);
@@ -327,10 +331,10 @@ protected:
     }
 
     void send_packet(int ring_idx, int fragment_idx){
-        wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
-        uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
-        uint16_t packet_size = be16toh(packet_hdr->packet_size);
-        uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
+        const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
+        const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
+        const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
+        const uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
 
         if (packet_seq > seq + 1) {
             fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
