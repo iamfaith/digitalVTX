@@ -344,6 +344,8 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
     //assert(decrypted->size()==tmp->get()+sizeof(wpacket_hdr_t));
     if(decrypted->size()!=tmp->get()+sizeof(wpacket_hdr_t)){
         std::cout<<"Something wrong with size:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
+    }else{
+        std::cout<<"Sizes are:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
     }
 
     count_p_dec_ok += 1;

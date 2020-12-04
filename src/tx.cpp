@@ -168,7 +168,7 @@ void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
 }
 
 void Transmitter::sendFecBlock(const XBlock &xBlock) {
-    std::cout << "Transmitter::sendFecBlock\n";
+    std::cout << "Transmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());
 }
