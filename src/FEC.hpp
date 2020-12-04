@@ -36,10 +36,6 @@ public:
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
-        /*block.resize(fec_n);
-        for(int i=0;i<fec_n;i++){
-            block[i].resize(MAX_FEC_PAYLOAD);
-        }*/
     }
 
     ~FECEncoder() {
@@ -160,8 +156,7 @@ public:
             delete rx_ring[ring_idx].fragments;
         }
     }
-
-protected:
+private:
     fec_t *fec_p;
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
