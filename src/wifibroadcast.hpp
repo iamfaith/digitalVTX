@@ -165,7 +165,6 @@ typedef struct {
 
 
 
-
 // Plain data packet after FEC decode
 
 class wpacket_hdr_t {
