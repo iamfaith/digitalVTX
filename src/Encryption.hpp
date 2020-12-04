@@ -67,7 +67,7 @@ public:
         crypto_aead_chacha20poly1305_encrypt(cyphertext, &ciphertext_len,
                                              payload, payloadSize,
                                              (uint8_t *) &wblockHdr, sizeof(wblock_hdr_t),
-                                             NULL,
+                                             nullptr,
                                              (uint8_t *) (&(wblockHdr.nonce)), session_key.data());
         // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
         // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
@@ -80,9 +80,9 @@ public:
     }
 private:
     // tx->rx keypair
-    std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey;
-    std::array<uint8_t, crypto_box_PUBLICKEYBYTES> rx_publickey;
-    std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key;
+    std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey{};
+    std::array<uint8_t, crypto_box_PUBLICKEYBYTES> rx_publickey{};
+    std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
     // re-send this packet each time a new session key is created
     wsession_key_t session_key_packet;
@@ -113,10 +113,10 @@ public:
     }
 
 public:
-    std::array<uint8_t, crypto_box_SECRETKEYBYTES> rx_secretkey;
+    std::array<uint8_t, crypto_box_SECRETKEYBYTES> rx_secretkey{};
 public:
-    std::array<uint8_t, crypto_box_PUBLICKEYBYTES> tx_publickey;
-    std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key;
+    std::array<uint8_t, crypto_box_PUBLICKEYBYTES> tx_publickey{};
+    std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
     // return true on success
     /*bool onNewPacketWfbKey(const XBlock& xBlock) {
@@ -146,7 +146,8 @@ public:
 
         long long unsigned int decrypted_len;
 
-        if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len, NULL,
+        if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len,
+                                                 nullptr,
                                                  payload,payloadSize,
                                                  (uint8_t*)&wblockHdr,sizeof(wblock_hdr_t),
                                                  (uint8_t *) (&(wblockHdr.nonce)), session_key.data()) != 0) {
