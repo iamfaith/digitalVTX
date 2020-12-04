@@ -39,7 +39,6 @@ public:
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
-        //actualDataSizeOfBlock.resize(fec_n);
     }
 
     ~FECEncoder() {
@@ -171,8 +170,6 @@ public:
             }
             rx_ring[ring_idx].fragment_map = new uint8_t[fec_n];
             memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
-            // XXX
-            //rx_ring[ring_idx].actualSizeOfFragments.resize(fec_n);
         }
     }
 
