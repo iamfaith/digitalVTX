@@ -18,6 +18,10 @@
 #include <iostream>
 #include <functional>
 
+extern "C"{
+#include "fec.h"
+}
+
 /**
  * All this code was originally written in svpcom/wifibroadcast
  * Myself I don't understand everything, but it works pretty good
@@ -49,11 +53,6 @@ public:
         delete block;
         fec_free(fec_p);
     }
-private:
-    /*struct DataBlock{
-        std::vector<uint8_t> data;
-        std::size_t actualDataSize;
-    };*/
 private:
     fec_t *fec_p;
     const int fec_k;  // RS number of primary fragments in block default 8
@@ -302,6 +301,7 @@ public:
         }
     }
     void processPacket(const wblock_hdr_t& wblockHdr,const std::vector<uint8_t>& decrypted){
+        assert(wblockHdr.packet_type==WFB_PACKET_DATA);
         const uint64_t block_idx = be64toh(wblockHdr.nonce) >> 8;
         const uint8_t fragment_idx = (uint8_t) (be64toh(wblockHdr.nonce) & 0xff);
 

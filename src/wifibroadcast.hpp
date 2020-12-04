@@ -42,6 +42,7 @@ extern "C"{
 #include "ieee80211_radiotap.h"
 };
 
+// The pcap packets sent out are never bigger than this size
 static constexpr const auto MAX_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
@@ -76,35 +77,6 @@ extern std::string string_format(const char *format, ...);
 // Default is MCS#1 -- QPSK 1/2 40MHz SGI -- 30 Mbit/s
 // MCS_FLAGS = (IEEE80211_RADIOTAP_MCS_BW_40 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
 
-static uint8_t radiotap_header[]  __attribute__((unused)) = {
-    0x00, 0x00, // <-- radiotap version
-    0x0d, 0x00, // <- radiotap header length
-    0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
-    0x08, 0x00,  // RADIOTAP_F_TX_NOACK
-    MCS_KNOWN , 0x00, 0x00 // bitmap, flags, mcs_index
-};
-
-//NOPE doesnt work ... HMMM static_assert(sizeof(radiotap_header)==sizeof(ieee80211_radiotap_header));
-/*struct radiotap_header2{
-    uint16_t version=0x00;
-    uint16_t header_length=0x00;
-    uint32_t present_flags=0x00;
-    uint16_t unknown=0x00;
-    uint8_t bitmap=MCS_KNOWN;
-    uint8_t flags=0x00;
-    uint8_t mcs_index=0x00;
-}__attribute__((packed)); //,scalar_storage_order("big-endian")
-static_assert(sizeof(radiotap_header)==sizeof(radiotap_header2),"ALWAYS TRUE");*/
-
-// offset of MCS_FLAGS and MCS index
-static constexpr const auto MCS_FLAGS_OFF=11;
-static constexpr const auto MCS_IDX_OFF=12;
-
-//the last byte of the mac address is recycled as a port number
-static constexpr const auto SRC_MAC_LASTBYTE=15;
-static constexpr const auto DST_MAC_LASTBYTE=21;
-static constexpr const auto FRAME_SEQ_LB=22;
-static constexpr const auto FRAME_SEQ_HB=23;
 
 static uint8_t ieee80211_header[] __attribute__((unused)) = {
     0x08, 0x01, 0x00, 0x00,
@@ -203,9 +175,6 @@ public:
 }__attribute__ ((packed));
 
 
-static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t));
-static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);
-static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - sizeof(radiotap_header) - sizeof(ieee80211_header));
 
 int open_udp_socket_for_rx(int port);
 uint64_t get_time_ms();
@@ -214,6 +183,9 @@ uint64_t get_time_ms();
 class RadiotapHeader{
 public:
     static constexpr auto SIZE_BYTES=13;
+    // offset of MCS_FLAGS and MCS index
+    static constexpr const auto MCS_FLAGS_OFF=11;
+    static constexpr const auto MCS_IDX_OFF=12;
     // raw data buffer
     // unfortunately I do not know what these 'default bytes' mean
     std::array<uint8_t,SIZE_BYTES> data={
@@ -282,13 +254,17 @@ public:
         return data.size();
     }
 }__attribute__ ((packed));
-static_assert(sizeof(radiotap_header)==sizeof(RadiotapHeader), "ALWAYS TRUE");
 static_assert(sizeof(RadiotapHeader) == RadiotapHeader::SIZE_BYTES, "ALWAYS TRUE");
 
 // Wrapper around the Ieee80211 header (declared as raw array initially)
 class Ieee80211Header{
 public:
     static constexpr auto SIZE_BYTES=24;
+    //the last byte of the mac address is recycled as a port number
+    static constexpr const auto SRC_MAC_LASTBYTE=15;
+    static constexpr const auto DST_MAC_LASTBYTE=21;
+    static constexpr const auto FRAME_SEQ_LB=22;
+    static constexpr const auto FRAME_SEQ_HB=23;
     // raw data buffer
     // unfortunately I do not know what these 'default bytes' mean
     std::array<uint8_t,SIZE_BYTES> data={
@@ -317,5 +293,10 @@ public:
 }__attribute__ ((packed));
 static_assert(sizeof(ieee80211_header)==sizeof(Ieee80211Header), "ALWAYS TRUE");
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
+
+
+static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(wpacket_hdr_t));
+static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - sizeof(ieee80211_header) - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);
+static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - sizeof(ieee80211_header));
 
 #endif

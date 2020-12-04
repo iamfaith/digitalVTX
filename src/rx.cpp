@@ -33,12 +33,6 @@
 #include <arpa/inet.h>
 #include <limits.h>
 
-extern "C"
-{
-//#include "ieee80211_radiotap.h"
-#include "fec.h"
-}
-
 #include <string>
 #include <memory>
 #include <chrono>
@@ -107,7 +101,7 @@ Receiver::~Receiver() {
 void Receiver::loop_iter() {
     for (;;) // loop while incoming queue is not empty
     {
-        struct pcap_pkthdr hdr;
+        struct pcap_pkthdr hdr{};
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
 
         if (pkt == NULL) {

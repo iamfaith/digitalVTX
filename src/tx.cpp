@@ -32,10 +32,6 @@
 #include <memory>
 #include <vector>
 
-extern "C"
-{
-#include "fec.h"
-}
 
 #include "wifibroadcast.hpp"
 #include "tx.hpp"

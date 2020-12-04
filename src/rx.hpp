@@ -47,7 +47,7 @@ public:
     virtual void dump_stats(FILE *fp) = 0;
 
 protected:
-    int open_udp_socket_for_tx(const std::string &client_addr, int client_port) {
+    static int open_udp_socket_for_tx(const std::string &client_addr, int client_port) {
         struct sockaddr_in saddr;
         int fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (fd < 0) throw std::runtime_error(string_format("Error opening socket: %s", strerror(errno)));
@@ -84,7 +84,7 @@ private:
 
 class antennaItem {
 public:
-    antennaItem() : count_all(0), rssi_sum(0), rssi_min(0), rssi_max(0) {}
+    antennaItem()=default;
 
     void log_rssi(int8_t rssi) {
         if (count_all == 0) {
@@ -98,10 +98,10 @@ public:
         count_all += 1;
     }
 
-    int32_t count_all;
-    int32_t rssi_sum;
-    int8_t rssi_min;
-    int8_t rssi_max;
+    int32_t count_all=0;
+    int32_t rssi_sum=0;
+    int8_t rssi_min=0;
+    int8_t rssi_max=0;
 };
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
