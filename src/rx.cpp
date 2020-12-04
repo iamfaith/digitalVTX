@@ -39,7 +39,9 @@
 
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
-
+extern "C"{
+#include "fec.h"
+}
 namespace Helper{
     // copy paste from svpcom
     // I think this one opens the rx interface with pcap and then sets a filter such that only packets pass through for the selected radio port
@@ -186,8 +188,8 @@ void Receiver::loop_iter() {
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;
 
-        if (pktlen > (int) sizeof(ieee80211_header)) {
-            agg->process_packet(pkt + sizeof(ieee80211_header), pktlen - sizeof(ieee80211_header), wlan_idx, antenna,
+        if (pktlen > (int) Ieee80211Header::SIZE_BYTES) {
+            agg->process_packet(pkt + Ieee80211Header::SIZE_BYTES, pktlen - Ieee80211Header::SIZE_BYTES, wlan_idx, antenna,
                                 rssi, NULL);
         } else {
             fprintf(stderr, "short packet (ieee header)\n");

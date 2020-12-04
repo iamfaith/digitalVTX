@@ -18,9 +18,9 @@
 #include <iostream>
 #include <functional>
 
-extern "C"{
-#include "fec.h"
-}
+//extern "C"{
+//#include "fec.h"
+//}
 
 /**
  * All this code was originally written in svpcom/wifibroadcast
@@ -410,7 +410,7 @@ namespace TestFEC{
         encoder.callback=cb1;
         decoder.callback=cb2;
 
-        for(int i=0;i<testIn.size();i++){
+        for(std::size_t i=0;i<testIn.size();i++){
             const auto& in=testIn[i];
             encoder.encodePacket(in.data(),in.size());
             const auto& out=testOut[i];
@@ -418,9 +418,9 @@ namespace TestFEC{
         }
     }
 
-    static void test(const int k,const int n,const int N_PACKETS){
+    static void test(const int k,const int n,const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
-        for(int i=0;i<N_PACKETS;i++){
+        for(std::size_t i=0;i<N_PACKETS;i++){
             testIn.push_back(createRandomDataBuffer(20));
         }
         test(k,n,testIn);

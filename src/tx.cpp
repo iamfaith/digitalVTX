@@ -36,7 +36,9 @@
 #include "wifibroadcast.hpp"
 #include "tx.hpp"
 #include <chrono>
-
+extern "C"{
+#include "fec.h"
+}
 
 namespace Helper {
     // constructs a pcap packet by prefixing data with radiotap and iee header
