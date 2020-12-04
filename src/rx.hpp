@@ -133,7 +133,7 @@ private:
     uint32_t count_p_all;
     uint32_t count_p_dec_err;
     uint32_t count_p_dec_ok;
-    uint32_t count_p_fec_recovered;
+    //uint32_t count_p_fec_recovered;
     //uint32_t count_p_lost;
     //uint32_t count_p_bad;
 };

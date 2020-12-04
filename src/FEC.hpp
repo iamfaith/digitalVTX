@@ -23,6 +23,11 @@
  * Myself I don't understand everything, but it works pretty good
  */
 
+// Takes a continuous stream of packets and
+// encodes them via FEC such that they can be decoded by FECDecoder
+// The encoding is slightly different from traditional FEC. It
+// a) makes sure to send out data packets immediately
+// b) Handles packets of size up to N instead of packets of exact size N
 class FECEncoder {
 public:
     explicit FECEncoder(int k, int n) : fec_k(k), fec_n(n) {
@@ -122,6 +127,10 @@ static inline int modN(int x, int base) {
     return (base + (x % base)) % base;
 }
 
+// Takes a continuous stream of packets (data and fec packets) and
+// processes them such that the output is exactly (or as close as possible) to the
+// Input stream fed to FECEncoder.
+// Most importantly, it also handles re-ordering of packets
 class FECDecoder {
 public:
     static constexpr auto RX_RING_SIZE = 40;
@@ -257,6 +266,70 @@ protected:
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
+    void processPacket(const wblock_hdr_t& wblockHdr,const std::vector<uint8_t>& decrypted){
+        const uint64_t block_idx = be64toh(wblockHdr.nonce) >> 8;
+        const uint8_t fragment_idx = (uint8_t) (be64toh(wblockHdr.nonce) & 0xff);
+
+        // Should never happen due to generating new session key on tx side
+        if (block_idx > MAX_BLOCK_IDX) {
+            fprintf(stderr, "block_idx overflow\n");
+            count_p_bad += 1;
+            return;
+        }
+
+        if (fragment_idx >= fec_n) {
+            fprintf(stderr, "invalid fragment_idx: %d\n", fragment_idx);
+            count_p_bad += 1;
+            return;
+        }
+
+        int ring_idx = get_block_ring_idx(block_idx);
+
+        //printf("got 0x%lx %d, ring_idx=%d\n", block_idx, fragment_idx, ring_idx);
+
+        //ignore already processed blocks
+        if (ring_idx < 0) return;
+
+        rx_ring_item_t *p = &rx_ring[ring_idx];
+
+        //ignore already processed fragments
+        if (p->fragment_map[fragment_idx]) return;
+
+        memset(p->fragments[fragment_idx], '\0', MAX_FEC_PAYLOAD);
+        memcpy(p->fragments[fragment_idx], decrypted.data(), decrypted.size());
+
+        p->fragment_map[fragment_idx] = 1;
+        p->has_fragments += 1;
+
+        if (ring_idx == rx_ring_front) {
+            // check if any packets without gaps
+            while (p->send_fragment_idx < fec_k && p->fragment_map[p->send_fragment_idx]) {
+                send_packet2(ring_idx, p->send_fragment_idx);
+                p->send_fragment_idx += 1;
+            }
+        }
+
+        // or we can reconstruct gaps via FEC
+        if (p->send_fragment_idx < fec_k && p->has_fragments == fec_k) {
+            //printf("do fec\n");
+            apply_fec(ring_idx);
+            while (p->send_fragment_idx < fec_k) {
+                count_p_fec_recovered += 1;
+                send_packet2(ring_idx, p->send_fragment_idx);
+                p->send_fragment_idx += 1;
+            }
+        }
+
+        if (p->send_fragment_idx == fec_k) {
+            int nrm = modN(ring_idx - rx_ring_front, FECDecoder::RX_RING_SIZE);
+            for (int i = 0; i <= nrm; i++) {
+                rx_ring_front = modN(rx_ring_front + 1, FECDecoder::RX_RING_SIZE);
+                rx_ring_alloc -= 1;
+            }
+            assert(rx_ring_alloc >= 0);
+        }
+    }
+
     void send_packet2(int ring_idx, int fragment_idx){
         wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
         uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
@@ -280,6 +353,7 @@ protected:
     }
 
 protected:
+    uint32_t count_p_fec_recovered=0;
     uint32_t count_p_lost=0;
     uint32_t count_p_bad=0;
 };

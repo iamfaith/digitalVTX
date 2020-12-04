@@ -207,7 +207,7 @@ Aggregator::Aggregator(const std::string &client_addr, int client_port, int k, i
 FECDecoder(k,n),
         mDecryptor(keypair),
         /*fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),*/
-        count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0), count_p_fec_recovered(0){
+        count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0){
     sockfd = open_udp_socket_for_tx(client_addr, client_port);
     callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
 }
@@ -344,67 +344,7 @@ void Aggregator::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_id
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 
-    const uint64_t block_idx = be64toh(block_hdr->nonce) >> 8;
-    const uint8_t fragment_idx = (uint8_t) (be64toh(block_hdr->nonce) & 0xff);
-
-    // Should never happen due to generating new session key on tx side
-    if (block_idx > MAX_BLOCK_IDX) {
-        fprintf(stderr, "block_idx overflow\n");
-        count_p_bad += 1;
-        return;
-    }
-
-    if (fragment_idx >= fec_n) {
-        fprintf(stderr, "invalid fragment_idx: %d\n", fragment_idx);
-        count_p_bad += 1;
-        return;
-    }
-
-    int ring_idx = get_block_ring_idx(block_idx);
-
-    //printf("got 0x%lx %d, ring_idx=%d\n", block_idx, fragment_idx, ring_idx);
-
-    //ignore already processed blocks
-    if (ring_idx < 0) return;
-
-    rx_ring_item_t *p = &rx_ring[ring_idx];
-
-    //ignore already processed fragments
-    if (p->fragment_map[fragment_idx]) return;
-
-    memset(p->fragments[fragment_idx], '\0', MAX_FEC_PAYLOAD);
-    memcpy(p->fragments[fragment_idx], decrypted->data(), decrypted->size());
-
-    p->fragment_map[fragment_idx] = 1;
-    p->has_fragments += 1;
-
-    if (ring_idx == rx_ring_front) {
-        // check if any packets without gaps
-        while (p->send_fragment_idx < fec_k && p->fragment_map[p->send_fragment_idx]) {
-            send_packet(ring_idx, p->send_fragment_idx);
-            p->send_fragment_idx += 1;
-        }
-    }
-
-    // or we can reconstruct gaps via FEC
-    if (p->send_fragment_idx < fec_k && p->has_fragments == fec_k) {
-        //printf("do fec\n");
-        apply_fec(ring_idx);
-        while (p->send_fragment_idx < fec_k) {
-            count_p_fec_recovered += 1;
-            send_packet(ring_idx, p->send_fragment_idx);
-            p->send_fragment_idx += 1;
-        }
-    }
-
-    if (p->send_fragment_idx == fec_k) {
-        int nrm = modN(ring_idx - rx_ring_front, FECDecoder::RX_RING_SIZE);
-        for (int i = 0; i <= nrm; i++) {
-            rx_ring_front = modN(rx_ring_front + 1, FECDecoder::RX_RING_SIZE);
-            rx_ring_alloc -= 1;
-        }
-        assert(rx_ring_alloc >= 0);
-    }
+    FECDecoder::processPacket(*block_hdr, *decrypted);
 }
 
 void Aggregator::send_packet(int ring_idx, int fragment_idx) {
