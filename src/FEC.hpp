@@ -30,6 +30,9 @@
 // b) Handles packets of size up to N instead of packets of exact size N
 class FECEncoder {
 public:
+    typedef std::function<void(const XBlock &xBlock)> SEND_BLOCK_FRAGMENT;
+    SEND_BLOCK_FRAGMENT callback;
+
     explicit FECEncoder(int k, int n) : fec_k(k), fec_n(n) {
         fec_p = fec_new(fec_k, fec_n);
         block = new uint8_t *[fec_n];
@@ -56,9 +59,6 @@ private:
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size = 0;
 public:
-    typedef std::function<void(const XBlock &xBlock)> SEND_BLOCK_FRAGMENT;
-    SEND_BLOCK_FRAGMENT callback;
-
     void encodePacket(const uint8_t *buf, size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
@@ -161,7 +161,8 @@ private:
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
     uint32_t seq = 0;
-    rx_ring_item_t rx_ring[RX_RING_SIZE];
+    //rx_ring_item_t rx_ring[RX_RING_SIZE];
+    std::array<rx_ring_item_t,RX_RING_SIZE> rx_ring;
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
     uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
@@ -299,7 +300,7 @@ protected:
         if (ring_idx == rx_ring_front) {
             // check if any packets without gaps
             while (p->send_fragment_idx < fec_k && p->fragment_map[p->send_fragment_idx]) {
-                send_packet2(ring_idx, p->send_fragment_idx);
+                send_packet(ring_idx, p->send_fragment_idx);
                 p->send_fragment_idx += 1;
             }
         }
@@ -310,7 +311,7 @@ protected:
             apply_fec(ring_idx);
             while (p->send_fragment_idx < fec_k) {
                 count_p_fec_recovered += 1;
-                send_packet2(ring_idx, p->send_fragment_idx);
+                send_packet(ring_idx, p->send_fragment_idx);
                 p->send_fragment_idx += 1;
             }
         }
@@ -325,7 +326,7 @@ protected:
         }
     }
 
-    void send_packet2(int ring_idx, int fragment_idx){
+    void send_packet(int ring_idx, int fragment_idx){
         wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
         uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
         uint16_t packet_size = be16toh(packet_hdr->packet_size);
