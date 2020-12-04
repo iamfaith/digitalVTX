@@ -28,6 +28,7 @@
 // The encoding is slightly different from traditional FEC. It
 // a) makes sure to send out data packets immediately
 // b) Handles packets of size up to N instead of packets of exact size N
+// Due to b) the packet size has to be written into the first two bytes of each data packet. See https://github.com/svpcom/wifibroadcast/issues/67
 class FECEncoder {
 public:
     typedef std::function<void(const XBlock &xBlock)> SEND_BLOCK_FRAGMENT;
@@ -60,12 +61,6 @@ private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
-    // changed by Constantin:
-    // instead of writing the packet size as duplikate in the payload,
-    // keep track of it inside a local member variable
-    // XXX that is impossible ! https://github.com/svpcom/wifibroadcast/issues/67
-    //std::vector<uint8_t> actualDataSizeOfBlock;
-    //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size = 0;
 public:
     void encodePacket(const uint8_t *buf, size_t size) {
@@ -136,11 +131,6 @@ typedef struct {
     uint8_t *fragment_map;
     uint8_t send_fragment_idx;
     uint8_t has_fragments;
-    // changed by Constantin:
-    // instead of writing the packet size as duplikate in the payload,
-    // keep track of it inside a local member variable
-    // XXX that is impossible ! https://github.com/svpcom/wifibroadcast/issues/67
-    //std::vector<uint8_t> actualSizeOfFragments;
 } rx_ring_item_t;
 
 static inline int modN(int x, int base) {
