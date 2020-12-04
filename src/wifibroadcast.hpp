@@ -46,10 +46,7 @@ extern "C"{
 static constexpr const auto MAX_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
-//extern std::string string_format(const char *format, ...);
-
 /* this is the template radiotap header we send packets out with */
-
 
 #define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
 #define IEEE80211_RADIOTAP_MCS_HAVE_MCS   0x02

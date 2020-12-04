@@ -25,6 +25,8 @@
 #include <chrono>
 #include <stdarg.h>
 
+// For all the stuff that was once in wifibroadcast.hpp
+
 namespace StringFormat{
     static std::string convert(const char *format, ...){
         va_list args;
