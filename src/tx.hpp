@@ -31,6 +31,7 @@
 
 #include "Encryption.hpp"
 #include "FEC.hpp"
+#include "SocketHelper.hpp"
 
 class Transmitter : public FECEncoder {
 public:
@@ -69,10 +70,10 @@ public:
 
     virtual ~PcapTransmitter();
 
-    virtual void select_output(int idx) { current_output = idx; }
+    void select_output(int idx) override { current_output = idx; }
 
 private:
-    virtual void inject_packet(const uint8_t *buf, size_t size);
+    void inject_packet(const uint8_t *buf, size_t size) override;
 
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
@@ -91,33 +92,16 @@ class UdpTransmitter : public Transmitter {
 public:
     UdpTransmitter(int k, int m, const std::string &keypair, const std::string &client_addr, int client_port)
             : Transmitter({}, k, m, keypair) {
-        sockfd = open_udp_socket(client_addr, client_port);
+        sockfd = SocketHelper::open_udp_socket(client_addr, client_port);
     }
 
     virtual ~UdpTransmitter() {
         close(sockfd);
     }
 
-    virtual void select_output(int /*idx*/) {}
+    void select_output(int /*idx*/) override {}
 
 private:
-    virtual void inject_packet(const uint8_t *buf, size_t size);
-
-    static int open_udp_socket(const std::string &client_addr, int client_port) {
-        struct sockaddr_in saddr;
-        int fd = socket(AF_INET, SOCK_DGRAM, 0);
-        if (fd < 0) throw std::runtime_error(string_format("Error opening socket: %s", strerror(errno)));
-
-        bzero((char *) &saddr, sizeof(saddr));
-        saddr.sin_family = AF_INET;
-        saddr.sin_addr.s_addr = inet_addr(client_addr.c_str());
-        saddr.sin_port = htons((unsigned short) client_port);
-
-        if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
-            throw std::runtime_error(string_format("Connect error: %s", strerror(errno)));
-        }
-        return fd;
-    }
-
+    void inject_packet(const uint8_t *buf, size_t size) override;
     int sockfd;
 };

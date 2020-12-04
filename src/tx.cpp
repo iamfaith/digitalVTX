@@ -302,7 +302,7 @@ int main(int argc, char *const *argv) {
         std::vector<int> tx_fd;
         std::vector<std::string> wlans;
         for (int i = 0; optind + i < argc; i++) {
-            int fd = open_udp_socket_for_rx(udp_port + i);
+            int fd = SocketHelper::open_udp_socket_for_rx(udp_port + i);
             fprintf(stderr, "Listen on %d for %s\n", udp_port + i, argv[optind + i]);
             tx_fd.push_back(fd);
             wlans.emplace_back(argv[optind + i]);

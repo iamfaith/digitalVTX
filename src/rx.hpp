@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include "Encryption.hpp"
 #include "FEC.hpp"
+#include "SocketHelper.hpp"
 
 typedef enum {
     LOCAL,
@@ -44,23 +45,6 @@ public:
                    sockaddr_in *sockaddr) = 0;
 
     virtual void dump_stats(FILE *fp) = 0;
-
-protected:
-    static int open_udp_socket_for_tx(const std::string &client_addr, int client_port) {
-        struct sockaddr_in saddr;
-        int fd = socket(AF_INET, SOCK_DGRAM, 0);
-        if (fd < 0) throw std::runtime_error(string_format("Error opening socket: %s", strerror(errno)));
-
-        bzero((char *) &saddr, sizeof(saddr));
-        saddr.sin_family = AF_INET;
-        saddr.sin_addr.s_addr = inet_addr(client_addr.c_str());
-        saddr.sin_port = htons((unsigned short) client_port);
-
-        if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
-            throw std::runtime_error(string_format("Connect error: %s", strerror(errno)));
-        }
-        return fd;
-    }
 };
 
 

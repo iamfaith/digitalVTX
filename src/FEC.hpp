@@ -53,9 +53,9 @@ public:
         fec_free(fec_p);
     }
 private:
-    fec_t *fec_p;
     const int fec_k;  // RS number of primary fragments in block default 8
     const int fec_n;  // RS total number of fragments in block default 12
+    fec_t *fec_p;
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;

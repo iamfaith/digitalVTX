@@ -204,7 +204,7 @@ FECDecoder(k,n),
         mDecryptor(keypair),
         /*fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),*/
         count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0){
-    sockfd = open_udp_socket_for_tx(client_addr, client_port);
+    sockfd = SocketHelper::open_udp_socket_for_tx(client_addr, client_port);
     callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
 }
 
@@ -215,7 +215,7 @@ Aggregator::~Aggregator() {
 
 
 Forwarder::Forwarder(const std::string &client_addr, int client_port) {
-    sockfd = open_udp_socket_for_tx(client_addr, client_port);
+    sockfd = SocketHelper::open_udp_socket_for_tx(client_addr, client_port);
 }
 
 
@@ -404,7 +404,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
 
     uint64_t log_send_ts = 0;
     struct pollfd fds[1];
-    int fd = open_udp_socket_for_rx(srv_port);
+    int fd = SocketHelper::open_udp_socket_for_rx(srv_port);
 
     if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
         throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
