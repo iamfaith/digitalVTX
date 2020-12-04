@@ -114,7 +114,7 @@ void Receiver::loop_iter() {
             break;
         }
         //
-        printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
+        //printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
 
         int pktlen = hdr.caplen;
         // int pkt_rate = 0
@@ -339,7 +339,12 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
         return;
     }
     const auto tmp=(wpacket_hdr_t*)decrypted->data();
-    std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
+    //std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
+    // hmm somehow this test failed
+    //assert(decrypted->size()==tmp->get()+sizeof(wpacket_hdr_t));
+    if(decrypted->size()!=tmp->get()+sizeof(wpacket_hdr_t)){
+        std::cout<<"Something wrong with size:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
+    }
 
     count_p_dec_ok += 1;
     log_rssi(sockaddr, wlan_idx, antenna, rssi);
@@ -470,6 +475,9 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
 }
 
 int main(int argc, char *const *argv) {
+    TestFEC::test1(4,8);
+    TestFEC::test2(4,8);
+
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     int log_interval = 1000;

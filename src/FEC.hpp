@@ -39,6 +39,7 @@ public:
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
+        actualDataSizeOfBlock.resize(fec_n);
     }
 
     ~FECEncoder() {
@@ -48,7 +49,11 @@ public:
         delete block;
         fec_free(fec_p);
     }
-
+private:
+    /*struct DataBlock{
+        std::vector<uint8_t> data;
+        std::size_t actualDataSize;
+    };*/
 private:
     fec_t *fec_p;
     const int fec_k;  // RS number of primary fragments in block default 8
@@ -56,6 +61,7 @@ private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
+    std::vector<uint8_t> actualDataSizeOfBlock;
     //std::vector<std::vector<uint8_t>> block;
     size_t max_packet_size = 0;
 public:
@@ -63,6 +69,7 @@ public:
         assert(size <= MAX_PAYLOAD_SIZE);
         wpacket_hdr_t packet_hdr;
         packet_hdr.set(size);
+        //actualDataSizeOfBlock[fragment_idx]=size;
         //packet_hdr.packet_size = htobe16(size);
         memset(block[fragment_idx], '\0', MAX_FEC_PAYLOAD);
         memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
@@ -307,7 +314,7 @@ public:
             return;
         }
 
-        int ring_idx = get_block_ring_idx(block_idx);
+        const int ring_idx = get_block_ring_idx(block_idx);
 
         //printf("got 0x%lx %d, ring_idx=%d\n", block_idx, fragment_idx, ring_idx);
 
@@ -358,5 +365,67 @@ protected:
     uint32_t count_p_lost=0;
     uint32_t count_p_bad=0;
 };
+
+namespace TestFEC{
+    static void fillBufferWithRandomData(std::vector<uint8_t>& data){
+        const std::size_t size=data.size();
+        for(std::size_t i=0;i<size;i++){
+            data[i] = rand() % 255;
+        }
+    }
+    // Create a buffer filled with random data of size sizeByes
+    std::vector<uint8_t> createRandomDataBuffer(const ssize_t sizeBytes){
+        std::vector<uint8_t> buf(sizeBytes);
+        fillBufferWithRandomData(buf);
+        return buf;
+    }
+    bool compareVectors(const std::vector<uint8_t>& sb,const std::vector<uint8_t>& rb){
+        if(sb.size()!=rb.size()){
+            return false;
+        }
+        const int result=memcmp (sb.data(),rb.data(),sb.size());
+        return result==0;
+    }
+
+    static void test(const int k,const int n,const std::vector<std::vector<uint8_t>>& testIn){
+        std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
+        static FECEncoder encoder(k,n);
+        static FECDecoder decoder(k,n);
+        static std::vector<std::vector<uint8_t>> testOut;
+
+        const auto cb1=[](const XBlock &xBlock) {
+            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
+        };
+        const auto cb2=[](const uint8_t * payload,std::size_t payloadSize){
+            testOut.emplace_back(payload,payload+payloadSize);
+        };
+        encoder.callback=cb1;
+        decoder.callback=cb2;
+
+        for(int i=0;i<testIn.size();i++){
+            const auto& in=testIn[i];
+            encoder.encodePacket(in.data(),in.size());
+        }
+        for(int i=0;i<testIn.size();i++){
+            const auto& in=testIn[i];
+            const auto& out=testOut[i];
+            assert(compareVectors(in,out)==true);
+        }
+    }
+
+    static void test1(const int k,const int n){
+        std::vector<std::vector<uint8_t>> testIn;
+        testIn.push_back(createRandomDataBuffer(20));
+        test(k,n,testIn);
+    }
+    static void test2(const int k,const int n){
+        std::vector<std::vector<uint8_t>> testIn;
+        for(int i=0;i<10;i++){
+            testIn.push_back(createRandomDataBuffer(20));
+        }
+        test(k,n,testIn);
+    }
+
+}
 
 #endif //WIFIBROADCAST_FEC_HPP
