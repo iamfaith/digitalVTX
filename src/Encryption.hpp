@@ -28,15 +28,15 @@ public:
 #else
         FILE *fp;
         if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
-            throw std::runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
         }
         if (fread(tx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1) {
             fclose(fp);
-            throw std::runtime_error(string_format("Unable to read tx secret key: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Unable to read tx secret key: %s", strerror(errno)));
         }
         if (fread(rx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1) {
             fclose(fp);
-            throw std::runtime_error(string_format("Unable to read rx public key: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Unable to read rx public key: %s", strerror(errno)));
         }
         fclose(fp);
 #endif
@@ -97,15 +97,15 @@ public:
 #else
         FILE *fp;
         if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
-            throw std::runtime_error(string_format("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
         }
         if (fread(rx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1) {
             fclose(fp);
-            throw std::runtime_error(string_format("Unable to read rx secret key: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Unable to read rx secret key: %s", strerror(errno)));
         }
         if (fread(tx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1) {
             fclose(fp);
-            throw std::runtime_error(string_format("Unable to read tx public key: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Unable to read tx public key: %s", strerror(errno)));
         }
         fclose(fp);
 #endif

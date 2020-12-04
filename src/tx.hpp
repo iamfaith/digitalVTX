@@ -31,7 +31,7 @@
 
 #include "Encryption.hpp"
 #include "FEC.hpp"
-#include "SocketHelper.hpp"
+#include "Helper.hpp"
 
 class Transmitter : public FECEncoder {
 public:

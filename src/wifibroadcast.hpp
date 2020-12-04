@@ -46,7 +46,7 @@ extern "C"{
 static constexpr const auto MAX_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
-extern std::string string_format(const char *format, ...);
+//extern std::string string_format(const char *format, ...);
 
 /* this is the template radiotap header we send packets out with */
 
@@ -161,8 +161,6 @@ public:
     std::size_t payloadSize;
 }__attribute__ ((packed));
 
-
-uint64_t get_time_ms();
 
 // Wrapper around the radiotap header (declared as raw array initially)
 class RadiotapHeader{

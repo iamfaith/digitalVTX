@@ -50,15 +50,15 @@ namespace Helper{
         char errbuf[PCAP_ERRBUF_SIZE];
         ppcap = pcap_create(wlan.c_str(), errbuf);
         if (ppcap == NULL) {
-            throw std::runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
+            throw std::runtime_error(StringFormat::convert("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
         }
         if (pcap_set_snaplen(ppcap, 4096) != 0) throw std::runtime_error("set_snaplen failed");
         if (pcap_set_promisc(ppcap, 1) != 0) throw std::runtime_error("set_promisc failed");
         //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
         if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        if (pcap_activate(ppcap) != 0) throw std::runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(ppcap)));
-        if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(string_format("set_nonblock failed: %s", errbuf));
+        if (pcap_activate(ppcap) != 0) throw std::runtime_error(StringFormat::convert("pcap_activate failed: %s", pcap_geterr(ppcap)));
+        if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(StringFormat::convert("set_nonblock failed: %s", errbuf));
 
         int link_encap = pcap_datalink(ppcap);
         struct bpf_program bpfprogram{};
@@ -66,22 +66,22 @@ namespace Helper{
         switch (link_encap) {
             case DLT_PRISM_HEADER:
                 fprintf(stderr, "%s has DLT_PRISM_HEADER Encap\n", wlan.c_str());
-                program = string_format("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
+                program = StringFormat::convert("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
                 break;
 
             case DLT_IEEE802_11_RADIO:
                 fprintf(stderr, "%s has DLT_IEEE802_11_RADIO Encap\n", wlan.c_str());
-                program = string_format("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
+                program = StringFormat::convert("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
                 break;
 
             default:
-                throw std::runtime_error(string_format("unknown encapsulation on %s", wlan.c_str()));
+                throw std::runtime_error(StringFormat::convert("unknown encapsulation on %s", wlan.c_str()));
         }
         if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
-            throw std::runtime_error(string_format("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
+            throw std::runtime_error(StringFormat::convert("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
         }
         if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
-            throw std::runtime_error(string_format("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
+            throw std::runtime_error(StringFormat::convert("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
         }
         pcap_freecode(&bpfprogram);
         return ppcap;
@@ -251,7 +251,7 @@ Forwarder::~Forwarder() {
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
-    const uint64_t ts = get_time_ms();
+    const uint64_t ts = TimeHelper::get_time_ms();
 
     for (auto & it : antenna_stat) {
         fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", ts, it.first, it.second.count_all,
@@ -368,19 +368,19 @@ radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_
     }
 
     for (;;) {
-        uint64_t cur_ts = get_time_ms();
+        uint64_t cur_ts = TimeHelper::get_time_ms();
         int rc = poll(fds, nfds, log_send_ts > cur_ts ? log_send_ts - cur_ts : 0);
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
-            throw std::runtime_error(string_format("Poll error: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("Poll error: %s", strerror(errno)));
         }
 
-        cur_ts = get_time_ms();
+        cur_ts = TimeHelper::get_time_ms();
 
         if (cur_ts >= log_send_ts) {
             agg->dump_stats(stdout);
-            log_send_ts = get_time_ms() + log_interval;
+            log_send_ts = TimeHelper::get_time_ms() + log_interval;
         }
 
         if (rc == 0) continue; // timeout expired
@@ -407,7 +407,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
     int fd = SocketHelper::open_udp_socket_for_rx(srv_port);
 
     if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-        throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
+        throw std::runtime_error(StringFormat::convert("Unable to set socket into nonblocked mode: %s", strerror(errno)));
     }
 
     memset(fds, '\0', sizeof(fds));
@@ -415,26 +415,26 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
     fds[0].events = POLLIN;
 
     for (;;) {
-        uint64_t cur_ts = get_time_ms();
+        uint64_t cur_ts = TimeHelper::get_time_ms();
         int rc = poll(fds, 1, log_send_ts > cur_ts ? log_send_ts - cur_ts : 0);
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
-            throw std::runtime_error(string_format("poll error: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("poll error: %s", strerror(errno)));
         }
 
-        cur_ts = get_time_ms();
+        cur_ts = TimeHelper::get_time_ms();
 
         if (cur_ts >= log_send_ts) {
             agg.dump_stats(stdout);
-            log_send_ts = get_time_ms() + log_interval;
+            log_send_ts = TimeHelper::get_time_ms() + log_interval;
         }
 
         if (rc == 0) continue; // timeout expired
 
         // some events detected
         if (fds[0].revents & (POLLERR | POLLNVAL)) {
-            throw std::runtime_error(string_format("socket error: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("socket error: %s", strerror(errno)));
         }
 
         if (fds[0].revents & POLLIN) {
@@ -467,7 +467,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
                 agg.process_packet(buf, rsize - sizeof(wrxfwd_t), fwd_hdr.wlan_idx, fwd_hdr.antenna, fwd_hdr.rssi,
                                    &sockaddr);
             }
-            if (errno != EWOULDBLOCK) throw std::runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
+            if (errno != EWOULDBLOCK) throw std::runtime_error(StringFormat::convert("Error receiving packet: %s", strerror(errno)));
         }
     }
 }
@@ -553,7 +553,7 @@ int main(int argc, char *const *argv) {
 
             network_loop(srv_port, agg, log_interval);
         } else {
-            throw std::runtime_error(string_format("Unknown rx_mode=%d", rx_mode));
+            throw std::runtime_error(StringFormat::convert("Unknown rx_mode=%d", rx_mode));
         }
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());

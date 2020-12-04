@@ -63,7 +63,7 @@ namespace Helper {
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
         if (pcap_inject(pcap, packetData.data(), packetData.size()) != (int)packetData.size()) {
-            throw std::runtime_error(string_format("Unable to inject packet"));
+            throw std::runtime_error(StringFormat::convert("Unable to inject packet"));
         }
     }
 
@@ -72,14 +72,14 @@ namespace Helper {
         char errbuf[PCAP_ERRBUF_SIZE];
         pcap_t *p = pcap_create(wlan.c_str(), errbuf);
         if (p == nullptr) {
-            throw std::runtime_error(string_format("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
+            throw std::runtime_error(StringFormat::convert("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
         }
         if (pcap_set_snaplen(p, 4096) != 0) throw std::runtime_error("set_snaplen failed");
         if (pcap_set_promisc(p, 1) != 0) throw std::runtime_error("set_promisc failed");
         //if (pcap_set_rfmon(p, 1) !=0) throw runtime_error("set_rfmon failed");
         if (pcap_set_timeout(p, -1) != 0) throw std::runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(p, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        if (pcap_activate(p) != 0) throw std::runtime_error(string_format("pcap_activate failed: %s", pcap_geterr(p)));
+        if (pcap_activate(p) != 0) throw std::runtime_error(StringFormat::convert("pcap_activate failed: %s", pcap_geterr(p)));
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
     }
@@ -91,7 +91,7 @@ namespace Helper {
         for(std::size_t i=0;i<tx_fd.size();i++){
             int fd=tx_fd[i];
             if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-                throw std::runtime_error(string_format("Unable to set socket into nonblocked mode: %s", strerror(errno)));
+                throw std::runtime_error(StringFormat::convert("Unable to set socket into nonblocked mode: %s", strerror(errno)));
             }
             ret[i].fd = fd;
             ret[i].events = POLLIN;
@@ -197,7 +197,7 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
-            throw std::runtime_error(string_format("poll error: %s", strerror(errno)));
+            throw std::runtime_error(StringFormat::convert("poll error: %s", strerror(errno)));
         }
 
         if (rc == 0) continue;  // timeout expired
@@ -205,7 +205,7 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
         for (std::size_t i = 0; i < fds.size(); i++) {
             // some events detected
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
-                throw std::runtime_error(string_format("socket error: %s", strerror(errno)));
+                throw std::runtime_error(StringFormat::convert("socket error: %s", strerror(errno)));
             }
 
             if (fds[i].revents & POLLIN) {
@@ -224,7 +224,7 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
                     t->send_packet(buf, rsize);
                 }
                 if (errno != EWOULDBLOCK)
-                    throw std::runtime_error(string_format("Error receiving packet: %s", strerror(errno)));
+                    throw std::runtime_error(StringFormat::convert("Error receiving packet: %s", strerror(errno)));
             }
         }
     }
