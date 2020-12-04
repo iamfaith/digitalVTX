@@ -267,9 +267,6 @@ private:
     // this one calls the callback with reconstructed data and payload in order
     void send_packet(int ring_idx, int fragment_idx){
         const wpacket_hdr_t *packet_hdr = (wpacket_hdr_t *) (rx_ring[ring_idx].fragments[fragment_idx]);
-        // XXX
-        //const auto tmp=rx_ring[ring_idx].actualSizeOfFragments[fragment_idx];
-        //assert(tmp==packet_hdr->get());
 
         const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(wpacket_hdr_t);
         const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);

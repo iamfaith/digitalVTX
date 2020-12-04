@@ -163,12 +163,7 @@ typedef struct {
     uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
 }  __attribute__ ((packed)) wblock_hdr_t;
 
-/*class wblock_hdr_t2{
-private:
-    uint8_t packet_type;
-    uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
-public:
-}  __attribute__ ((packed));*/
+
 
 
 // Plain data packet after FEC decode
