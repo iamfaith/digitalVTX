@@ -12,15 +12,14 @@
 #include <string>
 #include <vector>
 #include <string.h>
-#include "fec.h"
 #include "wifibroadcast.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <functional>
 
-//extern "C"{
-//#include "fec.h"
-//}
+extern "C"{
+#include "fec.h"
+}
 
 /**
  * All this code was originally written in svpcom/wifibroadcast

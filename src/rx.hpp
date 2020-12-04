@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <string>
 #include <string.h>
-#include "fec.h"
 #include "wifibroadcast.hpp"
 #include <stdexcept>
 #include "Encryption.hpp"
