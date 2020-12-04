@@ -8,6 +8,7 @@
 #include <vector>
 #include <optional>
 #include <iostream>
+#include "Helper.hpp"
 
 // For developing or when encryption is not important, you can use this default seed to
 // create deterministic rx and tx keys
