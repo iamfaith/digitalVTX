@@ -42,6 +42,7 @@
 extern "C"{
 #include "ExternalSources/fec.h"
 }
+
 namespace Helper{
     // copy paste from svpcom
     // I think this one opens the rx interface with pcap and then sets a filter such that only packets pass through for the selected radio port
@@ -222,41 +223,6 @@ FECDecoder(k,n),
 
 
 Aggregator::~Aggregator() {
-    close(sockfd);
-}
-
-
-Forwarder::Forwarder(const std::string &client_addr, int client_port) {
-    sockfd = SocketHelper::open_udp_socket_for_tx(client_addr, client_port);
-}
-
-
-void
-Forwarder::process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                          sockaddr_in *sockaddr) {
-    wrxfwd_t fwd_hdr = {.wlan_idx = wlan_idx};
-
-    memcpy(fwd_hdr.antenna, antenna, RX_ANT_MAX * sizeof(uint8_t));
-    memcpy(fwd_hdr.rssi, rssi, RX_ANT_MAX * sizeof(int8_t));
-
-    struct iovec iov[2] = {{.iov_base = (void *) &fwd_hdr,
-                                   .iov_len = sizeof(fwd_hdr)},
-                           {.iov_base = (void *) buf,
-                                   .iov_len = size}};
-
-    struct msghdr msghdr = {.msg_name = NULL,
-            .msg_namelen = 0,
-            .msg_iov = iov,
-            .msg_iovlen = 2,
-            .msg_control = NULL,
-            .msg_controllen = 0,
-            .msg_flags = 0};
-
-    sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
-}
-
-
-Forwarder::~Forwarder() {
     close(sockfd);
 }
 
@@ -545,7 +511,7 @@ int main(int argc, char *const *argv) {
             if (rx_mode == LOCAL) {
                 agg = std::shared_ptr<Aggregator>(new Aggregator(client_addr, client_port, k, n, keypair));
             } else {
-                agg = std::shared_ptr<Forwarder>(new Forwarder(client_addr, client_port));
+                //agg = std::shared_ptr<Forwarder>(new Forwarder(client_addr, client_port));
             }
 
             radio_loop(argc, argv, optind, radio_port, agg, log_interval);

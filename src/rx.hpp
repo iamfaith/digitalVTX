@@ -47,23 +47,6 @@ public:
 };
 
 
-class Forwarder : public BaseAggregator {
-public:
-    Forwarder(const std::string &client_addr, int client_port);
-
-    ~Forwarder();
-
-    void
-    process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                   sockaddr_in *sockaddr) override;
-
-    void dump_stats(FILE *) override {}
-
-private:
-    int sockfd;
-};
-
-
 class antennaItem {
 public:
     antennaItem()=default;
