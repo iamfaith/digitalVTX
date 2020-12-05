@@ -61,8 +61,5 @@ public:
 }__attribute__ ((packed));
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
 
-namespace IEEE80211Helper{
-    //static constexpr const auto RX_ANT_MAX=4;
-}
 
 #endif

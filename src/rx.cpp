@@ -86,6 +86,19 @@ namespace Helper{
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
+    static void writeAntennaStats(antenna_stat_t& antenna_stat,const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi){
+        for (int i = 0; i < RX_ANT_MAX && ant[i] != 0xff; i++) {
+            // key: addr + port + wlan_idx + ant
+            uint64_t key = 0;
+            if (sockaddr != NULL && sockaddr->sin_family == AF_INET) {
+                key = ((uint64_t) ntohl(sockaddr->sin_addr.s_addr) << 32 | (uint64_t) ntohs(sockaddr->sin_port) << 16);
+            }
+
+            key |= ((uint64_t) wlan_idx << 8 | (uint64_t) ant[i]);
+
+            antenna_stat[key].addRSSI(rssi[i]);
+        }
+    }
 }
 
 Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port, BaseAggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
@@ -270,22 +283,6 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_bad = 0;
 }
 
-
-void Aggregator::log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi) {
-    for (int i = 0; i < RX_ANT_MAX && ant[i] != 0xff; i++) {
-        // key: addr + port + wlan_idx + ant
-        uint64_t key = 0;
-        if (sockaddr != NULL && sockaddr->sin_family == AF_INET) {
-            key = ((uint64_t) ntohl(sockaddr->sin_addr.s_addr) << 32 | (uint64_t) ntohs(sockaddr->sin_port) << 16);
-        }
-
-        key |= ((uint64_t) wlan_idx << 8 | (uint64_t) ant[i]);
-
-        antenna_stat[key].log_rssi(rssi[i]);
-    }
-}
-
-
 void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wlan_idx, const uint8_t *antenna,
                                 const int8_t *rssi, sockaddr_in *sockaddr) {
     count_p_all += 1;
@@ -346,7 +343,8 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
     }*/
 
     count_p_dec_ok += 1;
-    log_rssi(sockaddr, wlan_idx, antenna, rssi);
+    //log_rssi(sockaddr, wlan_idx, antenna, rssi);
+    Helper::writeAntennaStats(antenna_stat,sockaddr,wlan_idx,antenna,rssi);
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 

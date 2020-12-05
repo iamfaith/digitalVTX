@@ -107,4 +107,8 @@ public:
 }__attribute__ ((packed));
 static_assert(sizeof(RadiotapHeader) == RadiotapHeader::SIZE_BYTES, "ALWAYS TRUE");
 
+namespace RadiotapHelper{
+    //static constexpr const auto RX_ANT_MAX=4;
+}
+
 #endif //__WIFIBROADCAST_RADIOTAP_HEADER_HPP__

@@ -53,11 +53,11 @@ public:
 
     ~Forwarder();
 
-    virtual void
+    void
     process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                   sockaddr_in *sockaddr);
+                   sockaddr_in *sockaddr) override;
 
-    virtual void dump_stats(FILE *) {}
+    void dump_stats(FILE *) override {}
 
 private:
     int sockfd;
@@ -68,7 +68,7 @@ class antennaItem {
 public:
     antennaItem()=default;
 
-    void log_rssi(int8_t rssi) {
+    void addRSSI(int8_t rssi) {
         if (count_all == 0) {
             rssi_min = rssi;
             rssi_max = rssi;
@@ -104,8 +104,6 @@ private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
     }
-
-    void log_rssi(const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi);
 
     int sockfd;
     Decryptor mDecryptor;
