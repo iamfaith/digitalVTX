@@ -239,6 +239,7 @@ int main(int argc, char *const *argv) {
     }
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
+    const auto wlan=argv[optind];
     try {
         std::vector<std::string> wlans;
         for (int i = 0; optind + i < argc; i++) {
