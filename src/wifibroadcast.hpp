@@ -49,9 +49,6 @@ static constexpr const auto MAX_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
 
-// Default is MCS#1 -- QPSK 1/2 40MHz SGI -- 30 Mbit/s
-// MCS_FLAGS = (IEEE80211_RADIOTAP_MCS_BW_40 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
-
 
 /*
  Wifibroadcast protocol:
