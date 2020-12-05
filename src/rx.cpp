@@ -33,6 +33,7 @@
 #include <arpa/inet.h>
 #include <limits.h>
 
+#include <memory>
 #include <string>
 #include <memory>
 #include <chrono>
@@ -363,81 +364,6 @@ radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_
     }
 }
 
-void network_loop(int srv_port, Aggregator &agg,const std::chrono::milliseconds log_interval) {
-    wrxfwd_t fwd_hdr;
-    struct sockaddr_in sockaddr;
-    uint8_t buf[MAX_FORWARDER_PACKET_SIZE];
-
-    std::chrono::steady_clock::time_point log_send_ts{};
-    struct pollfd fds[1];
-    int fd = SocketHelper::open_udp_socket_for_rx(srv_port);
-
-    if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) < 0) {
-        throw std::runtime_error(StringFormat::convert("Unable to set socket into nonblocked mode: %s", strerror(errno)));
-    }
-
-    memset(fds, '\0', sizeof(fds));
-    fds[0].fd = fd;
-    fds[0].events = POLLIN;
-
-    for (;;) {
-        auto cur_ts=std::chrono::steady_clock::now();
-        const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
-        int rc = poll(fds, 1, timeoutMS);
-
-        if (rc < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
-            throw std::runtime_error(StringFormat::convert("poll error: %s", strerror(errno)));
-        }
-
-        cur_ts = std::chrono::steady_clock::now();
-
-        if (cur_ts >= log_send_ts) {
-            agg.dump_stats(stdout);
-            log_send_ts = std::chrono::steady_clock::now() + log_interval;
-        }
-
-        if (rc == 0) continue; // timeout expired
-
-        // some events detected
-        if (fds[0].revents & (POLLERR | POLLNVAL)) {
-            throw std::runtime_error(StringFormat::convert("socket error: %s", strerror(errno)));
-        }
-
-        if (fds[0].revents & POLLIN) {
-            for (;;) // process pending rx
-            {
-                memset((void *) &sockaddr, '\0', sizeof(sockaddr));
-
-                struct iovec iov[2] = {{.iov_base = (void *) &fwd_hdr,
-                                               .iov_len = sizeof(fwd_hdr)},
-                                       {.iov_base = (void *) buf,
-                                               .iov_len = sizeof(buf)}};
-
-                struct msghdr msghdr = {.msg_name = (void *) &sockaddr,
-                        .msg_namelen = sizeof(sockaddr),
-                        .msg_iov = iov,
-                        .msg_iovlen = 2,
-                        .msg_control = NULL,
-                        .msg_controllen = 0,
-                        .msg_flags = 0};
-
-                ssize_t rsize = recvmsg(fd, &msghdr, 0);
-                if (rsize < 0) {
-                    break;
-                }
-
-                if (rsize < (ssize_t) sizeof(wrxfwd_t)) {
-                    fprintf(stderr, "short packet (rx fwd header)\n");
-                    continue;
-                }
-                agg.process_packet(buf, rsize - sizeof(wrxfwd_t), fwd_hdr.wlan_idx, fwd_hdr.antenna, fwd_hdr.rssi,
-                                   &sockaddr);
-            }
-            if (errno != EWOULDBLOCK) throw std::runtime_error(StringFormat::convert("Error receiving packet: %s", strerror(errno)));
-        }
-    }
-}
 
 int main(int argc, char *const *argv) {
     TestFEC::test(4,8,1);
@@ -504,25 +430,10 @@ int main(int argc, char *const *argv) {
     }
 
     try {
-        if (rx_mode == LOCAL || rx_mode == FORWARDER) {
-            if (optind >= argc) goto show_usage;
+        assert(rx_mode==LOCAL);
+        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_port, k, n, keypair);
+        radio_loop(argc, argv, optind, radio_port, agg, log_interval);
 
-            std::shared_ptr<BaseAggregator> agg;
-            if (rx_mode == LOCAL) {
-                agg = std::shared_ptr<Aggregator>(new Aggregator(client_addr, client_port, k, n, keypair));
-            } else {
-                //agg = std::shared_ptr<Forwarder>(new Forwarder(client_addr, client_port));
-            }
-
-            radio_loop(argc, argv, optind, radio_port, agg, log_interval);
-        } else if (rx_mode == AGGREGATOR) {
-            if (optind > argc) goto show_usage;
-            Aggregator agg(client_addr, client_port, k, n, keypair);
-
-            network_loop(srv_port, agg, log_interval);
-        } else {
-            throw std::runtime_error(StringFormat::convert("Unknown rx_mode=%d", rx_mode));
-        }
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
