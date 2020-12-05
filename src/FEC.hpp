@@ -372,7 +372,6 @@ protected:
 };
 
 namespace TestFEC{
-    // test if everyhting is right without packet loss
     static void test(const int k,const int n,const std::vector<std::vector<uint8_t>>& testIn){
         std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
         FECEncoder encoder(k,n);
@@ -395,11 +394,23 @@ namespace TestFEC{
             assert(GenericHelper::compareVectors(in,out)==true);
         }
     }
-
+    // No packet loss
+    // Fixed packet size
     static void test(const int k,const int n,const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
             testIn.push_back(GenericHelper::createRandomDataBuffer(20));
+        }
+        test(k,n,testIn);
+    }
+
+    // No packet loss
+    // Dynamic packet size (up to N bytes)
+    static void test2(const int k,const int n,const std::size_t N_PACKETS){
+        std::vector<std::vector<uint8_t>> testIn;
+        for(std::size_t i=0;i<N_PACKETS;i++){
+            const auto size=rand() % MAX_PAYLOAD_SIZE;
+            testIn.push_back(GenericHelper::createRandomDataBuffer(size));
         }
         test(k,n,testIn);
     }

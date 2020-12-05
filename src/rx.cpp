@@ -475,6 +475,7 @@ void network_loop(int srv_port, Aggregator &agg, int log_interval) {
 int main(int argc, char *const *argv) {
     TestFEC::test(4,8,1);
     TestFEC::test(4,8,1000);
+    TestFEC::test2(4,8,100);
 
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
