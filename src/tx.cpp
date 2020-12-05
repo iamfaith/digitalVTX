@@ -115,9 +115,7 @@ void Transmitter::make_session_key() {
 PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,
                                  const std::vector<std::string> &wlans) :
         Transmitter(radiotapHeader, k, n, keypair),
-        radio_port(radio_port),
-        current_output(0),
-        ieee80211_seq(0) {
+        radio_port(radio_port){
     for (const std::string &wlan:wlans) {
         ppcap.push_back(Helper::openTxWithPcap(wlan));
     }

@@ -80,8 +80,8 @@ private:
     const uint8_t radio_port;
     // TODO what the heck is this one ?
     // I think it is supposed to be the wifi interface data is sent on
-    int current_output;
-    uint16_t ieee80211_seq;
+    int current_output=0;
+    uint16_t ieee80211_seq=0;
     std::vector<pcap_t *> ppcap;
 };
 
