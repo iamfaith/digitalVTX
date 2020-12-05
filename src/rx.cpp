@@ -251,15 +251,15 @@ Forwarder::~Forwarder() {
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
-    const uint64_t ts = TimeHelper::get_time_ms();
+    const uint64_t runTime=std::chrono::duration_cast<std::chrono::milliseconds>(INIT_TIME-std::chrono::steady_clock::now()).count();
 
     for (auto & it : antenna_stat) {
-        fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", ts, it.first, it.second.count_all,
+        fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", runTime, it.first, it.second.count_all,
                 it.second.rssi_min, it.second.rssi_sum / it.second.count_all, it.second.rssi_max);
     }
     antenna_stat.clear();
 
-    fprintf(fp, "%" PRIu64 "\tPKT\t%u:%u:%u:%u:%u:%u\n", ts, count_p_all, count_p_dec_err, count_p_dec_ok,
+    fprintf(fp, "%" PRIu64 "\tPKT\t%u:%u:%u:%u:%u:%u\n", runTime, count_p_all, count_p_dec_err, count_p_dec_ok,
             count_p_fec_recovered, count_p_lost, count_p_bad);
     fflush(fp);
 

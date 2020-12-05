@@ -95,16 +95,6 @@ namespace SocketHelper{
     }
 }
 
-namespace TimeHelper{
-    // try to avoid this one and use std::chrono
-    static uint64_t get_time_ms(){
-        struct timespec ts;
-        int rc = clock_gettime(CLOCK_MONOTONIC, &ts);
-        if (rc < 0) throw std::runtime_error(StringFormat::convert("Error getting time: %s", strerror(errno)));
-        return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
-    }
-}
-
 namespace GenericHelper{
     static void fillBufferWithRandomData(std::vector<uint8_t>& data){
         const std::size_t size=data.size();
