@@ -10,16 +10,16 @@ _CFLAGS := $(CFLAGS) -Wall -O2 -DWFB_VERSION='"$(VERSION)-$(shell /bin/bash -c '
 all_bin: wfb_rx wfb_tx wfb_keygen
 all: all_bin gs.key
 
-src/%.o: src/%.c src/*.h
+src/ExternalSources/%.o: src/ExternalSources/%.c src/ExternalSources/*.h
 	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
 
-src/%.o: src/%.cpp src/*.hpp src/*.h
+src/%.o: src/%.cpp src/*.hpp
 	$(CXX) $(_CFLAGS) -std=gnu++17 -c -o $@ $<
 
-wfb_rx: src/rx.o src/radiotap.o src/fec.o
+wfb_rx: src/rx.o src/ExternalSources/radiotap.o src/ExternalSources/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
-wfb_tx: src/tx.o src/fec.o
+wfb_tx: src/tx.o src/ExternalSources/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
 wfb_keygen: src/keygen.o

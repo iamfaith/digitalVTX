@@ -40,7 +40,7 @@
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
 extern "C"{
-#include "fec.h"
+#include "ExternalSources/fec.h"
 }
 namespace Helper{
     // copy paste from svpcom

@@ -18,7 +18,7 @@
 #include <functional>
 
 extern "C"{
-#include "fec.h"
+#include "ExternalSources/fec.h"
 }
 
 /**

@@ -36,7 +36,7 @@
 #include "tx.hpp"
 
 extern "C"{
-#include "fec.h"
+#include "ExternalSources/fec.h"
 }
 
 namespace Helper {
