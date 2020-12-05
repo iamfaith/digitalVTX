@@ -65,6 +65,7 @@ private:
     uint16_t ieee80211_seq=0;
     pcap_t* ppcap;
 public:
+    // run as long as nothing goes completely wrong
     void loop();
 };
 
