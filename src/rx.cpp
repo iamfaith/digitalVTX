@@ -251,7 +251,7 @@ Forwarder::~Forwarder() {
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
-    const uint64_t runTime=std::chrono::duration_cast<std::chrono::milliseconds>(INIT_TIME-std::chrono::steady_clock::now()).count();
+    const uint64_t runTime=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
 
     for (auto & it : antenna_stat) {
         fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", runTime, it.first, it.second.count_all,
