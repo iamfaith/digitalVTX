@@ -169,49 +169,6 @@ void PcapTransmitter::loop() {
         }
         send_packet(buf,message_length);
     }
-    /*std::vector<int> tx_fd{fd};
-    auto fds=Helper::udpPortsToPollFd(tx_fd);
-
-    std::chrono::steady_clock::time_point session_key_announce_ts{};
-
-    for (;;) {
-        int rc = poll(fds.data(), fds.size(), -1);
-
-        std::cout<<"XX"<<"\n";
-
-        if (rc < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
-            throw std::runtime_error(StringFormat::convert("poll error: %s", strerror(errno)));
-        }
-
-        if (rc == 0) continue;  // timeout expired
-
-        for (std::size_t i = 0; i < fds.size(); i++) {
-            // some events detected
-            if (fds[i].revents & (POLLERR | POLLNVAL)) {
-                throw std::runtime_error(StringFormat::convert("socket error: %s", strerror(errno)));
-            }
-
-            if (fds[i].revents & POLLIN) {
-                uint8_t buf[MAX_PAYLOAD_SIZE];
-                ssize_t rsize;
-                int fd = tx_fd[i];
-
-                selectWifiAdapter(i);
-                while ((rsize = recv(fd, buf, sizeof(buf), 0)) >= 0) {
-                    auto cur_ts=std::chrono::steady_clock::now();
-                    if (cur_ts >= session_key_announce_ts) {
-                        // Announce session key
-                        send_session_key();
-                        session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
-                    }
-                    send_packet(buf, rsize);
-                }
-                if (errno != EWOULDBLOCK)
-                    throw std::runtime_error(StringFormat::convert("Error receiving packet: %s", strerror(errno)));
-            }
-        }
-    }*/
 }
 
 
