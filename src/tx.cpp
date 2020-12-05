@@ -28,6 +28,7 @@
 #include <pcap/pcap.h>
 #include <assert.h>
 #include <chrono>
+#include <memory>
 #include <string>
 #include <memory>
 #include <vector>
@@ -136,32 +137,6 @@ PcapTransmitter::~PcapTransmitter() {
     }
 }
 
-void UdpTransmitter::inject_packet(const uint8_t *buf, size_t size) {
-    std::cout << "Hello2\n";
-    wrxfwd_t fwd_hdr = {.wlan_idx = (uint8_t) (rand() % 2)};
-
-    memset(fwd_hdr.antenna, 0xff, sizeof(fwd_hdr.antenna));
-    memset(fwd_hdr.rssi, SCHAR_MIN, sizeof(fwd_hdr.rssi));
-
-    fwd_hdr.antenna[0] = (uint8_t) (rand() % 2);
-    fwd_hdr.rssi[0] = (int8_t) (rand() & 0xff);
-
-    struct iovec iov[2] = {{.iov_base = (void *) &fwd_hdr,
-                                   .iov_len = sizeof(fwd_hdr)},
-                           {.iov_base = (void *) buf,
-                                   .iov_len = size}};
-
-    struct msghdr msghdr = {.msg_name = NULL,
-            .msg_namelen = 0,
-            .msg_iov = iov,
-            .msg_iovlen = 2,
-            .msg_control = NULL,
-            .msg_controllen = 0,
-            .msg_flags = 0};
-
-    sendmsg(sockfd, &msghdr, MSG_DONTWAIT);
-}
-
 void Transmitter::sendFecBlock(const XBlock &xBlock) {
     std::cout << "Transmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
@@ -183,7 +158,7 @@ void Transmitter::send_packet(const uint8_t *buf, size_t size) {
     }
 }
 
-void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
+void video_source(std::shared_ptr<PcapTransmitter> &t, std::vector<int> &tx_fd) {
     auto fds=Helper::udpPortsToPollFd(tx_fd);
 
     //uint64_t session_key_announce_ts = 0;
@@ -306,15 +281,8 @@ int main(int argc, char *const *argv) {
             tx_fd.push_back(fd);
             wlans.emplace_back(argv[optind + i]);
         }
-//#define DEBUG_TX
-#ifdef DEBUG_TX
-        std::cout<<"Hello\n";
-        std::shared_ptr<Transmitter>t = std::shared_ptr<UdpTransmitter>(new UdpTransmitter(k, n, keypair, "127.0.0.1", 5601 + 0));
-#else
-        std::shared_ptr<Transmitter> t = std::shared_ptr<PcapTransmitter>(
-                new PcapTransmitter(radiotapHeader, k, n, keypair, radio_port, wlans));
-#endif
-
+        std::shared_ptr<PcapTransmitter> t = std::make_shared<PcapTransmitter>(
+                radiotapHeader, k, n, keypair, radio_port, wlans);
         video_source(t, tx_fd);
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());

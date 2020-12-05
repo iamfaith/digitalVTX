@@ -85,24 +85,3 @@ private:
     std::vector<pcap_t *> ppcap;
 };
 
-
-// UdpTransmitter can be used to emulate a wifi bridge without using a wifi adapter
-// Usefully for Testing and Debugging.
-// Use the Aggregator functionality as rx when using UdpTransmitter
-class UdpTransmitter : public Transmitter {
-public:
-    UdpTransmitter(int k, int m, const std::string &keypair, const std::string &client_addr, int client_port)
-            : Transmitter({}, k, m, keypair) {
-        sockfd = SocketHelper::open_udp_socket(client_addr, client_port);
-    }
-
-    virtual ~UdpTransmitter() {
-        close(sockfd);
-    }
-
-    void select_output(int /*idx*/) override {}
-
-private:
-    void inject_packet(const uint8_t *buf, size_t size) override;
-    int sockfd;
-};
