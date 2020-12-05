@@ -43,7 +43,6 @@ public:
     virtual void
     process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
                    sockaddr_in *sockaddr) = 0;
-
     virtual void dump_stats(FILE *fp) = 0;
 };
 
@@ -95,16 +94,14 @@ public:
 
     ~Aggregator();
 
-    virtual void
+    void
     process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                   sockaddr_in *sockaddr);
+                   sockaddr_in *sockaddr) override;
 
-    virtual void dump_stats(FILE *fp);
+    void dump_stats(FILE *fp) override;
 
 private:
-    //void send_packet(int ring_idx, int fragment_idx);
-
-    void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize){
+    void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
     }
 

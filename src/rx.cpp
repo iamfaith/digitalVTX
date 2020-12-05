@@ -326,6 +326,7 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
             count_p_bad += 1;
             return;
     }
+    // FEC data or FEC correction packet
     wblock_hdr_t *block_hdr = (wblock_hdr_t *) buf;
     const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&buf[sizeof(wblock_hdr_t)],size-sizeof(wblock_hdr_t));
 
@@ -334,15 +335,16 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
         count_p_dec_err += 1;
         return;
     }
-    const auto tmp=(FECDataHeader*)decrypted->data();
+    //const auto tmp=(FECDataHeader*)decrypted->data();
     //std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
     // hmm somehow this test failed
     //assert(decrypted->size()==tmp->get()+sizeof(wpacket_hdr_t));
-    if(decrypted->size()!=tmp->get()+sizeof(FECDataHeader)){
+    // size should only match on data packets
+    /*if(decrypted->size()!=tmp->get()+sizeof(FECDataHeader)){
         std::cout<<"Something wrong with size:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
     }else{
         std::cout<<"Sizes are:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
-    }
+    }*/
 
     count_p_dec_ok += 1;
     log_rssi(sockaddr, wlan_idx, antenna, rssi);
