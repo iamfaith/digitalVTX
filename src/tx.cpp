@@ -194,6 +194,8 @@ void video_source(std::shared_ptr<Transmitter> &t, std::vector<int> &tx_fd) {
     for (;;) {
         int rc = poll(fds.data(), fds.size(), -1);
 
+        std::cout<<"XX"<<"\n";
+
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
             throw std::runtime_error(StringFormat::convert("poll error: %s", strerror(errno)));
