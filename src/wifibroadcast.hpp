@@ -41,6 +41,8 @@
 extern "C"{
 #include "ExternalSources/ieee80211_radiotap.h"
 };
+#include "Ieee80211Header.hpp"
+#include "RadiotapHeader.hpp"
 
 // The pcap packets sent out are never bigger than this size
 static constexpr const auto MAX_PACKET_SIZE=1510;
@@ -256,4 +258,4 @@ static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::S
 static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES);
 
 
-#endif
+#endif //__WIFIBROADCAST_HPP__
