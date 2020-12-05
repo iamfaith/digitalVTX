@@ -105,5 +105,27 @@ namespace TimeHelper{
     }
 }
 
+namespace GenericHelper{
+    static void fillBufferWithRandomData(std::vector<uint8_t>& data){
+        const std::size_t size=data.size();
+        for(std::size_t i=0;i<size;i++){
+            data[i] = rand() % 255;
+        }
+    }
+    // Create a buffer filled with random data of size sizeByes
+    std::vector<uint8_t> createRandomDataBuffer(const ssize_t sizeBytes){
+        std::vector<uint8_t> buf(sizeBytes);
+        fillBufferWithRandomData(buf);
+        return buf;
+    }
+    bool compareVectors(const std::vector<uint8_t>& sb,const std::vector<uint8_t>& rb){
+        if(sb.size()!=rb.size()){
+            return false;
+        }
+        const int result=memcmp (sb.data(),rb.data(),sb.size());
+        return result==0;
+    }
+}
+
 
 #endif //WIFIBROADCAST_SOCKETHELPER_H

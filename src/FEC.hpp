@@ -23,7 +23,7 @@ extern "C"{
 
 /**
  * All this code was originally written in svpcom/wifibroadcast
- * Myself I don't understand everything, but it works pretty good
+ * I extracted the 'FEC part' into here
  */
 
 // Takes a continuous stream of packets and
@@ -372,26 +372,6 @@ protected:
 };
 
 namespace TestFEC{
-    static void fillBufferWithRandomData(std::vector<uint8_t>& data){
-        const std::size_t size=data.size();
-        for(std::size_t i=0;i<size;i++){
-            data[i] = rand() % 255;
-        }
-    }
-    // Create a buffer filled with random data of size sizeByes
-    std::vector<uint8_t> createRandomDataBuffer(const ssize_t sizeBytes){
-        std::vector<uint8_t> buf(sizeBytes);
-        fillBufferWithRandomData(buf);
-        return buf;
-    }
-    bool compareVectors(const std::vector<uint8_t>& sb,const std::vector<uint8_t>& rb){
-        if(sb.size()!=rb.size()){
-            return false;
-        }
-        const int result=memcmp (sb.data(),rb.data(),sb.size());
-        return result==0;
-    }
-
     // test if everyhting is right without packet loss
     static void test(const int k,const int n,const std::vector<std::vector<uint8_t>>& testIn){
         std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
@@ -412,14 +392,14 @@ namespace TestFEC{
             const auto& in=testIn[i];
             encoder.encodePacket(in.data(),in.size());
             const auto& out=testOut[i];
-            assert(compareVectors(in,out)==true);
+            assert(GenericHelper::compareVectors(in,out)==true);
         }
     }
 
     static void test(const int k,const int n,const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
-            testIn.push_back(createRandomDataBuffer(20));
+            testIn.push_back(GenericHelper::createRandomDataBuffer(20));
         }
         test(k,n,testIn);
     }

@@ -119,7 +119,7 @@ public:
     std::array<uint8_t, crypto_box_PUBLICKEYBYTES> tx_publickey{};
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
-    // return true on success
+    // return true if the new session key was properly processed
     bool onNewPacketWfbKey(const uint8_t *buf) {
         std::array<uint8_t, sizeof(session_key)> new_session_key{};
         if (crypto_box_open_easy(new_session_key.data(),
@@ -157,4 +157,14 @@ public:
     }
 };
 
+namespace TestEncryption{
+    static void test(){
+        Encryptor encryptor("");
+        Decryptor decryptor("");
+        auto data=GenericHelper::createRandomDataBuffer(100);
+        encryptor.makeSessionKey();
+        decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.session_key_packet);
+        XBlock xBlock;
+    }
+}
 #endif //ENCRYPTION_HPP
