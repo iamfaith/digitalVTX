@@ -107,19 +107,12 @@ PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, co
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
     callback=std::bind(&PcapTransmitter::sendFecBlock, this, std::placeholders::_1);
-    //for (const std::string &wlan:wlans) {
-    //    ppcap.push_back(Helper::openTxWithPcap(wlan));
-    //}
     ppcap=Helper::openTxWithPcap(wlan);
-    //fd = SocketHelper::open_udp_socket_for_rx(udp_port);
     mRxSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
 }
 
 PcapTransmitter::~PcapTransmitter() {
-    //for (auto & it : ppcap) {
-    //    pcap_close(it);
-    //}
     pcap_close(ppcap);
     close(mRxSocket);
 }
