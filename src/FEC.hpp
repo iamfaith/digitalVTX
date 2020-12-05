@@ -372,7 +372,8 @@ protected:
 };
 
 namespace TestFEC{
-    static void test(const int k,const int n,const std::vector<std::vector<uint8_t>>& testIn){
+    // test the FECEncoder / FECDecoder tuple
+    static void testWithoutPacketLoss(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
         std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
         FECEncoder encoder(k,n);
         FECDecoder decoder(k,n);
@@ -394,6 +395,7 @@ namespace TestFEC{
             assert(GenericHelper::compareVectors(in,out)==true);
         }
     }
+
     // No packet loss
     // Fixed packet size
     static void test(const int k,const int n,const std::size_t N_PACKETS){
@@ -401,7 +403,7 @@ namespace TestFEC{
         for(std::size_t i=0;i<N_PACKETS;i++){
             testIn.push_back(GenericHelper::createRandomDataBuffer(20));
         }
-        test(k,n,testIn);
+        testWithoutPacketLoss(k, n, testIn);
     }
 
     // No packet loss
@@ -412,40 +414,9 @@ namespace TestFEC{
             const auto size=rand() % MAX_PAYLOAD_SIZE;
             testIn.push_back(GenericHelper::createRandomDataBuffer(size));
         }
-        test(k,n,testIn);
+        testWithoutPacketLoss(k, n, testIn);
     }
 
-    // test if everything is right with stupid deterministic packet loss
-    /*static void test2(const int k,const int n,const std::vector<std::vector<uint8_t>>& testIn){
-        std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
-        FECEncoder encoder(k,n);
-        FECDecoder decoder(k,n);
-        std::vector<std::vector<uint8_t>> testOut;
-
-        const auto cb1=[&decoder](const XBlock &xBlock)mutable {
-            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
-        };
-        const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
-            testOut.emplace_back(payload,payload+payloadSize);
-        };
-        encoder.callback=cb1;
-        decoder.callback=cb2;
-
-        int dropIdx=0;
-
-        for(int i=0;i<testIn.size();i++){
-            const auto& in=testIn[i];
-            dropIdx++;
-            if(dropIdx % 4==0){
-
-            }else{
-
-            }
-            encoder.encodePacket(in.data(),in.size());
-            const auto& out=testOut[i];
-            assert(compareVectors(in,out)==true);
-        }
-    }*/
 }
 
 #endif //WIFIBROADCAST_FEC_HPP
