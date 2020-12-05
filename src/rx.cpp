@@ -105,8 +105,7 @@ void Receiver::loop_iter() {
     {
         struct pcap_pkthdr hdr{};
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
-
-        if (pkt == NULL) {
+        if (pkt == nullptr) {
             break;
         }
         //
@@ -115,16 +114,16 @@ void Receiver::loop_iter() {
         int pktlen = hdr.caplen;
         // int pkt_rate = 0
         int ant_idx = 0;
-        uint8_t antenna[RX_ANT_MAX];
-        int8_t rssi[RX_ANT_MAX];
+        std::array<uint8_t,RX_ANT_MAX> antenna{};
+        // Fill all antenna slots with 0xff (unused)
+        antenna.fill(0xff);
+        std::array<int8_t ,RX_ANT_MAX> rssi{};
+        // Fill all rssi slots with minimum value
+        rssi.fill(SCHAR_MIN);
         uint8_t flags = 0;
-        struct ieee80211_radiotap_iterator iterator;
+        struct ieee80211_radiotap_iterator iterator{};
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
 
-        // Fill all antenna slots with 0xff (unused)
-        memset(antenna, 0xff, sizeof(antenna));
-        // Fill all rssi slots with minimum value
-        memset(rssi, SCHAR_MIN, sizeof(rssi));
 
         while (ret == 0 && ant_idx < RX_ANT_MAX) {
             ret = ieee80211_radiotap_iterator_next(&iterator);
@@ -189,8 +188,8 @@ void Receiver::loop_iter() {
         pktlen -= iterator._max_length;
 
         if (pktlen > (int) Ieee80211Header::SIZE_BYTES) {
-            agg->process_packet(pkt + Ieee80211Header::SIZE_BYTES, pktlen - Ieee80211Header::SIZE_BYTES, wlan_idx, antenna,
-                                rssi, NULL);
+            agg->process_packet(pkt + Ieee80211Header::SIZE_BYTES, pktlen - Ieee80211Header::SIZE_BYTES, wlan_idx, antenna.data(),
+                                rssi.data(), NULL);
         } else {
             fprintf(stderr, "short packet (ieee header)\n");
             continue;

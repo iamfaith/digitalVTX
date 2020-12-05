@@ -49,7 +49,6 @@ static constexpr const auto MAX_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
 
-
 /*
  Wifibroadcast protocol:
 
