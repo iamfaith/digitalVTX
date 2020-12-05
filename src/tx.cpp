@@ -111,7 +111,7 @@ PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, co
         ppcap.push_back(Helper::openTxWithPcap(wlan));
     }
     //fd = SocketHelper::open_udp_socket_for_rx(udp_port);
-    fd=SocketHelper::openUdpSocketForRx(udp_port);
+    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlans[0].c_str());
 }
 
@@ -119,7 +119,7 @@ PcapTransmitter::~PcapTransmitter() {
     for (auto & it : ppcap) {
         pcap_close(it);
     }
-    close(fd);
+    close(mRxSocket);
 }
 
 
@@ -156,7 +156,7 @@ void PcapTransmitter::loop() {
     uint8_t buf[MAX_PAYLOAD_SIZE];
     for(;;){
         std::chrono::steady_clock::time_point session_key_announce_ts{};
-        const ssize_t message_length = recvfrom(fd,buf,MAX_PAYLOAD_SIZE, MSG_WAITALL, nullptr, nullptr);
+        const ssize_t message_length = recvfrom(mRxSocket, buf, MAX_PAYLOAD_SIZE, MSG_WAITALL, nullptr, nullptr);
         if(message_length<0){
             if (errno == EINTR || errno == EAGAIN) continue;
             throw std::runtime_error(StringFormat::convert("recvfrom error: %s", strerror(errno)));

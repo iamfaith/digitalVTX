@@ -55,8 +55,8 @@ private:
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;
-    // the fd is set by opening the right UDP port
-    int fd;
+    // the rx socket is set by opening the right UDP port
+    int mRxSocket;
     // Used to encrypt the packets
     Encryptor mEncryptor;
     // Used to inject packets
@@ -68,7 +68,6 @@ private:
     int current_output=0;
     uint16_t ieee80211_seq=0;
     std::vector<pcap_t *> ppcap;
-    // this is the UDP port the transmitter listens on for the incoming data stream
 public:
     void loop();
 };

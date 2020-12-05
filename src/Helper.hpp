@@ -93,6 +93,7 @@ namespace SocketHelper{
         }
         return fd;
     }
+    // That's what I (Consti10) use
     static int openUdpSocketForRx(const int port){
         int fd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (fd < 0) throw std::runtime_error(StringFormat::convert("Error opening socket %d: %s",port, strerror(errno)));
