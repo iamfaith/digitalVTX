@@ -110,7 +110,8 @@ PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, co
     for (const std::string &wlan:wlans) {
         ppcap.push_back(Helper::openTxWithPcap(wlan));
     }
-    fd = SocketHelper::open_udp_socket_for_rx(udp_port);
+    //fd = SocketHelper::open_udp_socket_for_rx(udp_port);
+    fd=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlans[0].c_str());
 }
 
@@ -118,6 +119,7 @@ PcapTransmitter::~PcapTransmitter() {
     for (auto & it : ppcap) {
         pcap_close(it);
     }
+    close(fd);
 }
 
 
@@ -151,7 +153,23 @@ void PcapTransmitter::send_packet(const uint8_t *buf, size_t size) {
 }
 
 void PcapTransmitter::loop() {
-    std::vector<int> tx_fd{fd};
+    uint8_t buf[MAX_PAYLOAD_SIZE];
+    for(;;){
+        std::chrono::steady_clock::time_point session_key_announce_ts{};
+        const ssize_t message_length = recvfrom(fd,buf,MAX_PAYLOAD_SIZE, MSG_WAITALL, nullptr, nullptr);
+        if(message_length<0){
+            if (errno == EINTR || errno == EAGAIN) continue;
+            throw std::runtime_error(StringFormat::convert("recvfrom error: %s", strerror(errno)));
+        }
+        auto cur_ts=std::chrono::steady_clock::now();
+        if (cur_ts >= session_key_announce_ts) {
+            // Announce session key
+            send_session_key();
+            session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
+        }
+        send_packet(buf,message_length);
+    }
+    /*std::vector<int> tx_fd{fd};
     auto fds=Helper::udpPortsToPollFd(tx_fd);
 
     std::chrono::steady_clock::time_point session_key_announce_ts{};
@@ -193,7 +211,7 @@ void PcapTransmitter::loop() {
                     throw std::runtime_error(StringFormat::convert("Error receiving packet: %s", strerror(errno)));
             }
         }
-    }
+    }*/
 }
 
 
