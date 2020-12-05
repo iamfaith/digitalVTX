@@ -38,15 +38,6 @@ typedef enum {
     AGGREGATOR
 } rx_mode_t;
 
-class BaseAggregator {
-public:
-    virtual void
-    process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                   sockaddr_in *sockaddr) = 0;
-    virtual void dump_stats(FILE *fp) = 0;
-};
-
-
 class antennaItem {
 public:
     antennaItem()=default;
@@ -71,7 +62,7 @@ public:
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 
-class Aggregator : public BaseAggregator, public FECDecoder {
+class Aggregator :  public FECDecoder {
 public:
     Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair);
 
@@ -79,9 +70,9 @@ public:
 
     void
     process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                   sockaddr_in *sockaddr) override;
+                   sockaddr_in *sockaddr) ;
 
-    void dump_stats(FILE *fp) override;
+    void dump_stats(FILE *fp) ;
 
 private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{

@@ -319,7 +319,7 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
 }
 
 void
-radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<BaseAggregator> agg,const std::chrono::milliseconds log_interval) {
+radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<Aggregator> agg,const std::chrono::milliseconds log_interval) {
     int nfds = std::min(argc - optind, MAX_RX_INTERFACES);
     std::chrono::steady_clock::time_point log_send_ts{};
     struct pollfd fds[MAX_RX_INTERFACES];
