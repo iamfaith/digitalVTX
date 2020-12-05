@@ -40,7 +40,7 @@
 class PcapTransmitter: public FECEncoder{
 public:
     PcapTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
-                    int udp_port,const std::vector<std::string> &wlans);
+                    int udp_port,const std::string &wlan);
     ~PcapTransmitter();
     void selectWifiAdapter(int idx) { current_output = idx; }
 private:

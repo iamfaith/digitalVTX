@@ -100,19 +100,20 @@ namespace Helper {
 
 
 PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,int udp_port,
-                                 const std::vector<std::string> &wlans) :
+                                 const std::string &wlan) :
         RADIO_PORT(radio_port),
         FECEncoder(k,n),
         mEncryptor(keypair),
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
     callback=std::bind(&PcapTransmitter::sendFecBlock, this, std::placeholders::_1);
-    for (const std::string &wlan:wlans) {
-        ppcap.push_back(Helper::openTxWithPcap(wlan));
-    }
+    //for (const std::string &wlan:wlans) {
+    //    ppcap.push_back(Helper::openTxWithPcap(wlan));
+    //}
+    ppcap.push_back(Helper::openTxWithPcap(wlan));
     //fd = SocketHelper::open_udp_socket_for_rx(udp_port);
     mRxSocket=SocketHelper::openUdpSocketForRx(udp_port);
-    fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlans[0].c_str());
+    fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
 }
 
 PcapTransmitter::~PcapTransmitter() {
@@ -220,7 +221,7 @@ int main(int argc, char *const *argv) {
             default: /* '?' */
             show_usage:
                 fprintf(stderr,
-                        "Usage: %s [-K tx_key] [-k RS_K] [-n RS_N] [-u udp_port] [-p radio_port] [-B bandwidth] [-G guard_interval] [-S stbc] [-L ldpc] [-M mcs_index] interface1 [interface2] ...\n",
+                        "Usage: %s [-K tx_key] [-k RS_K] [-n RS_N] [-u udp_port] [-p radio_port] [-B bandwidth] [-G guard_interval] [-S stbc] [-L ldpc] [-M mcs_index] interface \n",
                         argv[0]);
                 fprintf(stderr,
                         "Default: K='%s', k=%d, n=%d, udp_port=%d, radio_port=%d bandwidth=%d guard_interval=%s stbc=%d ldpc=%d mcs_index=%d\n",
@@ -233,20 +234,19 @@ int main(int argc, char *const *argv) {
                 exit(1);
         }
     }
-
     if (optind >= argc) {
         goto show_usage;
     }
+    const auto wlan=argv[optind];
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
-    const auto wlan=argv[optind];
     try {
-        std::vector<std::string> wlans;
+        /*std::vector<std::string> wlans;
         for (int i = 0; optind + i < argc; i++) {
             wlans.emplace_back(argv[optind + i]);
-        }
+        }*/
         std::shared_ptr<PcapTransmitter> t = std::make_shared<PcapTransmitter>(
-                radiotapHeader, k, n, keypair, radio_port,udp_port, wlans);
+                radiotapHeader, k, n, keypair, radio_port,udp_port, wlan);
         t->loop();
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
