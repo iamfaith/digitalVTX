@@ -33,55 +33,43 @@
 #include "FEC.hpp"
 #include "Helper.hpp"
 
-class Transmitter : public FECEncoder {
-public:
-    Transmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair);
-
-    ~Transmitter() = default;
-
-    void send_packet(const uint8_t *buf, size_t size);
-
-    void send_session_key();
-
-    virtual void select_output(int idx) = 0;
-
-protected:
-    // What inject_packet does is left to the implementation (e.g. PcapTransmitter)
-    virtual void inject_packet(const uint8_t *buf, size_t size) = 0;
-
-private:
-    void sendFecBlock(const XBlock &xBlock);
-
-    void make_session_key();
-
-    Encryptor mEncryptor;
-protected:
-    Ieee80211Header mIeee80211Header;
-public:
-    // const since params like bandwidth never change !
-    const RadiotapHeader mRadiotapHeader;
-};
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap
-class PcapTransmitter : public Transmitter {
+// It uses an UDP port as input for the data stream
+// Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX
+class PcapTransmitter: public FECEncoder{
 public:
     PcapTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
-                    const std::vector<std::string> &wlans);
-
-    virtual ~PcapTransmitter();
-
-    void select_output(int idx) override { current_output = idx; }
-
+                    int udp_port,const std::vector<std::string> &wlans);
+    ~PcapTransmitter();
+    void selectWifiAdapter(int idx) { current_output = idx; }
 private:
-    void inject_packet(const uint8_t *buf, size_t size) override;
-
+    // send the current session key via WIFI (located int mEncryptor)
+    void send_session_key();
+    // process the input data stream
+    void send_packet(const uint8_t *buf, size_t size);
+    // inject packet by prefixing data with the current IEE and Radiotap header
+    void inject_packet(const uint8_t *buf, size_t size);
+    // for the FEC encoder
+    void sendFecBlock(const XBlock &xBlock);
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
-    const uint8_t radio_port;
+    const uint8_t RADIO_PORT;
+    // the fd is set by opening the right UDP port
+    int fd;
+    // Used to encrypt the packets
+    Encryptor mEncryptor;
+    // Used to inject packets
+    Ieee80211Header mIeee80211Header;
+    // this one never changes
+    const RadiotapHeader mRadiotapHeader;
     // TODO what the heck is this one ?
     // I think it is supposed to be the wifi interface data is sent on
     int current_output=0;
     uint16_t ieee80211_seq=0;
     std::vector<pcap_t *> ppcap;
+    // this is the UDP port the transmitter listens on for the incoming data stream
+public:
+    void loop();
 };
 

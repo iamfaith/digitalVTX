@@ -59,14 +59,12 @@ namespace Helper {
         memcpy(p, buf, size);
         return ret;
     }
-
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
         if (pcap_inject(pcap, packetData.data(), packetData.size()) != (int)packetData.size()) {
             throw std::runtime_error(StringFormat::convert("Unable to inject packet"));
         }
     }
-
     // copy paste from svpcom
     static pcap_t *openTxWithPcap(const std::string &wlan) {
         char errbuf[PCAP_ERRBUF_SIZE];
@@ -100,35 +98,20 @@ namespace Helper {
     }
 }
 
-Transmitter::Transmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair) :
+
+PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,int udp_port,
+                                 const std::vector<std::string> &wlans) :
+        RADIO_PORT(radio_port),
         FECEncoder(k,n),
         mEncryptor(keypair),
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
-    callback=std::bind(&Transmitter::sendFecBlock, this, std::placeholders::_1);
-}
-
-void Transmitter::make_session_key() {
-    mEncryptor.makeSessionKey();
-}
-
-
-PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,
-                                 const std::vector<std::string> &wlans) :
-        Transmitter(radiotapHeader, k, n, keypair),
-        radio_port(radio_port){
+    callback=std::bind(&PcapTransmitter::sendFecBlock, this, std::placeholders::_1);
     for (const std::string &wlan:wlans) {
         ppcap.push_back(Helper::openTxWithPcap(wlan));
     }
-}
-
-
-void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
-    std::cout << "PcapTransmitter::inject_packet\n";
-    mIeee80211Header.writeParams(radio_port, ieee80211_seq);
-    ieee80211_seq += 16;
-    const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
-    Helper::injectPacket(ppcap[current_output], packet);
+    fd = SocketHelper::open_udp_socket_for_rx(udp_port);
+    fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlans[0].c_str());
 }
 
 PcapTransmitter::~PcapTransmitter() {
@@ -137,31 +120,40 @@ PcapTransmitter::~PcapTransmitter() {
     }
 }
 
-void Transmitter::sendFecBlock(const XBlock &xBlock) {
-    std::cout << "Transmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
+
+void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
+    std::cout << "PcapTransmitter::inject_packet\n";
+    mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
+    ieee80211_seq += 16;
+    const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
+    Helper::injectPacket(ppcap[current_output], packet);
+}
+
+void PcapTransmitter::sendFecBlock(const XBlock &xBlock) {
+    std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());
 }
 
-void Transmitter::send_session_key() {
-    std::cout << "Transmitter::send_session_key\n";
+void PcapTransmitter::send_session_key() {
+    std::cout << "PcapTransmitter::send_session_key\n";
     inject_packet((uint8_t *) &mEncryptor.session_key_packet, sizeof(mEncryptor.session_key_packet));
 }
 
-void Transmitter::send_packet(const uint8_t *buf, size_t size) {
-    std::cout << "Transmitter::send_packet\n";
+void PcapTransmitter::send_packet(const uint8_t *buf, size_t size) {
+    std::cout << "PcapTransmitter::send_packet\n";
     // this calls a callback internally
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
-        make_session_key();
+        mEncryptor.makeSessionKey();
         send_session_key();
     }
 }
 
-void video_source(std::shared_ptr<PcapTransmitter> &t, std::vector<int> &tx_fd) {
+void PcapTransmitter::loop() {
+    std::vector<int> tx_fd{fd};
     auto fds=Helper::udpPortsToPollFd(tx_fd);
 
-    //uint64_t session_key_announce_ts = 0;
     std::chrono::steady_clock::time_point session_key_announce_ts{};
 
     for (;;) {
@@ -187,15 +179,15 @@ void video_source(std::shared_ptr<PcapTransmitter> &t, std::vector<int> &tx_fd) 
                 ssize_t rsize;
                 int fd = tx_fd[i];
 
-                t->select_output(i);
+                selectWifiAdapter(i);
                 while ((rsize = recv(fd, buf, sizeof(buf), 0)) >= 0) {
                     auto cur_ts=std::chrono::steady_clock::now();
                     if (cur_ts >= session_key_announce_ts) {
                         // Announce session key
-                        t->send_session_key();
+                        send_session_key();
                         session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
                     }
-                    t->send_packet(buf, rsize);
+                    send_packet(buf, rsize);
                 }
                 if (errno != EWOULDBLOCK)
                     throw std::runtime_error(StringFormat::convert("Error receiving packet: %s", strerror(errno)));
@@ -273,17 +265,13 @@ int main(int argc, char *const *argv) {
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
     try {
-        std::vector<int> tx_fd;
         std::vector<std::string> wlans;
         for (int i = 0; optind + i < argc; i++) {
-            int fd = SocketHelper::open_udp_socket_for_rx(udp_port + i);
-            fprintf(stderr, "Listen on %d for %s\n", udp_port + i, argv[optind + i]);
-            tx_fd.push_back(fd);
             wlans.emplace_back(argv[optind + i]);
         }
         std::shared_ptr<PcapTransmitter> t = std::make_shared<PcapTransmitter>(
-                radiotapHeader, k, n, keypair, radio_port, wlans);
-        video_source(t, tx_fd);
+                radiotapHeader, k, n, keypair, radio_port,udp_port, wlans);
+        t->loop();
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
