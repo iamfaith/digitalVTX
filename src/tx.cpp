@@ -110,16 +110,17 @@ PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, co
     //for (const std::string &wlan:wlans) {
     //    ppcap.push_back(Helper::openTxWithPcap(wlan));
     //}
-    ppcap.push_back(Helper::openTxWithPcap(wlan));
+    ppcap=Helper::openTxWithPcap(wlan);
     //fd = SocketHelper::open_udp_socket_for_rx(udp_port);
     mRxSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
 }
 
 PcapTransmitter::~PcapTransmitter() {
-    for (auto & it : ppcap) {
-        pcap_close(it);
-    }
+    //for (auto & it : ppcap) {
+    //    pcap_close(it);
+    //}
+    pcap_close(ppcap);
     close(mRxSocket);
 }
 
@@ -129,7 +130,7 @@ void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
     const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
-    Helper::injectPacket(ppcap[current_output], packet);
+    Helper::injectPacket(ppcap, packet);
 }
 
 void PcapTransmitter::sendFecBlock(const XBlock &xBlock) {

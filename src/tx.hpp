@@ -42,7 +42,6 @@ public:
     PcapTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
                     int udp_port,const std::string &wlan);
     ~PcapTransmitter();
-    void selectWifiAdapter(int idx) { current_output = idx; }
 private:
     // send the current session key via WIFI (located int mEncryptor)
     void send_session_key();
@@ -63,11 +62,8 @@ private:
     Ieee80211Header mIeee80211Header;
     // this one never changes
     const RadiotapHeader mRadiotapHeader;
-    // TODO what the heck is this one ?
-    // I think it is supposed to be the wifi interface data is sent on
-    int current_output=0;
     uint16_t ieee80211_seq=0;
-    std::vector<pcap_t *> ppcap;
+    pcap_t* ppcap;
 public:
     void loop();
 };
