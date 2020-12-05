@@ -85,6 +85,7 @@ private:
     std::vector<pcap_t *> ppcap;
 };
 
+
 // UdpTransmitter can be used to emulate a wifi bridge without using a wifi adapter
 // Usefully for Testing and Debugging.
 // Use the Aggregator functionality as rx when using UdpTransmitter
