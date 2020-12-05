@@ -401,7 +401,7 @@ namespace TestFEC{
     static void test(const int k,const int n,const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
-            testIn.push_back(GenericHelper::createRandomDataBuffer(20));
+            testIn.push_back(GenericHelper::createRandomDataBuffer(1024));
         }
         testWithoutPacketLoss(k, n, testIn);
     }
