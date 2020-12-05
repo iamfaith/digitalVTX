@@ -241,7 +241,7 @@ int main(int argc, char *const *argv) {
     int ldpc = 0;
     int mcs_index = 1;
 
-    std::string keypair = "tx.key";
+    std::string keypair = "drone.key";
 
     while ((opt = getopt(argc, argv, "K:k:n:u:r:p:B:G:S:L:M:")) != -1) {
         switch (opt) {

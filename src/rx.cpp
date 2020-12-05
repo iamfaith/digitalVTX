@@ -486,7 +486,7 @@ int main(int argc, char *const *argv) {
     int srv_port = 0;
     std::string client_addr = "127.0.0.1";
     rx_mode_t rx_mode = LOCAL;
-    std::string keypair = "rx.key";
+    std::string keypair = "gs.key";
 
     while ((opt = getopt(argc, argv, "K:fa:k:n:c:u:p:l:")) != -1) {
         switch (opt) {
