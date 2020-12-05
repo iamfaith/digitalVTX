@@ -93,7 +93,7 @@ private:
 
 class Receiver {
 public:
-    Receiver(const char *wlan, int wlan_idx, int port, BaseAggregator *agg);
+    Receiver(const char *wlan, int wlan_idx, int port, Aggregator *agg);
 
     ~Receiver();
 
@@ -103,7 +103,7 @@ public:
 
 private:
     const int wlan_idx;
-    BaseAggregator *agg;
+    Aggregator *agg;
     int fd;
     pcap_t *ppcap;
 };

@@ -103,7 +103,7 @@ namespace Helper{
     }
 }
 
-Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port, BaseAggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
+Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
     ppcap=Helper::openRxWithPcap(std::string(wlan),radio_port);
     fd = pcap_get_selectable_fd(ppcap);
 }
