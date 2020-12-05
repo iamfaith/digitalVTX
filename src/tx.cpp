@@ -242,10 +242,6 @@ int main(int argc, char *const *argv) {
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
     try {
-        /*std::vector<std::string> wlans;
-        for (int i = 0; optind + i < argc; i++) {
-            wlans.emplace_back(argv[optind + i]);
-        }*/
         std::shared_ptr<PcapTransmitter> t = std::make_shared<PcapTransmitter>(
                 radiotapHeader, k, n, keypair, radio_port,udp_port, wlan);
         t->loop();
