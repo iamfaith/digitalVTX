@@ -30,6 +30,7 @@ extern "C"{
 #define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC)
 
 // Wrapper around the radiotap header (declared as raw array initially)
+// Used for injecting packets with the right parameters
 class RadiotapHeader{
 public:
     static constexpr auto SIZE_BYTES=13;
