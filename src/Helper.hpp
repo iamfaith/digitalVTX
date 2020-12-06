@@ -135,12 +135,6 @@ namespace GenericHelper{
         const int result=memcmp (sb.data(),rb.data(),sb.size());
         return result==0;
     }
-    /*constexpr std::chrono::nanoseconds timespecToDuration(timespec ts){
-        auto std::chrono::duration = std::chrono::seconds{ts.tv_sec}
-                        + std::chrono::nanoseconds{ts.tv_nsec};
-
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
-    }*/
     using namespace std::chrono;
     constexpr nanoseconds timevalToDuration(timeval tv){
         auto duration = seconds{tv.tv_sec}
@@ -148,12 +142,12 @@ namespace GenericHelper{
         return duration_cast<nanoseconds>(duration);
     }
     constexpr time_point<system_clock, nanoseconds>
-    timevalToTimePoint(timeval tv){
+    timevalToTimePointSystemClock(timeval tv){
         return time_point<system_clock, nanoseconds>{
                 duration_cast<system_clock::duration>(timevalToDuration(tv))};
     }
     constexpr time_point<steady_clock, nanoseconds>
-    timevalToTimePoint2(timeval tv){
+    timevalToTimePointSteadyClock(timeval tv){
         return time_point<steady_clock, nanoseconds>{
                 duration_cast<steady_clock::duration>(timevalToDuration(tv))};
     }
