@@ -126,7 +126,7 @@ void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
     Helper::injectPacket(ppcap, packet);
 }
 
-void PcapTransmitter::sendFecBlock(const XBlock &xBlock) {
+void PcapTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
     std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());

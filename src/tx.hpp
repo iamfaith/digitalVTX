@@ -50,7 +50,7 @@ private:
     // inject packet by prefixing data with the current IEE and Radiotap header
     void inject_packet(const uint8_t *buf, size_t size);
     // for the FEC encoder
-    void sendFecBlock(const XBlock &xBlock);
+    void sendFecBlock(const WBDataPacket &xBlock);
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;

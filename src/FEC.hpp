@@ -34,7 +34,7 @@ extern "C"{
 // Due to b) the packet size has to be written into the first two bytes of each data packet. See https://github.com/svpcom/wifibroadcast/issues/67
 class FECEncoder {
 public:
-    typedef std::function<void(const XBlock &xBlock)> SEND_BLOCK_FRAGMENT;
+    typedef std::function<void(const WBDataPacket &xBlock)> SEND_BLOCK_FRAGMENT;
     SEND_BLOCK_FRAGMENT callback;
 
     explicit FECEncoder(int k, int n) : fec_k(k), fec_n(n) {
@@ -108,7 +108,7 @@ private:
     // construct WB FEC data, either DATA blocks or FEC blocks
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
-        XBlock xBlock{};
+        WBDataPacket xBlock{};
         //xBlock.header.packet_type = WFB_PACKET_DATA;
         xBlock.header.nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
         uint8_t *dataP = block[fragment_idx];
@@ -380,7 +380,7 @@ namespace TestFEC{
         FECDecoder decoder(k,n);
         std::vector<std::vector<uint8_t>> testOut;
 
-        const auto cb1=[&decoder](const XBlock &xBlock)mutable {
+        const auto cb1=[&decoder](const WBDataPacket &xBlock)mutable {
             decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
         };
         const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
@@ -427,7 +427,7 @@ namespace TestFEC{
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
         int packetIdx = 0;
-        const auto cb1 = [&decoder, &packetIdx, n](const XBlock &xBlock)mutable {
+        const auto cb1 = [&decoder, &packetIdx, n](const WBDataPacket &xBlock)mutable {
             if (packetIdx % n == 0) {
                 // new sequence, drop one data packet (which FEC can correct for)
                 //std::cout<<"Dropping packet "<<packetIdx<<"\n";

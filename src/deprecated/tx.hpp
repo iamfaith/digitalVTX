@@ -50,7 +50,7 @@ protected:
     virtual void inject_packet(const uint8_t *buf, size_t size) = 0;
 
 private:
-    void sendFecBlock(const XBlock &xBlock);
+    void sendFecBlock(const WBDataPacket &xBlock);
 
     void make_session_key();
 

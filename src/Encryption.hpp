@@ -75,7 +75,7 @@ public:
         //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
     }
-    std::vector<uint8_t> makeEncryptedPacket(const XBlock& xBlock) {
+    std::vector<uint8_t> makeEncryptedPacket(const WBDataPacket& xBlock) {
         return makeEncryptedPacket(xBlock.header,xBlock.payload,xBlock.payloadSize);
     }
 private:

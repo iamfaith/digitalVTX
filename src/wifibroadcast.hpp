@@ -111,7 +111,7 @@ public:
 }  __attribute__ ((packed));
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
-class XBlock{
+class WBDataPacket{
 public:
     wblock_hdr_t header;
     // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
