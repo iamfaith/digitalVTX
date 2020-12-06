@@ -319,8 +319,8 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
 }
 
 void
-radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_ptr<Aggregator> agg,const std::chrono::milliseconds log_interval) {
-    int nfds = std::min(argc - optind, MAX_RX_INTERFACES);
+radio_loop(std::vector<std::string> rxInterfaces, int radio_port, std::shared_ptr<Aggregator> agg,const std::chrono::milliseconds log_interval) {
+    const int nfds = rxInterfaces.size();
     std::chrono::steady_clock::time_point log_send_ts{};
     struct pollfd fds[MAX_RX_INTERFACES];
     Receiver *rx[MAX_RX_INTERFACES];
@@ -328,7 +328,7 @@ radio_loop(int argc, char *const *argv, int optind, int radio_port, std::shared_
     memset(fds, '\0', sizeof(fds));
 
     for (int i = 0; i < nfds; i++) {
-        rx[i] = new Receiver(argv[optind + i], i, radio_port, agg.get());
+        rx[i] = new Receiver(rxInterfaces[i].c_str(), i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
     }
@@ -428,11 +428,18 @@ int main(int argc, char *const *argv) {
                 exit(1);
         }
     }
-
+    const int nRxInterfaces=argc-optind;
+    if(nRxInterfaces>MAX_RX_INTERFACES){
+        std::cout<<"Too many RX interfaces "<<nRxInterfaces<<"\n";
+    }
+    std::vector<std::string> rxInterfaces;
+    for (int i = 0; i < nRxInterfaces; i++) {
+        rxInterfaces.push_back(argv[optind + i]);
+    }
     try {
         assert(rx_mode==LOCAL);
         std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_port, k, n, keypair);
-        radio_loop(argc, argv, optind, radio_port, agg, log_interval);
+        radio_loop(rxInterfaces, radio_port, agg, log_interval);
 
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
