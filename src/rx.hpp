@@ -99,8 +99,7 @@ public:
 private:
     const int wlan_idx;
     Aggregator *agg;
+    // this fd is created by pcap
     int fd;
     pcap_t *ppcap;
-    // n of pcap packets received
-    // n of pcap packets forwarded
 };
