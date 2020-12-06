@@ -138,16 +138,16 @@ public:
     }
 
     // returns decrypted data on success
-    std::optional<std::vector<uint8_t>> decryptPacket(const wblock_hdr_t& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
+    std::optional<std::vector<uint8_t>> decryptPacket(const wblock_hdr_t& wblockHdr,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
         std::vector<uint8_t> decrypted;
-        decrypted.resize(payloadSize-crypto_aead_chacha20poly1305_ABYTES);
+        decrypted.resize(encryptedPayloadSize-crypto_aead_chacha20poly1305_ABYTES);
 
         long long unsigned int decrypted_len;
-        const unsigned long long int cLen=payloadSize;
+        const unsigned long long int cLen=encryptedPayloadSize;
 
         if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len,
                                                  nullptr,
-                                                 payload,cLen,
+                                                 encryptedPayload,cLen,
                                                  (uint8_t*)&wblockHdr,sizeof(wblock_hdr_t),
                                                  (uint8_t *) (&(wblockHdr.nonce)), session_key.data()) != 0) {
             return std::nullopt;

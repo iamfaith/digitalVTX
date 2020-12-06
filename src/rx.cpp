@@ -102,33 +102,17 @@ namespace Helper{
             antenna_stat[key].addRSSI(rssi[i]);
         }
     }
-}
-
-Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
-    ppcap=Helper::openRxWithPcap(wlan,radio_port);
-    fd = pcap_get_selectable_fd(ppcap);
-}
-
-
-Receiver::~Receiver() {
-    close(fd);
-    pcap_close(ppcap);
-}
-
-
-void Receiver::loop_iter() {
-    for (;;) // loop while incoming queue is not empty
-    {
-        struct pcap_pkthdr hdr{};
-        const uint8_t *pkt = pcap_next(ppcap, &hdr);
-        if (pkt == nullptr) {
-            break;
-        }
-        //
-        //printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
-
+    struct ParsedInformation{
+        std::array<uint8_t,RX_ANT_MAX> antenna;
+        std::array<int8_t ,RX_ANT_MAX> rssi;
+        const uint8_t* dataIeeHeaderAndPayload;
+        const std::size_t sizeIeeHeaderAndPayload;
+    };
+    // Returns std::nullopt if this packet should not be processed further
+    // else return the parsed information
+    // To avoid confusion it might help to treat this method as a big black Box :)
+    static std::optional<ParsedInformation> processReceivedPcapPacket(const pcap_pkthdr& hdr, const uint8_t *pkt){
         int pktlen = hdr.caplen;
-        // int pkt_rate = 0
         int ant_idx = 0;
         std::array<uint8_t,RX_ANT_MAX> antenna{};
         // Fill all antenna slots with 0xff (unused)
@@ -139,7 +123,6 @@ void Receiver::loop_iter() {
         uint8_t flags = 0;
         struct ieee80211_radiotap_iterator iterator{};
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
-
 
         while (ret == 0 && ant_idx < RX_ANT_MAX) {
             ret = ieee80211_radiotap_iterator_next(&iterator);
@@ -184,42 +167,71 @@ void Receiver::loop_iter() {
                     break;
             }
         }  /* while more rt headers */
-
         if (ret != -ENOENT && ant_idx < RX_ANT_MAX) {
             fprintf(stderr, "Error parsing radiotap header!\n");
-            continue;
+            return std::nullopt;
         }
-
-        if (flags & IEEE80211_RADIOTAP_F_FCS) {
-            pktlen -= 4;
-        }
-
         if (flags & IEEE80211_RADIOTAP_F_BADFCS) {
             fprintf(stderr, "Got packet with bad fsc\n");
-            continue;
+            return std::nullopt;
         }
-
+        if (flags & IEEE80211_RADIOTAP_F_FCS) {
+            //std::cout<<"Packet has IEEE80211_RADIOTAP_F_FCS";
+            pktlen -= 4;
+        }
         /* discard the radiotap header part */
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;
+        //
+        return ParsedInformation{antenna,rssi,pkt,pktlen};
+    }
+}
 
-        if (pktlen > (int) Ieee80211Header::SIZE_BYTES) {
-            agg->process_packet(pkt + Ieee80211Header::SIZE_BYTES, pktlen - Ieee80211Header::SIZE_BYTES, wlan_idx, antenna.data(),
-                                rssi.data(), NULL);
-        } else {
-            fprintf(stderr, "short packet (ieee header)\n");
-            continue;
+Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
+    ppcap=Helper::openRxWithPcap(wlan,radio_port);
+    fd = pcap_get_selectable_fd(ppcap);
+}
+
+
+Receiver::~Receiver() {
+    close(fd);
+    pcap_close(ppcap);
+}
+
+
+void Receiver::loop_iter() {
+    for (;;) // loop while incoming queue is not empty
+    {
+        struct pcap_pkthdr hdr{};
+        const uint8_t *pkt = pcap_next(ppcap, &hdr);
+        if (pkt == nullptr) {
+            break;
+        }
+        //
+        //printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
+        // The radio capture header precedes the 802.11 header.
+        const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
+        if(parsedInformation!=std::nullopt){
+            if(parsedInformation->sizeIeeHeaderAndPayload>Ieee80211Header::SIZE_BYTES){
+                const uint8_t* payload=parsedInformation->dataIeeHeaderAndPayload+Ieee80211Header::SIZE_BYTES;
+                const std::size_t payloadSize=parsedInformation->sizeIeeHeaderAndPayload-Ieee80211Header::SIZE_BYTES;
+                agg->process_packet(payload,payloadSize, wlan_idx,parsedInformation->antenna.data(),
+                                    parsedInformation->rssi.data(), NULL);
+            }else{
+                fprintf(stderr, "Discarding packet due to no actual payload !\n");
+            }
+        }else{
+            fprintf(stderr, "Discarding packet due to parsing error !\n");
         }
     }
 }
 
 
-Aggregator::Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair) :
+Aggregator::Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair) :
 FECDecoder(k,n),
-        mDecryptor(keypair),
-        /*fec_k(k), fec_n(n), seq(0), rx_ring_front(0), rx_ring_alloc(0), last_known_block((uint64_t) -1),*/
-        count_p_all(0), count_p_dec_err(0), count_p_dec_ok(0){
-    sockfd = SocketHelper::open_udp_socket_for_tx(client_addr, client_port);
+mDecryptor(keypair),
+CLIENT_UDP_PORT(client_udp_port){
+    sockfd = SocketHelper::open_udp_socket_for_tx(client_addr,client_udp_port);
     callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
 }
 
@@ -320,25 +332,24 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
 }
 
 void
-radio_loop(std::vector<std::string> rxInterfaces, int radio_port, std::shared_ptr<Aggregator> agg,const std::chrono::milliseconds log_interval) {
+radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval) {
     const int nfds = rxInterfaces.size();
-    std::chrono::steady_clock::time_point log_send_ts{};
     struct pollfd fds[MAX_RX_INTERFACES];
     Receiver *rx[MAX_RX_INTERFACES];
 
     memset(fds, '\0', sizeof(fds));
     std::stringstream ss;
-    ss<<"Listening on WIFI interface(s): ";
+    ss<<"Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" Assigned WLAN(s):";
 
     for (int i = 0; i < nfds; i++) {
         rx[i] = new Receiver(rxInterfaces[i], i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
-        ss<<rxInterfaces[i]<<" ";
+        ss<<" "<<rxInterfaces[i];
     }
-    ss<<"For radio port "<<radio_port<<" and forwarding to UDP ";
     std::cout<<ss.str()<<"\n";
 
+    std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
         const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
@@ -379,23 +390,15 @@ int main(int argc, char *const *argv) {
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     std::chrono::milliseconds log_interval{1000};
-    int client_port = 5600;
+    int client_udp_port = 5600;
     int srv_port = 0;
     std::string client_addr = "127.0.0.1";
-    rx_mode_t rx_mode = LOCAL;
     std::string keypair = "gs.key";
 
-    while ((opt = getopt(argc, argv, "K:fa:k:n:c:u:p:l:")) != -1) {
+    while ((opt = getopt(argc, argv, "K:k:n:c:u:p:l:")) != -1) {
         switch (opt) {
             case 'K':
                 keypair = optarg;
-                break;
-            case 'f':
-                rx_mode = FORWARDER;
-                break;
-            case 'a':
-                rx_mode = AGGREGATOR;
-                srv_port = atoi(optarg);
                 break;
             case 'k':
                 k = atoi(optarg);
@@ -407,7 +410,7 @@ int main(int argc, char *const *argv) {
                 client_addr = std::string(optarg);
                 break;
             case 'u':
-                client_port = atoi(optarg);
+                client_udp_port = atoi(optarg);
                 break;
             case 'p':
                 radio_port = atoi(optarg);
@@ -420,14 +423,8 @@ int main(int argc, char *const *argv) {
                 fprintf(stderr,
                         "Local receiver: %s [-K rx_key] [-k RS_K] [-n RS_N] [-c client_addr] [-u client_port] [-p radio_port] [-l log_interval] interface1 [interface2] ...\n",
                         argv[0]);
-                fprintf(stderr,
-                        "Remote (forwarder): %s -f [-c client_addr] [-u client_port] [-p radio_port] interface1 [interface2] ...\n",
-                        argv[0]);
-                fprintf(stderr,
-                        "Remote (aggregator): %s -a server_port [-K rx_key] [-k RS_K] [-n RS_N] [-c client_addr] [-u client_port] [-l log_interval]\n",
-                        argv[0]);
                 fprintf(stderr, "Default: K='%s', k=%d, n=%d, connect=%s:%d, radio_port=%d, log_interval=%d\n",
-                        keypair.c_str(), k, n, client_addr.c_str(), client_port, radio_port, (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count());
+                        keypair.c_str(), k, n, client_addr.c_str(), client_udp_port, radio_port, (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count());
                 fprintf(stderr, "WFB version "
                 WFB_VERSION
                 "\n");
@@ -437,16 +434,15 @@ int main(int argc, char *const *argv) {
     const int nRxInterfaces=argc-optind;
     if(nRxInterfaces>MAX_RX_INTERFACES){
         std::cout<<"Too many RX interfaces "<<nRxInterfaces<<"\n";
+        goto show_usage;
     }
     std::vector<std::string> rxInterfaces;
     for (int i = 0; i < nRxInterfaces; i++) {
         rxInterfaces.push_back(argv[optind + i]);
     }
     try {
-        assert(rx_mode==LOCAL);
-        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_port, k, n, keypair);
-        radio_loop(rxInterfaces, radio_port, agg, log_interval);
-
+        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port, k, n, keypair);
+        radio_loop(agg,rxInterfaces, radio_port, log_interval);
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);

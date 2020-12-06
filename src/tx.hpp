@@ -60,7 +60,7 @@ private:
     Encryptor mEncryptor;
     // Used to inject packets
     Ieee80211Header mIeee80211Header;
-    // this one never changes
+    // this one never changes,also used to inject packets
     const RadiotapHeader mRadiotapHeader;
     uint16_t ieee80211_seq=0;
     pcap_t* ppcap;

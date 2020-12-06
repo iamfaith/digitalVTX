@@ -32,11 +32,6 @@
 #include "FEC.hpp"
 #include "Helper.hpp"
 
-typedef enum {
-    LOCAL,
-    FORWARDER,
-    AGGREGATOR
-} rx_mode_t;
 
 class antennaItem {
 public:
@@ -62,9 +57,12 @@ public:
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 
+// This class processes the received wifi data
+// and forwards it via UDP
+// optionally this also forwards the stats via UDP
 class Aggregator :  public FECDecoder {
 public:
-    Aggregator(const std::string &client_addr, int client_port, int k, int n, const std::string &keypair);
+    Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair);
 
     ~Aggregator();
 
@@ -73,7 +71,7 @@ public:
                    sockaddr_in *sockaddr) ;
 
     void dump_stats(FILE *fp) ;
-
+    const int CLIENT_UDP_PORT;
 private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
@@ -82,22 +80,22 @@ private:
     int sockfd;
     Decryptor mDecryptor;
     antenna_stat_t antenna_stat;
-    uint32_t count_p_all;
-    uint32_t count_p_dec_err;
-    uint32_t count_p_dec_ok;
+    uint32_t count_p_all=0;
+    uint32_t count_p_dec_err=0;
+    uint32_t count_p_dec_ok=0;
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
 };
 
+// This class listens for WIFI data on the specified wlan and the assigned id
 class Receiver {
 public:
-    Receiver(const std::string wlan, int wlan_idx, int port, Aggregator *agg);
+    Receiver(const std::string wlan, int wlan_idx, int radio_port, Aggregator *agg);
 
     ~Receiver();
 
     void loop_iter();
 
     int getfd() const { return fd; }
-
 private:
     const int wlan_idx;
     Aggregator *agg;
