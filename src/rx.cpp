@@ -305,9 +305,9 @@ void Receiver::loop_iter() {
         if (pkt == nullptr) {
             break;
         }
-        //const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
-        //const auto latency=std::chrono::system_clock::now() -tmp;
-        //std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+        const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
+        const auto latency=std::chrono::system_clock::now() -tmp;
+        std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
 
         // The radio capture header precedes the 802.11 header.
         const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
