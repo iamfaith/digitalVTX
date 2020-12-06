@@ -225,12 +225,6 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
     count_p_all += 1;
     assert(payloadSize>0);
 
-    if (payloadSize > MAX_FORWARDER_PACKET_SIZE) {
-        fprintf(stderr, "long packet (fec payload)\n");
-        count_p_bad += 1;
-        return;
-    }
-
     switch (payload[0]) {
         case WFB_PACKET_DATA:
             if (payloadSize < sizeof(wblock_hdr_t) + sizeof(FECDataHeader)) {
@@ -294,20 +288,28 @@ void Receiver::loop_iter() {
         if (pkt == nullptr) {
             break;
         }
-        //
-        //printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
+        //TODO there might be still a way
+        /*printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
+        const auto tmp=GenericHelper::timevalToTimePoint2(hdr.ts);
+        const auto latency=std::chrono::steady_clock::time_point -tmp;
+        std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";*/
         // The radio capture header precedes the 802.11 header.
         const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
-        if(parsedInformation!=std::nullopt){
-            if(parsedInformation->payloadSize>0){
-                agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
-                                    parsedInformation->rssi.data());
-            }else{
-                fprintf(stderr, "Discarding packet due to no actual payload !\n");
-            }
-        }else{
-            fprintf(stderr, "Discarding packet due to parsing error !\n");
+        if(parsedInformation==std::nullopt){
+            fprintf(stderr, "Discarding packet due to pcap parsing error !\n");
+            continue;
         }
+        // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
+        if(parsedInformation->payloadSize<=0){
+            fprintf(stderr, "Discarding packet due to no actual payload !\n");
+            continue;
+        }
+        if (parsedInformation->payloadSize > MAX_FORWARDER_PACKET_SIZE) {
+            fprintf(stderr, "Discarding packet due to payload exceeding max %d\n",(int)parsedInformation->payloadSize);
+            continue;
+        }
+        agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
+                            parsedInformation->rssi.data());
     }
 }
 
