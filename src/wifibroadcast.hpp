@@ -68,16 +68,10 @@ static constexpr const auto MAX_RX_INTERFACES=8;
 
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
-// the encryption key is sent every n seconds ( but not re-created every n seconds)
+// the encryption key is sent every n seconds ( but not re-created every n seconds, it is only re-created when reaching the max sequence number
 static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(5);
 static constexpr const auto RX_ANT_MAX=4;
 
-// Header for forwarding raw packets from RX host to Aggregator in UDP packets
-typedef struct {
-    uint8_t wlan_idx;
-    uint8_t antenna[RX_ANT_MAX]; //RADIOTAP_ANTENNA, list of antenna idx, 0xff for unused slot
-    int8_t rssi[RX_ANT_MAX]; //RADIOTAP_DBM_ANTSIGNAL, list of rssi for corresponding antenna idx
-} __attribute__ ((packed)) wrxfwd_t;
 
 // Network packet headers. All numbers are in network (big endian) format
 // Encrypted packets can be either session key or data packet.

@@ -52,6 +52,7 @@ public:
         data[FRAME_SEQ_LB] = seqenceNumber & 0xff;
         data[FRAME_SEQ_HB] = (seqenceNumber >> 8) & 0xff;
     }
+    // FIXME the getters are not tested yet
     uint8_t getRadioPort(){
         return data[SRC_MAC_LASTBYTE];
     }
