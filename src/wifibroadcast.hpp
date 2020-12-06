@@ -111,6 +111,7 @@ public:
 }  __attribute__ ((packed));
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
+// This one does not specify if it is an FEC data or FEC correction packet (see FECDataHeader)
 class WBDataPacket{
 public:
     wblock_hdr_t header;
