@@ -119,17 +119,19 @@ public:
     std::array<uint8_t, crypto_box_PUBLICKEYBYTES> tx_publickey{};
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
-    // return true if the new session key was properly processed
+    // return true if a new session was detected (The same session key can be sent multiple times by the tx)
     bool onNewPacketWfbKey(const uint8_t *buf) {
         std::array<uint8_t, sizeof(session_key)> new_session_key{};
         if (crypto_box_open_easy(new_session_key.data(),
                                  ((wsession_key_t *) buf)->session_key_data, sizeof(wsession_key_t::session_key_data),
                                  ((wsession_key_t *) buf)->session_key_nonce,
                                  tx_publickey.data(), rx_secretkey.data()) != 0) {
+            // this basically should just never happen
             fprintf(stderr, "unable to decrypt session key\n");
             return false;
         }
         if (memcmp(session_key.data(), new_session_key.data(), sizeof(session_key)) != 0) {
+            // this is NOT an error
             fprintf(stderr, "New session detected\n");
             session_key = new_session_key;
             return true;

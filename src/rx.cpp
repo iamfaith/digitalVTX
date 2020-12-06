@@ -244,7 +244,7 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
                 count_p_dec_ok += 1;
                 FECDecoder::reset();
             } else {
-                count_p_dec_err += 1;
+                count_p_dec_ok += 1;
             }
             return;
         default:
