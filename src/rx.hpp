@@ -60,7 +60,6 @@ typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 
 // This class processes the received wifi data
 // and forwards it via UDP
-// optionally this also forwards the stats via UDP
 class Aggregator :  public FECDecoder {
 public:
     Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair);
@@ -98,7 +97,7 @@ public:
     int getfd() const { return fd; }
 private:
     const int wlan_idx;
-    Aggregator *agg;
+    Aggregator* agg;
     // this fd is created by pcap
     int fd;
     pcap_t *ppcap;

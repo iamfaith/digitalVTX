@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 // TODO what happens here has to be decided yet
-//
+// write the fec decoding stats (and optionally RSSI ) for each rx stream
 
 class OpenHDStatisticsWriter{
 public:

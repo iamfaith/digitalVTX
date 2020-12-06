@@ -270,7 +270,7 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
     FECDecoder::processPacket(*block_hdr, *decrypted);
 }
 
-Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
+Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator* agg) : wlan_idx(wlan_idx), agg(agg) {
     ppcap=Helper::openRxWithPcap(wlan,radio_port);
     fd = pcap_get_selectable_fd(ppcap);
 }
