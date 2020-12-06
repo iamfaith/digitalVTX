@@ -61,5 +61,5 @@ crashlytics-build.properties
 fabric.properties
 
 misc.xml
-wifibroadcast.xml
+.idea/*
 
