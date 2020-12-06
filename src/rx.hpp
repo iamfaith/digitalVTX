@@ -90,7 +90,7 @@ private:
 
 class Receiver {
 public:
-    Receiver(const char *wlan, int wlan_idx, int port, Aggregator *agg);
+    Receiver(const std::string wlan, int wlan_idx, int port, Aggregator *agg);
 
     ~Receiver();
 

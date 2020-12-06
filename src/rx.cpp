@@ -104,8 +104,8 @@ namespace Helper{
     }
 }
 
-Receiver::Receiver(const char *wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
-    ppcap=Helper::openRxWithPcap(std::string(wlan),radio_port);
+Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
+    ppcap=Helper::openRxWithPcap(wlan,radio_port);
     fd = pcap_get_selectable_fd(ppcap);
 }
 
@@ -328,15 +328,15 @@ radio_loop(std::vector<std::string> rxInterfaces, int radio_port, std::shared_pt
 
     memset(fds, '\0', sizeof(fds));
     std::stringstream ss;
-    ss<<"Receiving from ";
+    ss<<"Listening on WIFI interface(s): ";
 
     for (int i = 0; i < nfds; i++) {
-        rx[i] = new Receiver(rxInterfaces[i].c_str(), i, radio_port, agg.get());
+        rx[i] = new Receiver(rxInterfaces[i], i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
         ss<<rxInterfaces[i]<<" ";
     }
-    ss<<"For radio port "<<radio_port;
+    ss<<"For radio port "<<radio_port<<" and forwarding to UDP ";
     std::cout<<ss.str()<<"\n";
 
     for (;;) {
