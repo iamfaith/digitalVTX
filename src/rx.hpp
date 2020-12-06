@@ -31,6 +31,7 @@
 #include "Encryption.hpp"
 #include "FEC.hpp"
 #include "Helper.hpp"
+#include "OpenHDStatisticsWriter.hpp"
 
 
 class antennaItem {
@@ -56,7 +57,6 @@ public:
 };
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
-
 
 // This class processes the received wifi data
 // and forwards it via UDP
