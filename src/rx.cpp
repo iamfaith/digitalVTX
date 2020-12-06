@@ -46,6 +46,22 @@ extern "C"{
 }
 
 namespace Helper{
+    // call before pcap_activate
+    static void iteratePcapTimestamps(pcap_t* ppcap){
+        int* availableTimestamps;
+        const int nTypes=pcap_list_tstamp_types(ppcap,&availableTimestamps);
+        std::cout<<"N available timestamp types "<<nTypes<<"\n";
+        for(int i=0;i<nTypes;i++){
+            const char* name=pcap_tstamp_type_val_to_name(availableTimestamps[i]);
+            const char* description=pcap_tstamp_type_val_to_description(availableTimestamps[i]);
+            std::cout<<"Name: "<<std::string(name)<<" Description: "<<std::string(description)<<"\n";
+            if(availableTimestamps[i]==PCAP_TSTAMP_HOST){
+                std::cout<<"Setting timestamp to host\n";
+                pcap_set_tstamp_type(ppcap,PCAP_TSTAMP_HOST);
+            }
+        }
+        pcap_free_tstamp_types(availableTimestamps);
+    }
     // copy paste from svpcom
     // I think this one opens the rx interface with pcap and then sets a filter such that only packets pass through for the selected radio port
     static pcap_t* openRxWithPcap(const std::string& wlan,const int radio_port){
@@ -55,6 +71,7 @@ namespace Helper{
         if (ppcap == NULL) {
             throw std::runtime_error(StringFormat::convert("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
         }
+        iteratePcapTimestamps(ppcap);
         if (pcap_set_snaplen(ppcap, 4096) != 0) throw std::runtime_error("set_snaplen failed");
         if (pcap_set_promisc(ppcap, 1) != 0) throw std::runtime_error("set_promisc failed");
         //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
@@ -288,11 +305,10 @@ void Receiver::loop_iter() {
         if (pkt == nullptr) {
             break;
         }
-        //TODO there might be still a way
-        /*printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
-        const auto tmp=GenericHelper::timevalToTimePoint2(hdr.ts);
-        const auto latency=std::chrono::steady_clock::time_point -tmp;
-        std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";*/
+        //const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
+        //const auto latency=std::chrono::system_clock::now() -tmp;
+        //std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+
         // The radio capture header precedes the 802.11 header.
         const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
         if(parsedInformation==std::nullopt){
