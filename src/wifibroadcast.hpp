@@ -68,8 +68,8 @@ static constexpr const auto MAX_RX_INTERFACES=8;
 
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
-
-static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(100);
+// lower values mean faster recovery if encryption key is lost, but also higher overhead
+static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(5);
 static constexpr const auto RX_ANT_MAX=4;
 
 // Header for forwarding raw packets from RX host to Aggregator in UDP packets
