@@ -99,7 +99,9 @@ namespace SocketHelper{
         if (fd < 0) throw std::runtime_error(StringFormat::convert("Error opening socket %d: %s",port, strerror(errno)));
         int enable = 1;
         if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0){
-            throw std::runtime_error(StringFormat::convert("Error setting reuse on socket %d: %s",port, strerror(errno)));
+            //throw std::runtime_error(StringFormat::convert("Error setting reuse on socket %d: %s",port, strerror(errno)));
+            // don't crash here
+            std::cout<<"Cannot set socket reuse\n";
         }
         struct sockaddr_in saddr{};
         bzero((char *) &saddr, sizeof(saddr));

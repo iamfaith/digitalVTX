@@ -68,8 +68,7 @@ public:
     ~Aggregator();
 
     void
-    process_packet(const uint8_t *payload, size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
-                   sockaddr_in *sockaddr) ;
+    process_packet(const uint8_t *payload, size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi) ;
 
     void dump_stats(FILE *fp) ;
     const int CLIENT_UDP_PORT;
@@ -77,7 +76,6 @@ private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
     }
-
     int sockfd;
     Decryptor mDecryptor;
     antenna_stat_t antenna_stat;

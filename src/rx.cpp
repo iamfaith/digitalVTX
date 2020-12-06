@@ -89,14 +89,10 @@ namespace Helper{
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
-    static void writeAntennaStats(antenna_stat_t& antenna_stat,const sockaddr_in *sockaddr, uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi){
+    static void writeAntennaStats(antenna_stat_t& antenna_stat,uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi){
         for (int i = 0; i < RX_ANT_MAX && ant[i] != 0xff; i++) {
             // key: addr + port + wlan_idx + ant
             uint64_t key = 0;
-            if (sockaddr != NULL && sockaddr->sin_family == AF_INET) {
-                key = ((uint64_t) ntohl(sockaddr->sin_addr.s_addr) << 32 | (uint64_t) ntohs(sockaddr->sin_port) << 16);
-            }
-
             key |= ((uint64_t) wlan_idx << 8 | (uint64_t) ant[i]);
 
             antenna_stat[key].addRSSI(rssi[i]);
@@ -218,7 +214,7 @@ void Receiver::loop_iter() {
         if(parsedInformation!=std::nullopt){
             if(parsedInformation->payloadSize>0){
                 agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
-                                    parsedInformation->rssi.data(), NULL);
+                                    parsedInformation->rssi.data());
             }else{
                 fprintf(stderr, "Discarding packet due to no actual payload !\n");
             }
@@ -265,8 +261,7 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_bad = 0;
 }
 
-void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna,
-                                const int8_t *rssi, sockaddr_in *sockaddr) {
+void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna,const int8_t *rssi) {
     count_p_all += 1;
     assert(payloadSize>0);
 
@@ -315,7 +310,7 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
 
     count_p_dec_ok += 1;
     //log_rssi(sockaddr, wlan_idx, antenna, rssi);
-    Helper::writeAntennaStats(antenna_stat,sockaddr,wlan_idx,antenna,rssi);
+    Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 
