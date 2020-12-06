@@ -277,6 +277,7 @@ private:
         seq = packet_seq;
 
         if (packet_size > MAX_PAYLOAD_SIZE) {
+            // this should never happen !
             fprintf(stderr, "corrupted packet %u\n", seq);
             count_p_bad += 1;
         } else {
@@ -374,7 +375,7 @@ protected:
 namespace TestFEC{
     // test the FECEncoder / FECDecoder tuple
     static void testWithoutPacketLoss(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
-        std::cout<<"Test K N SIZE "<<k<<" "<<n<<" "<<testIn.size()<<"\n";
+        std::cout<<"Test K:"<<k<<" N:"<<n<<" N_PACKETS:"<<testIn.size()<<"\n";
         FECEncoder encoder(k,n);
         FECDecoder decoder(k,n);
         std::vector<std::vector<uint8_t>> testOut;
@@ -417,6 +418,49 @@ namespace TestFEC{
         testWithoutPacketLoss(k, n, testIn);
     }
 
+    // test with packet loss
+    // but only drop one data packet per sequence
+    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn) {
+        assert(testIn.size() % n==0);
+        std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() << "\n";
+        FECEncoder encoder(k, n);
+        FECDecoder decoder(k, n);
+        std::vector <std::vector<uint8_t>> testOut;
+        int packetIdx = 0;
+        const auto cb1 = [&decoder, &packetIdx, n](const XBlock &xBlock)mutable {
+            if (packetIdx % n == 0) {
+                // new sequence, drop one data packet (which FEC can correct for)
+                //std::cout<<"Dropping packet "<<packetIdx<<"\n";
+            }else{
+                decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+            }
+            packetIdx++;
+        };
+        const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
+            testOut.emplace_back(payload, payload + payloadSize);
+        };
+        encoder.callback = cb1;
+        decoder.callback = cb2;
+        for (std::size_t i = 0; i < testIn.size(); i++) {
+            const auto &in = testIn[i];
+            encoder.encodePacket(in.data(), in.size());
+        }
+        // now check if everything arrived
+        for (std::size_t i = 0; i < testIn.size(); i++) {
+            const auto &in = testIn[i];
+            const auto &out = testOut[i];
+            assert(GenericHelper::compareVectors(in, out) == true);
+        }
+    }
+
+    static void test3(const int k,const int n,const std::size_t N_PACKETS){
+        std::vector<std::vector<uint8_t>> testIn;
+        for(std::size_t i=0;i<N_PACKETS;i++){
+            const auto size=rand() % MAX_PAYLOAD_SIZE;
+            testIn.push_back(GenericHelper::createRandomDataBuffer(size));
+        }
+        testWithPacketLossButEverythingIsRecoverable(k, n, testIn);
+    }
 }
 
 #endif //WIFIBROADCAST_FEC_HPP

@@ -43,7 +43,7 @@ public:
                     int udp_port,const std::string &wlan);
     ~PcapTransmitter();
 private:
-    // send the current session key via WIFI (located int mEncryptor)
+    // send the current session key via WIFI (located in mEncryptor)
     void send_session_key();
     // process the input data stream
     void send_packet(const uint8_t *buf, size_t size);

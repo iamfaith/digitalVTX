@@ -296,7 +296,7 @@ void Receiver::loop_iter() {
         // The radio capture header precedes the 802.11 header.
         const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
         if(parsedInformation==std::nullopt){
-            fprintf(stderr, "Discarding packet due to pcap parsing error !\n");
+            fprintf(stderr, "Discarding packet due to pcap parsing error (or wrong checksum)!\n");
             continue;
         }
         // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
@@ -368,6 +368,7 @@ int main(int argc, char *const *argv) {
     TestFEC::test(4,8,1);
     TestFEC::test(4,8,1000);
     TestFEC::test2(4,8,100);
+    TestFEC::test3(4,8,1000);
 
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
