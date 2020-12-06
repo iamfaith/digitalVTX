@@ -68,7 +68,7 @@ public:
     ~Aggregator();
 
     void
-    process_packet(const uint8_t *buf, size_t size, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
+    process_packet(const uint8_t *payload, size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi,
                    sockaddr_in *sockaddr) ;
 
     void dump_stats(FILE *fp) ;

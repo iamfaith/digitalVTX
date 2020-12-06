@@ -265,21 +265,20 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_bad = 0;
 }
 
-void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wlan_idx, const uint8_t *antenna,
+void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna,
                                 const int8_t *rssi, sockaddr_in *sockaddr) {
     count_p_all += 1;
+    assert(payloadSize>0);
 
-    if (size == 0) return;
-
-    if (size > MAX_FORWARDER_PACKET_SIZE) {
+    if (payloadSize > MAX_FORWARDER_PACKET_SIZE) {
         fprintf(stderr, "long packet (fec payload)\n");
         count_p_bad += 1;
         return;
     }
 
-    switch (buf[0]) {
+    switch (payload[0]) {
         case WFB_PACKET_DATA:
-            if (size < sizeof(wblock_hdr_t) + sizeof(FECDataHeader)) {
+            if (payloadSize < sizeof(wblock_hdr_t) + sizeof(FECDataHeader)) {
                 fprintf(stderr, "short packet (fec header)\n");
                 count_p_bad += 1;
                 return;
@@ -287,12 +286,12 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
             break;
 
         case WFB_PACKET_KEY:
-            if (size != sizeof(wsession_key_t)) {
+            if (payloadSize != sizeof(wsession_key_t)) {
                 fprintf(stderr, "invalid session key packet\n");
                 count_p_bad += 1;
                 return;
             }
-            if (mDecryptor.onNewPacketWfbKey(buf)) {
+            if (mDecryptor.onNewPacketWfbKey(payload)) {
                 count_p_dec_ok += 1;
                 FECDecoder::reset();
             } else {
@@ -300,13 +299,13 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
             }
             return;
         default:
-            fprintf(stderr, "Unknown packet type 0x%x\n", buf[0]);
+            fprintf(stderr, "Unknown packet type 0x%x\n", payload[0]);
             count_p_bad += 1;
             return;
     }
     // FEC data or FEC correction packet
-    wblock_hdr_t *block_hdr = (wblock_hdr_t *) buf;
-    const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&buf[sizeof(wblock_hdr_t)],size-sizeof(wblock_hdr_t));
+    wblock_hdr_t *block_hdr = (wblock_hdr_t *) payload;
+    const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&payload[sizeof(wblock_hdr_t)],payloadSize-sizeof(wblock_hdr_t));
 
     if(decrypted==std::nullopt){
         fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
