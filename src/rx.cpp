@@ -37,6 +37,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <sstream>
 
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
@@ -326,12 +327,17 @@ radio_loop(std::vector<std::string> rxInterfaces, int radio_port, std::shared_pt
     Receiver *rx[MAX_RX_INTERFACES];
 
     memset(fds, '\0', sizeof(fds));
+    std::stringstream ss;
+    ss<<"Receiving from ";
 
     for (int i = 0; i < nfds; i++) {
         rx[i] = new Receiver(rxInterfaces[i].c_str(), i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
+        ss<<rxInterfaces[i]<<" ";
     }
+    ss<<"For radio port "<<radio_port;
+    std::cout<<ss.str()<<"\n";
 
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
