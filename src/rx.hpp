@@ -86,6 +86,7 @@ private:
 };
 
 // This class listens for WIFI data on the specified wlan and the assigned id
+// Processing of data is done by the Aggregator
 class Receiver {
 public:
     Receiver(const std::string wlan, int wlan_idx, int radio_port, Aggregator *agg);

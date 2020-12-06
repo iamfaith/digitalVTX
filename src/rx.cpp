@@ -187,44 +187,6 @@ namespace Helper{
     }
 }
 
-Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
-    ppcap=Helper::openRxWithPcap(wlan,radio_port);
-    fd = pcap_get_selectable_fd(ppcap);
-}
-
-
-Receiver::~Receiver() {
-    close(fd);
-    pcap_close(ppcap);
-}
-
-
-void Receiver::loop_iter() {
-    // loop while incoming queue is not empty
-    for (;;){
-        struct pcap_pkthdr hdr{};
-        const uint8_t *pkt = pcap_next(ppcap, &hdr);
-        if (pkt == nullptr) {
-            break;
-        }
-        //
-        //printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
-        // The radio capture header precedes the 802.11 header.
-        const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
-        if(parsedInformation!=std::nullopt){
-            if(parsedInformation->payloadSize>0){
-                agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
-                                    parsedInformation->rssi.data());
-            }else{
-                fprintf(stderr, "Discarding packet due to no actual payload !\n");
-            }
-        }else{
-            fprintf(stderr, "Discarding packet due to parsing error !\n");
-        }
-    }
-}
-
-
 Aggregator::Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair) :
 FECDecoder(k,n),
 mDecryptor(keypair),
@@ -233,11 +195,9 @@ CLIENT_UDP_PORT(client_udp_port){
     callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
 }
 
-
 Aggregator::~Aggregator() {
     close(sockfd);
 }
-
 
 void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
@@ -309,7 +269,6 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
     }
 
     count_p_dec_ok += 1;
-    //log_rssi(sockaddr, wlan_idx, antenna, rssi);
     Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
@@ -317,17 +276,52 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
     FECDecoder::processPacket(*block_hdr, *decrypted);
 }
 
+Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator *agg) : wlan_idx(wlan_idx), agg(agg) {
+    ppcap=Helper::openRxWithPcap(wlan,radio_port);
+    fd = pcap_get_selectable_fd(ppcap);
+}
+
+Receiver::~Receiver() {
+    close(fd);
+    pcap_close(ppcap);
+}
+
+void Receiver::loop_iter() {
+    // loop while incoming queue is not empty
+    for (;;){
+        struct pcap_pkthdr hdr{};
+        const uint8_t *pkt = pcap_next(ppcap, &hdr);
+        if (pkt == nullptr) {
+            break;
+        }
+        //
+        //printf("PacketTime:%ld.%06ld\n", hdr.ts.tv_sec, hdr.ts.tv_usec);
+        // The radio capture header precedes the 802.11 header.
+        const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
+        if(parsedInformation!=std::nullopt){
+            if(parsedInformation->payloadSize>0){
+                agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
+                                    parsedInformation->rssi.data());
+            }else{
+                fprintf(stderr, "Discarding packet due to no actual payload !\n");
+            }
+        }else{
+            fprintf(stderr, "Discarding packet due to parsing error !\n");
+        }
+    }
+}
+
 void
 radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval) {
-    const int nfds = rxInterfaces.size();
-    struct pollfd fds[MAX_RX_INTERFACES];
-    Receiver *rx[MAX_RX_INTERFACES];
+    const int N_RECEIVERS = rxInterfaces.size();
+    struct pollfd fds[N_RECEIVERS];
+    Receiver *rx[N_RECEIVERS];
 
     memset(fds, '\0', sizeof(fds));
     std::stringstream ss;
     ss<<"Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" Assigned WLAN(s):";
 
-    for (int i = 0; i < nfds; i++) {
+    for (int i = 0; i < N_RECEIVERS; i++) {
         rx[i] = new Receiver(rxInterfaces[i], i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
@@ -339,7 +333,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
         const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
-        int rc = poll(fds, nfds,timeoutMS);
+        int rc = poll(fds, N_RECEIVERS,timeoutMS);
 
         if (rc < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
@@ -355,7 +349,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 
         if (rc == 0) continue; // timeout expired
 
-        for (int i = 0; rc > 0 && i < nfds; i++) {
+        for (int i = 0; rc > 0 && i < N_RECEIVERS; i++) {
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
                 throw std::runtime_error("socket error!");
             }
