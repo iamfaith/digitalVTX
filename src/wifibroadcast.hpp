@@ -68,6 +68,8 @@ static constexpr const auto MAX_RX_INTERFACES=8;
 
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
+// for testing, do not use in production
+static constexpr const uint8_t WFB_PACKET_LATENCY_BEACON=0x3;
 // the encryption key is sent every n seconds ( but not re-created every n seconds, it is only re-created when reaching the max sequence number
 static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(5);
 static constexpr const auto RX_ANT_MAX=4;
@@ -77,22 +79,28 @@ static constexpr const auto RX_ANT_MAX=4;
 // Encrypted packets can be either session key or data packet.
 
 // Session key packet
-
-typedef struct {
-    uint8_t packet_type;
+// Since the size of each session key packet never changes, this memory layout is the easiest
+class WBSessionKeyPacket{
+public:
+    // note how this member doesn't add up to the size of this class (c++ is so great !)
+    static constexpr auto SIZE_BYTES=(sizeof(uint8_t)+crypto_box_NONCEBYTES+crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES);
+public:
+    const uint8_t packet_type=WFB_PACKET_KEY;
     uint8_t session_key_nonce[crypto_box_NONCEBYTES];  // random data
     uint8_t session_key_data[crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES]; // encrypted session key
-} __attribute__ ((packed)) wsession_key_t;
+}__attribute__ ((packed));
+static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALWAYS_TRUE");
 
-// Data packet. Embed FEC-encoded data
 
-typedef struct {
-    uint8_t packet_type;
+// This header comes with each FEC packet (data or fec correction packet)
+struct wblock_hdr_t{
+    const uint8_t packet_type=WFB_PACKET_DATA;
     uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
-}  __attribute__ ((packed)) wblock_hdr_t;
+}  __attribute__ ((packed));
 
 
 // this header is written before the data of each FEC data packet
+// ONLY for data packets though ! (up to n bytes workaround)
 class FECDataHeader {
 private:
     // private member to make sure it has always the right endian
@@ -109,13 +117,6 @@ public:
 }  __attribute__ ((packed));
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
-template<typename IS_DATA_PACKET>
-class FECPacket{
-public:
-    uint8_t* data;
-    std::size_t dataSize;
-};
-
 class XBlock{
 public:
     wblock_hdr_t header;
@@ -125,6 +126,10 @@ public:
     std::size_t payloadSize;
 }__attribute__ ((packed));
 
+struct LatencyTestingPacket{
+    uint8_t packet_type=WFB_PACKET_LATENCY_BEACON;
+    std::chrono::steady_clock::time_point timestamp=std::chrono::steady_clock::now();
+}__attribute__ ((packed));
 
 static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
 static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);

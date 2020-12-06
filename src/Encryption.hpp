@@ -45,10 +45,9 @@ public:
     // Don't forget to send the session key after creating a new one
     void makeSessionKey() {
         randombytes_buf(session_key.data(), sizeof(session_key));
-        session_key_packet.packet_type = WFB_PACKET_KEY;
-        randombytes_buf(session_key_packet.session_key_nonce, sizeof(session_key_packet.session_key_nonce));
-        if (crypto_box_easy(session_key_packet.session_key_data, session_key.data(), sizeof(session_key),
-                            session_key_packet.session_key_nonce, rx_publickey.data(), tx_secretkey.data()) != 0) {
+        randombytes_buf(sessionKeyPacket.session_key_nonce, sizeof(sessionKeyPacket.session_key_nonce));
+        if (crypto_box_easy(sessionKeyPacket.session_key_data, session_key.data(), sizeof(session_key),
+                            sessionKeyPacket.session_key_nonce, rx_publickey.data(), tx_secretkey.data()) != 0) {
             throw std::runtime_error("Unable to make session key!");
         }
     }
@@ -86,7 +85,7 @@ private:
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
     // re-send this packet each time a new session key is created
-    wsession_key_t session_key_packet;
+    WBSessionKeyPacket sessionKeyPacket;
 };
 
 class Decryptor {
@@ -122,9 +121,10 @@ public:
     // return true if a new session was detected (The same session key can be sent multiple times by the tx)
     bool onNewPacketWfbKey(const uint8_t *buf) {
         std::array<uint8_t, sizeof(session_key)> new_session_key{};
+        const WBSessionKeyPacket* sessionKeyPacket=(WBSessionKeyPacket*)buf;
         if (crypto_box_open_easy(new_session_key.data(),
-                                 ((wsession_key_t *) buf)->session_key_data, sizeof(wsession_key_t::session_key_data),
-                                 ((wsession_key_t *) buf)->session_key_nonce,
+                                 sessionKeyPacket->session_key_data, sizeof(WBSessionKeyPacket::session_key_data),
+                                 sessionKeyPacket->session_key_nonce,
                                  tx_publickey.data(), rx_secretkey.data()) != 0) {
             // this basically should just never happen
             fprintf(stderr, "unable to decrypt session key\n");

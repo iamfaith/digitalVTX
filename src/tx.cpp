@@ -130,11 +130,15 @@ void PcapTransmitter::sendFecBlock(const XBlock &xBlock) {
     std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());
+    //if(true){
+    //    LatencyTestingPacket latencyTestingPacket;
+    //    inject_packet((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
+    //}
 }
 
 void PcapTransmitter::send_session_key() {
     std::cout << "PcapTransmitter::send_session_key\n";
-    inject_packet((uint8_t *) &mEncryptor.session_key_packet, sizeof(mEncryptor.session_key_packet));
+    inject_packet((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
 }
 
 void PcapTransmitter::send_packet(const uint8_t *buf, size_t size) {

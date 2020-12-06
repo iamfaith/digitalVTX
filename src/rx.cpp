@@ -252,7 +252,7 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
             break;
 
         case WFB_PACKET_KEY:
-            if (payloadSize != sizeof(wsession_key_t)) {
+            if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
                 fprintf(stderr, "invalid session key packet\n");
                 count_p_bad += 1;
                 return;
@@ -263,6 +263,14 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
             } else {
                 count_p_dec_ok += 1;
             }
+            return;
+        case WFB_PACKET_LATENCY_BEACON:{
+            // for testing only. It won't work if the tx and rx are running on different systems
+            assert(payloadSize==sizeof(LatencyTestingPacket));
+            LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
+            const auto latency=std::chrono::steady_clock::now()-latencyTestingPacket->timestamp;
+            std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+        }
             return;
         default:
             fprintf(stderr, "Unknown packet type 0x%x\n", payload[0]);

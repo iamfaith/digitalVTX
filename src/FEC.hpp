@@ -109,7 +109,7 @@ private:
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
         XBlock xBlock{};
-        xBlock.header.packet_type = WFB_PACKET_DATA;
+        //xBlock.header.packet_type = WFB_PACKET_DATA;
         xBlock.header.nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
         uint8_t *dataP = block[fragment_idx];
         //const auto tmp=(wpacket_hdr_t*)dataP;
