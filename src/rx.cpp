@@ -123,9 +123,9 @@ namespace Helper{
 
         while (ret == 0 && ant_idx < RX_ANT_MAX) {
             ret = ieee80211_radiotap_iterator_next(&iterator);
-
-            if (ret)
+            if (ret){
                 continue;
+            }
 
             /* see if this argument is something we can use */
 
