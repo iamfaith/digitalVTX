@@ -44,35 +44,29 @@ extern "C"{
 #include "Ieee80211Header.hpp"
 #include "RadiotapHeader.hpp"
 
-// The pcap packets sent out are never bigger than this size
-static constexpr const auto MAX_PACKET_SIZE=1510;
-static constexpr const auto MAX_RX_INTERFACES=8;
-
-
-/*
- Wifibroadcast protocol:
-
- radiotap_header
-   ieee_80211_header
-     wblock_hdr_t   { packet_type, nonce = (block_idx << 8 + fragment_idx) }
-       wpacket_hdr_t  { packet_size }  #
-         data                          #
-                                       +-- encrypted
-
+/**
+ * Wifibroadcast protocol:
+ * radiotap_header
+ * * ieee_80211_header
+ * ** if WFB_PACKET_KEY
+ * *** WBSessionKeyPacket
+ * ** if WFB_PACKET_DATA
+ * *** wblock_hdr_t
+ * **** encrypted payload data (dynamic size)
  */
 
-// nonce:  56bit block_idx + 8bit fragment_idx
 
+// nonce:  56bit block_idx + 8bit fragment_idx
 #define BLOCK_IDX_MASK ((1LLU << 56) - 1)
 #define MAX_BLOCK_IDX ((1LLU << 55) - 1)
 
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
-// for testing, do not use in production
+// for testing, do not use in production (just don't send it on the tx)
 static constexpr const uint8_t WFB_PACKET_LATENCY_BEACON=0x3;
+
 // the encryption key is sent every n seconds ( but not re-created every n seconds, it is only re-created when reaching the max sequence number
 static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(5);
-static constexpr const auto RX_ANT_MAX=4;
 
 
 // Network packet headers. All numbers are in network (big endian) format
@@ -130,6 +124,10 @@ struct LatencyTestingPacket{
     uint8_t packet_type=WFB_PACKET_LATENCY_BEACON;
     std::chrono::steady_clock::time_point timestamp=std::chrono::steady_clock::now();
 }__attribute__ ((packed));
+
+// The pcap packets sent out are never bigger than this size
+static constexpr const auto MAX_PACKET_SIZE=1510;
+static constexpr const auto MAX_RX_INTERFACES=8;
 
 static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
 static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);

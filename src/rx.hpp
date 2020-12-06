@@ -33,7 +33,7 @@
 #include "Helper.hpp"
 #include "OpenHDStatisticsWriter.hpp"
 
-
+static constexpr const auto RX_ANT_MAX=4;
 class antennaItem {
 public:
     antennaItem()=default;
