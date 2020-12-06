@@ -102,16 +102,17 @@ namespace Helper{
             antenna_stat[key].addRSSI(rssi[i]);
         }
     }
-    struct ParsedInformation{
+    struct ParsedRxPcapPacket{
         std::array<uint8_t,RX_ANT_MAX> antenna;
         std::array<int8_t ,RX_ANT_MAX> rssi;
-        const uint8_t* dataIeeHeaderAndPayload;
-        const std::size_t sizeIeeHeaderAndPayload;
+        const Ieee80211Header* ieee80211Header;
+        const uint8_t* payload;
+        const std::size_t payloadSize;
     };
     // Returns std::nullopt if this packet should not be processed further
-    // else return the parsed information
+    // else return the *parsed information*
     // To avoid confusion it might help to treat this method as a big black Box :)
-    static std::optional<ParsedInformation> processReceivedPcapPacket(const pcap_pkthdr& hdr, const uint8_t *pkt){
+    static std::optional<ParsedRxPcapPacket> processReceivedPcapPacket(const pcap_pkthdr& hdr, const uint8_t *pkt){
         int pktlen = hdr.caplen;
         int ant_idx = 0;
         std::array<uint8_t,RX_ANT_MAX> antenna{};
@@ -183,7 +184,10 @@ namespace Helper{
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;
         //
-        return ParsedInformation{antenna,rssi,pkt,pktlen};
+        const Ieee80211Header* ieee80211Header=(Ieee80211Header*)pkt;
+        const uint8_t* payload=pkt+Ieee80211Header::SIZE_BYTES;
+        const std::size_t payloadSize=(std::size_t)pktlen-Ieee80211Header::SIZE_BYTES;
+        return ParsedRxPcapPacket{antenna,rssi,ieee80211Header,payload,payloadSize};
     }
 }
 
@@ -200,8 +204,8 @@ Receiver::~Receiver() {
 
 
 void Receiver::loop_iter() {
-    for (;;) // loop while incoming queue is not empty
-    {
+    // loop while incoming queue is not empty
+    for (;;){
         struct pcap_pkthdr hdr{};
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
         if (pkt == nullptr) {
@@ -212,10 +216,8 @@ void Receiver::loop_iter() {
         // The radio capture header precedes the 802.11 header.
         const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
         if(parsedInformation!=std::nullopt){
-            if(parsedInformation->sizeIeeHeaderAndPayload>Ieee80211Header::SIZE_BYTES){
-                const uint8_t* payload=parsedInformation->dataIeeHeaderAndPayload+Ieee80211Header::SIZE_BYTES;
-                const std::size_t payloadSize=parsedInformation->sizeIeeHeaderAndPayload-Ieee80211Header::SIZE_BYTES;
-                agg->process_packet(payload,payloadSize, wlan_idx,parsedInformation->antenna.data(),
+            if(parsedInformation->payloadSize>0){
+                agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
                                     parsedInformation->rssi.data(), NULL);
             }else{
                 fprintf(stderr, "Discarding packet due to no actual payload !\n");
@@ -311,16 +313,6 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
         count_p_dec_err += 1;
         return;
     }
-    //const auto tmp=(FECDataHeader*)decrypted->data();
-    //std::cout<<"Size Test:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
-    // hmm somehow this test failed
-    //assert(decrypted->size()==tmp->get()+sizeof(wpacket_hdr_t));
-    // size should only match on data packets
-    /*if(decrypted->size()!=tmp->get()+sizeof(FECDataHeader)){
-        std::cout<<"Something wrong with size:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
-    }else{
-        std::cout<<"Sizes are:"<<size<<" "<<((int)decrypted->size())<<" "<<((int)tmp->get())<<"\n";
-    }*/
 
     count_p_dec_ok += 1;
     //log_rssi(sockaddr, wlan_idx, antenna, rssi);

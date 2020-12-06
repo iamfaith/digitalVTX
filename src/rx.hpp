@@ -57,6 +57,7 @@ public:
 
 typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 
+
 // This class processes the received wifi data
 // and forwards it via UDP
 // optionally this also forwards the stats via UDP
@@ -101,4 +102,6 @@ private:
     Aggregator *agg;
     int fd;
     pcap_t *ppcap;
+    // n of pcap packets received
+    // n of pcap packets forwarded
 };
