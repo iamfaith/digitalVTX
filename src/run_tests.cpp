@@ -47,6 +47,8 @@ extern "C"{
 }
 
 #include "Helper.hpp"
+#include "Encryption.hpp"
+
 namespace TestFEC{
     // test the FECEncoder / FECDecoder tuple
     static void testWithoutPacketLoss(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
@@ -147,10 +149,30 @@ namespace TestFEC{
     }
 }
 
+namespace TestEncryption{
+    /*static void test(){
+        Encryptor encryptor("");
+        Decryptor decryptor("");
+        encryptor.makeSessionKey();
+        assert(decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.sessionKeyPacket)==true);
+        WBDataPacket wbDataPacket;
+        const auto data=GenericHelper::createRandomDataBuffer(100);
+        uint64_t block_idx = 0;
+        uint8_t fragment_idx = 0;
+        wbDataPacket.header.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        wbDataPacket.payload=data.data();
+        wbDataPacket.payloadSize=data.size();
+        const auto encrypted=encryptor.makeEncryptedPacket(wbDataPacket);
+        const auto decrypted=decryptor.decryptPacket(wbDataPacket.header,encrypted.data(),encrypted.size());
+        assert(decrypted!=std::nullopt);
+        assert(GenericHelper::compareVectors(data,*decrypted) == true);
+    }*/
+}
 
 int main(int argc, char *const *argv){
     std::cout<<"Tests for Wifibroadcast\n";
     try {
+        std::cout<<"Testing FEC\n";
         // is there a bug with the testing method or with the fec implementation ?
         /*for(int k=4;k<=8;k+=4){
             for(int n=k+4;n<=12;n+=4){
@@ -163,6 +185,9 @@ int main(int argc, char *const *argv){
         TestFEC::test(4,8,1000);
         TestFEC::test2(4,8,100);
         TestFEC::test3(4,8,1000);
+        //
+        std::cout<<"Testing Encryption\n";
+        //TestEncryption::test();
     }catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);

@@ -113,13 +113,20 @@ public:
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
 // This one does not specify if it is an FEC data or FEC correction packet (see FECDataHeader)
+// but it is always of type WFB_PACKET_DATA
 class WBDataPacket{
+public:
+    // custom constructor
+    explicit WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
+            payload(payload1),payloadSize(payloadSize1){
+        header.nonce=nonce1;
+    };
 public:
     wblock_hdr_t header;
     // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
     // If this is an FEC correction packet, that's not the case
-    uint8_t* payload;
-    std::size_t payloadSize;
+    const uint8_t* payload;
+    const std::size_t payloadSize;
 }__attribute__ ((packed));
 
 struct LatencyTestingPacket{

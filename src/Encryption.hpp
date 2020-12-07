@@ -159,15 +159,4 @@ public:
     }
 };
 
-namespace TestEncryption{
-    // TODO
-    /*static void test(){
-        Encryptor encryptor("");
-        Decryptor decryptor("");
-        auto data=GenericHelper::createRandomDataBuffer(100);
-        encryptor.makeSessionKey();
-        decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.session_key_packet);
-        XBlock xBlock;
-    }*/
-}
 #endif //ENCRYPTION_HPP
