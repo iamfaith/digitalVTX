@@ -129,7 +129,7 @@ static inline int modN(int x, int base) {
     return (base + (x % base)) % base;
 }
 
-// Takes a continuous stream of packets (data and fec packets) and
+// Takes a continuous stream of packets (data and fec correction packets) and
 // processes them such that the output is exactly (or as close as possible) to the
 // Input stream fed to FECEncoder.
 // Most importantly, it also handles re-ordering of packets
