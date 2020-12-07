@@ -68,8 +68,6 @@ public:
 
     void
     processPacket(uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt);
-    void
-    processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi);
 
     void dump_stats(FILE *fp) ;
     const int CLIENT_UDP_PORT;
@@ -78,8 +76,8 @@ private:
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
     }
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
-    int sockfd;
     Decryptor mDecryptor;
+    int sockfd;
     antenna_stat_t antenna_stat;
     uint32_t count_p_all=0;
     uint32_t count_p_bad=0;

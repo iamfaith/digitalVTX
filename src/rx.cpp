@@ -106,7 +106,7 @@ namespace Helper{
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
-    static void writeAntennaStats(antenna_stat_t& antenna_stat,uint8_t wlan_idx, const uint8_t *ant, const int8_t *rssi){
+    static void writeAntennaStats(antenna_stat_t& antenna_stat,const uint8_t wlan_idx,const std::array<uint8_t,RX_ANT_MAX>& ant, const std::array<int8_t ,RX_ANT_MAX>& rssi){
         for (int i = 0; i < RX_ANT_MAX && ant[i] != 0xff; i++) {
             // key: addr + port + wlan_idx + ant
             uint64_t key = 0;
@@ -206,8 +206,8 @@ namespace Helper{
 
 Aggregator::Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair) :
 FECDecoder(k,n),
-mDecryptor(keypair),
-CLIENT_UDP_PORT(client_udp_port){
+CLIENT_UDP_PORT(client_udp_port),
+mDecryptor(keypair){
     sockfd = SocketHelper::open_udp_socket_for_tx(client_addr,client_udp_port);
     callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
 }
@@ -258,7 +258,7 @@ void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
-    processAntennaStats(wlan_idx,parsedInformation->antenna.data(),parsedInformation->rssi.data());
+    Helper::writeAntennaStats(antenna_stat,wlan_idx,parsedInformation->antenna,parsedInformation->rssi);
     // now to the actual payload
     const uint8_t *payload=parsedInformation->payload;
     const size_t payloadSize=parsedInformation->payloadSize;
@@ -314,11 +314,6 @@ void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,con
     if(!FECDecoder::processPacket(*block_hdr, *decrypted)){
         count_p_bad++;
     }
-}
-
-
-void Aggregator::processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi){
-    Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
 }
 
 PcapReceiver::PcapReceiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator* agg) : wlan_idx(wlan_idx), agg(agg) {
@@ -407,7 +402,6 @@ int main(int argc, char *const *argv) {
     uint8_t k = 8, n = 12, radio_port = 1;
     std::chrono::milliseconds log_interval{1000};
     int client_udp_port = 5600;
-    int srv_port = 0;
     std::string client_addr = "127.0.0.1";
     std::string keypair = "gs.key";
 
