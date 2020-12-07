@@ -278,8 +278,7 @@ private:
 
         if (packet_size > MAX_PAYLOAD_SIZE) {
             // this should never happen !
-            fprintf(stderr, "corrupted packet %u\n", seq);
-            count_p_bad += 1;
+            fprintf(stderr, "corrupted packet on FECDecoder out %u\n", seq);
         } else {
             //send(sockfd, payload, packet_size, MSG_DONTWAIT);
             callback(payload,packet_size);
@@ -299,7 +298,8 @@ public:
             memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
         }
     }
-    void processPacket(const wblock_hdr_t& wblockHdr,const std::vector<uint8_t>& decrypted){
+    // returns false if the packet is bad (which should never happen !)
+    bool processPacket(const wblock_hdr_t& wblockHdr,const std::vector<uint8_t>& decrypted){
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
         const uint64_t block_idx = be64toh(wblockHdr.nonce) >> 8;
         const uint8_t fragment_idx = (uint8_t) (be64toh(wblockHdr.nonce) & 0xff);
@@ -307,14 +307,12 @@ public:
         // Should never happen due to generating new session key on tx side
         if (block_idx > MAX_BLOCK_IDX) {
             fprintf(stderr, "block_idx overflow\n");
-            count_p_bad += 1;
-            return;
+            return false;
         }
 
         if (fragment_idx >= fec_n) {
             fprintf(stderr, "invalid fragment_idx: %d\n", fragment_idx);
-            count_p_bad += 1;
-            return;
+            return false;
         }
 
         const int ring_idx = get_block_ring_idx(block_idx);
@@ -322,12 +320,12 @@ public:
         //printf("got 0x%lx %d, ring_idx=%d\n", block_idx, fragment_idx, ring_idx);
 
         //ignore already processed blocks
-        if (ring_idx < 0) return;
+        if (ring_idx < 0) return true;
 
         rx_ring_item_t *p = &rx_ring[ring_idx];
 
         //ignore already processed fragments
-        if (p->fragment_map[fragment_idx]) return;
+        if (p->fragment_map[fragment_idx]) return true;
 
 
         // write the data where first two bytes are the actual packet size
@@ -365,11 +363,11 @@ public:
             }
             assert(rx_ring_alloc >= 0);
         }
+        return true;
     }
 protected:
     uint32_t count_p_fec_recovered=0;
     uint32_t count_p_lost=0;
-    uint32_t count_p_bad=0;
 };
 
 namespace TestFEC{

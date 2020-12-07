@@ -79,6 +79,7 @@ private:
     Decryptor mDecryptor;
     antenna_stat_t antenna_stat;
     uint32_t count_p_all=0;
+    uint32_t count_p_bad=0;
     uint32_t count_p_dec_err=0;
     uint32_t count_p_dec_ok=0;
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
