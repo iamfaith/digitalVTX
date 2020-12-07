@@ -274,7 +274,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     const size_t payloadSize=parsedPacket->payloadSize;
     switch (payload[0]) {
         case WFB_PACKET_DATA:
-            if (payloadSize < sizeof(wblock_hdr_t) + sizeof(FECDataHeader)) {
+            if (payloadSize < sizeof(WBDataHeader) + sizeof(FECDataHeader)) {
                 fprintf(stderr, "short packet (fec header)\n");
                 count_p_bad++;
                 return;
@@ -308,8 +308,8 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             return;
     }
     // FEC data or FEC correction packet
-    wblock_hdr_t *block_hdr = (wblock_hdr_t *) payload;
-    const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&payload[sizeof(wblock_hdr_t)],payloadSize-sizeof(wblock_hdr_t));
+    WBDataHeader *block_hdr = (WBDataHeader *) payload;
+    const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&payload[sizeof(WBDataHeader)],payloadSize-sizeof(WBDataHeader));
 
     if(decrypted==std::nullopt){
         fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));

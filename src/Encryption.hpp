@@ -54,32 +54,32 @@ public:
     }
     // create a wfb packet by copying the header and
     // then putting the encrypted data right behind
-    // the wblock_hdr_t is needed for calling the encryption method since it contains the 'nonce' for the message
+    // the WBDataHeader is needed for calling the encryption method since it contains the 'nonce' for the message
     std::vector<uint8_t>
-    makeEncryptedPacket(const wblock_hdr_t& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
+    makeEncryptedPacket(const WBDataHeader& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
         std::vector<uint8_t> ret;
-        ret.resize(sizeof(wblock_hdr_t)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
-        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
-        memcpy(ret.data()+sizeof(wblock_hdr_t),payload,payloadSize);
+        ret.resize(sizeof(WBDataHeader)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
+        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(WBDataHeader));
+        memcpy(ret.data()+sizeof(WBDataHeader),payload,payloadSize);
         return ret;
 #else
         std::vector<uint8_t> ret;
-        ret.resize(sizeof(wblock_hdr_t)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
+        ret.resize(sizeof(WBDataHeader)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
         // copy the wblockHdr data (this part is not encrypted)
-        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
+        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(WBDataHeader));
         // pointer to where the encrypted data begins
-        uint8_t* cyphertext=&ret[sizeof(wblock_hdr_t)];
+        uint8_t* cyphertext=&ret[sizeof(WBDataHeader)];
         long long unsigned int ciphertext_len;
 
         crypto_aead_chacha20poly1305_encrypt(cyphertext, &ciphertext_len,
                                              payload, payloadSize,
-                                             (uint8_t *) &wblockHdr, sizeof(wblock_hdr_t),
+                                             (uint8_t *) &wblockHdr, sizeof(WBDataHeader),
                                              nullptr,
                                              (uint8_t *) (&(wblockHdr.nonce)), session_key.data());
         // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
         // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
-        assert(ret.size()==sizeof(wblock_hdr_t)+ciphertext_len);
+        assert(ret.size()==sizeof(WBDataHeader)+ciphertext_len);
         //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
 #endif
@@ -149,7 +149,7 @@ public:
     }
 
     // returns decrypted data on success
-    std::optional<std::vector<uint8_t>> decryptPacket(const wblock_hdr_t& wblockHdr,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
+    std::optional<std::vector<uint8_t>> decryptPacket(const WBDataHeader& wblockHdr,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
         return std::vector<uint8_t>(encryptedPayload,encryptedPayload+(encryptedPayloadSize-crypto_aead_chacha20poly1305_ABYTES));
 #else
@@ -162,7 +162,7 @@ public:
         if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len,
                                                  nullptr,
                                                  encryptedPayload,cLen,
-                                                 (uint8_t*)&wblockHdr,sizeof(wblock_hdr_t),
+                                                 (uint8_t*)&wblockHdr,sizeof(WBDataHeader),
                                                  (uint8_t *) (&(wblockHdr.nonce)), session_key.data()) != 0) {
             return std::nullopt;
         }

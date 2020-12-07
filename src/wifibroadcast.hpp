@@ -86,7 +86,7 @@ static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALW
 
 // This header comes with each FEC packet (data or fec correction packet)
 // This part is not encrypted !
-class wblock_hdr_t{
+class WBDataHeader{
 public:
     // conversion from / to nonce
     static uint64_t calculateNonce(const uint64_t block_idx,const uint8_t fragment_idx){
@@ -99,7 +99,7 @@ public:
     static uint8_t calculateFragmentIdx(const uint64_t nonce){
         return (uint8_t) (be64toh(nonce) & 0xff);
     }
-    explicit wblock_hdr_t(uint64_t nonce1):nonce(nonce1){};
+    explicit WBDataHeader(uint64_t nonce1):nonce(nonce1){};
 public:
     const uint8_t packet_type=WFB_PACKET_DATA;
     const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
@@ -132,7 +132,7 @@ public:
     explicit WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
     header(nonce1),payload(payload1),payloadSize(payloadSize1){};
 public:
-    const wblock_hdr_t header;
+    const WBDataHeader header;
     // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
     // If this is an FEC correction packet, that's not the case
     const uint8_t* payload;
@@ -149,8 +149,8 @@ struct LatencyTestingPacket{
 static constexpr const auto MAX_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
-static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
-static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(wblock_hdr_t) - crypto_aead_chacha20poly1305_ABYTES);
+static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
+static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES);
 static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES);
 
 

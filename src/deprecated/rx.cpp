@@ -298,7 +298,7 @@ void Aggregator::process_packet(const uint8_t *buf,const size_t size, uint8_t wl
 
     switch (buf[0]) {
         case WFB_PACKET_DATA:
-            if (size < sizeof(wblock_hdr_t) + sizeof(FECDataHeader)) {
+            if (size < sizeof(WBDataHeader) + sizeof(FECDataHeader)) {
                 fprintf(stderr, "short packet (fec header)\n");
                 count_p_bad += 1;
                 return;
