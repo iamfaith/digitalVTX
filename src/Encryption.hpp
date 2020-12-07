@@ -16,6 +16,7 @@ static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_S
 // enable a default deterministic encryption key by using this flag
 #define CREATE_DEFAULT_ENCRYPTION_KEYS
 
+#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
 
 class Encryptor {
 public:
@@ -56,6 +57,13 @@ public:
     // the wblock_hdr_t is needed for calling the encryption method since it contains the 'nonce' for the message
     std::vector<uint8_t>
     makeEncryptedPacket(const wblock_hdr_t& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
+#ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+        std::vector<uint8_t> ret;
+        ret.resize(sizeof(wblock_hdr_t)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
+        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
+        memcpy(ret.data(),payload,payloadSize);
+        return ret;
+#else
         std::vector<uint8_t> ret;
         ret.resize(sizeof(wblock_hdr_t)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
         // copy the wblockHdr data (this part is not encrypted)
@@ -74,6 +82,7 @@ public:
         assert(ret.size()==sizeof(wblock_hdr_t)+ciphertext_len);
         //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
+#endif
     }
     std::vector<uint8_t> makeEncryptedPacket(const WBDataPacket& xBlock) {
         return makeEncryptedPacket(xBlock.header,xBlock.payload,xBlock.payloadSize);
@@ -141,6 +150,9 @@ public:
 
     // returns decrypted data on success
     std::optional<std::vector<uint8_t>> decryptPacket(const wblock_hdr_t& wblockHdr,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
+#ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+        return std::vector<uint8_t>(encryptedPayload,encryptedPayload+(encryptedPayloadSize-crypto_aead_chacha20poly1305_ABYTES));
+#else
         std::vector<uint8_t> decrypted;
         decrypted.resize(encryptedPayloadSize-crypto_aead_chacha20poly1305_ABYTES);
 
@@ -156,6 +168,7 @@ public:
         }
         assert(decrypted.size()==decrypted_len);
         return decrypted;
+#endif
     }
 };
 
