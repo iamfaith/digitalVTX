@@ -342,9 +342,6 @@ void Receiver::loop_iter() {
         //const auto latency=std::chrono::system_clock::now() -tmp;
         //std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
         agg->processPacket(wlan_idx,hdr,pkt);
-
-        //agg->processAntennaStats(wlan_idx,parsedInformation->antenna.data(),parsedInformation->rssi.data());
-        //agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx);
     }
 }
 
