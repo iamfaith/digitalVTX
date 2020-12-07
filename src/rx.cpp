@@ -231,7 +231,7 @@ void Aggregator::dump_stats(FILE *fp) {
             count_p_fec_recovered, count_p_lost, count_p_bad);
     fflush(fp);
     // the logger of svpcom prints what changed over time,
-    // OpenHD probably doesn't want that
+    // OpenHD wants absolute values
     statistics.count_p_all+=count_p_all;
     statistics.count_p_dec_err +=count_p_dec_err;
     statistics.count_p_dec_ok +=count_p_dec_ok;
