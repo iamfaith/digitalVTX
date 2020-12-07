@@ -55,6 +55,8 @@ public:
     // create a wfb packet by copying the header and
     // then putting the encrypted data right behind
     // the WBDataHeader is needed for calling the encryption method since it contains the 'nonce' for the message
+    // TODO: Here the WBDataHeader is included as bytes in the returned array
+    // For generalization, this should probably be seperated
     std::vector<uint8_t>
     makeEncryptedPacket(const WBDataHeader& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY

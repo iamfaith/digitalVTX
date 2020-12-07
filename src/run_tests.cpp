@@ -150,10 +150,9 @@ namespace TestFEC{
 }
 
 namespace TestEncryption{
-    // TODO why does that not work yet ?
     static void test(){
-        Encryptor encryptor("");
-        Decryptor decryptor("");
+        Encryptor encryptor("gs.key");
+        Decryptor decryptor("drone.key");
         encryptor.makeSessionKey();
         assert(decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.sessionKeyPacket)==true);
 
@@ -165,7 +164,7 @@ namespace TestEncryption{
 
         const auto encrypted=encryptor.makeEncryptedPacket(wbDataPacket);
 
-        const auto decrypted=decryptor.decryptPacket(wbDataPacket.header,encrypted.data(),encrypted.size());
+        const auto decrypted=decryptor.decryptPacket(wbDataPacket.header,&encrypted[sizeof(WBDataHeader)],encrypted.size()-sizeof(WBDataHeader));
 
         assert(decrypted!=std::nullopt);
         assert(GenericHelper::compareVectors(data,*decrypted) == true);
@@ -203,8 +202,9 @@ int main(int argc, char *const *argv){
             TestFEC::test3(k,n,1200);
         }
         //
-        //std::cout<<"Testing Encryption\n";
-        //TestEncryption::test();
+        std::cout<<"Testing Encryption\n";
+        TestEncryption::test();
+
     }catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
