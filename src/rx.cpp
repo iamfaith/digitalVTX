@@ -238,7 +238,7 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_bad = 0;
 }
 
-void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna,const int8_t *rssi) {
+void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize, uint8_t wlan_idx) {
     count_p_all += 1;
     assert(payloadSize>0);
 
@@ -288,13 +288,16 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
     }
 
     count_p_dec_ok += 1;
-    Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 
     if(!FECDecoder::processPacket(*block_hdr, *decrypted)){
         count_p_bad++;
     }
+}
+
+void Aggregator::processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi){
+    Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
 }
 
 Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator* agg) : wlan_idx(wlan_idx), agg(agg) {
@@ -334,8 +337,8 @@ void Receiver::loop_iter() {
             fprintf(stderr, "Discarding packet due to payload exceeding max %d\n",(int)parsedInformation->payloadSize);
             continue;
         }
-        agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx,parsedInformation->antenna.data(),
-                            parsedInformation->rssi.data());
+        agg->processAntennaStats(wlan_idx,parsedInformation->antenna.data(),parsedInformation->rssi.data());
+        agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx);
     }
 }
 

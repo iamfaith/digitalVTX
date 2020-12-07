@@ -67,7 +67,9 @@ public:
     ~Aggregator();
 
     void
-    process_packet(const uint8_t *payload, size_t payloadSize, uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi) ;
+    process_packet(const uint8_t *payload, size_t payloadSize, uint8_t wlan_idx) ;
+    void
+    processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi);
 
     void dump_stats(FILE *fp) ;
     const int CLIENT_UDP_PORT;
