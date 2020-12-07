@@ -14,9 +14,9 @@
 // create deterministic rx and tx keys
 static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
 // enable a default deterministic encryption key by using this flag
-#define CREATE_DEFAULT_ENCRYPTION_KEYS
+//#define CREATE_DEFAULT_ENCRYPTION_KEYS
 // use this one if you are worried about CPU usage when using encryption
-#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+//#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
 
 class Encryptor {
 public:
