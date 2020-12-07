@@ -86,7 +86,7 @@ private:
     uint32_t count_p_bad=0;
     uint32_t count_p_dec_err=0;
     uint32_t count_p_dec_ok=0;
-    OpenHDStatisticsWriter openHdStatisticsWriter;
+    OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
     OpenHDStatisticsWriter::Data statistics{};
 };
 

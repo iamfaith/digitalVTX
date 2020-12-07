@@ -12,6 +12,9 @@
 
 class OpenHDStatisticsWriter{
 public:
+    // the unique stream ID this processes statistics for
+    const uint8_t RADIO_PORT;
+    // Forwarded data
     struct Data{
         // all these values are absolute (like done previously in OpenHD)
         // all received packets
@@ -29,8 +32,7 @@ public:
         // TODO the rssi stuff ( a bit complicated)
         // since multiple RX are listening on the same wifi card
     };
-    // @param multiplexIdx: the unique stream id, also called radio_port
-    void writeStats(const uint8_t RADIO_PORT,const Data& data){
+    void writeStats(const Data& data){
         // Perhaps RADIO_PORT==0 means video and so on
         // TODO write to udp port or shared memory or ...
     }

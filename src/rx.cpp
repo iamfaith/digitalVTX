@@ -238,7 +238,7 @@ void Aggregator::dump_stats(FILE *fp) {
     statistics.count_p_fec_recovered+=count_p_fec_recovered;
     statistics.count_p_lost+=statistics.count_p_lost;
     statistics.count_p_bad+=count_p_bad;
-    openHdStatisticsWriter.writeStats(RADIO_PORT,statistics);
+    openHdStatisticsWriter.writeStats(statistics);
 
     count_p_all = 0;
     count_p_dec_err = 0;
