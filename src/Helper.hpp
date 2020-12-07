@@ -139,7 +139,9 @@ namespace SocketHelper{
         }
         return fd;
     }
-    // That's what I (Consti10) use
+    // Open the specified port for udp receiving
+    // sets SO_REUSEADDR
+    // sets timeout if if it is not 0
     static int openUdpSocketForRx(const int port,std::chrono::nanoseconds timeout=std::chrono::nanoseconds(0)){
         int fd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (fd < 0) throw std::runtime_error(StringFormat::convert("Error opening socket %d: %s",port, strerror(errno)));
