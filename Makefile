@@ -10,6 +10,7 @@ _CFLAGS := $(CFLAGS) -Wall -O2 -DWFB_VERSION='"$(VERSION)-$(shell /bin/bash -c '
 all_bin: wfb_rx wfb_tx wfb_keygen
 all: all_bin gs.key
 
+# The non-c++ part
 src/ExternalSources/%.o: src/ExternalSources/%.c src/ExternalSources/*.h
 	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
 
