@@ -70,9 +70,6 @@ static constexpr const uint8_t WFB_PACKET_LATENCY_BEACON=0x3;
 static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(1);
 
 
-// Network packet headers. All numbers are in network (big endian) format
-// Encrypted packets can be either session key or data packet.
-
 // Session key packet
 // Since the size of each session key packet never changes, this memory layout is the easiest
 class WBSessionKeyPacket{
@@ -88,9 +85,13 @@ static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALW
 
 
 // This header comes with each FEC packet (data or fec correction packet)
-struct wblock_hdr_t{
+// This part is not encrypted !
+class wblock_hdr_t{
+public:
+    explicit wblock_hdr_t(uint64_t nonce1):nonce(nonce1){};
+public:
     const uint8_t packet_type=WFB_PACKET_DATA;
-    uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
+    const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
 }  __attribute__ ((packed));
 
 
@@ -118,11 +119,9 @@ class WBDataPacket{
 public:
     // custom constructor
     explicit WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
-            payload(payload1),payloadSize(payloadSize1){
-        header.nonce=nonce1;
-    };
+    header(nonce1),payload(payload1),payloadSize(payloadSize1){};
 public:
-    wblock_hdr_t header;
+    const wblock_hdr_t header;
     // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
     // If this is an FEC correction packet, that's not the case
     const uint8_t* payload;

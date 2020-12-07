@@ -150,23 +150,25 @@ namespace TestFEC{
 }
 
 namespace TestEncryption{
-    /*static void test(){
+    static void test(){
         Encryptor encryptor("");
         Decryptor decryptor("");
         encryptor.makeSessionKey();
         assert(decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.sessionKeyPacket)==true);
-        WBDataPacket wbDataPacket;
+
         const auto data=GenericHelper::createRandomDataBuffer(100);
-        uint64_t block_idx = 0;
-        uint8_t fragment_idx = 0;
-        wbDataPacket.header.nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
-        wbDataPacket.payload=data.data();
-        wbDataPacket.payloadSize=data.size();
+        const uint64_t block_idx = 0;
+        const uint8_t fragment_idx = 0;
+        const auto nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        const WBDataPacket wbDataPacket{nonce,data.data(),data.size()};
+
         const auto encrypted=encryptor.makeEncryptedPacket(wbDataPacket);
+
         const auto decrypted=decryptor.decryptPacket(wbDataPacket.header,encrypted.data(),encrypted.size());
+
         assert(decrypted!=std::nullopt);
         assert(GenericHelper::compareVectors(data,*decrypted) == true);
-    }*/
+    }
 }
 
 int main(int argc, char *const *argv){
@@ -187,7 +189,7 @@ int main(int argc, char *const *argv){
         TestFEC::test3(4,8,1000);
         //
         std::cout<<"Testing Encryption\n";
-        //TestEncryption::test();
+        TestEncryption::test();
     }catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
