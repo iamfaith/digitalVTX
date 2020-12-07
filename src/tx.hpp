@@ -43,14 +43,14 @@ public:
                     int udp_port,const std::string &wlan);
     ~PcapTransmitter();
 private:
-    // send the current session key via WIFI (located in mEncryptor)
-    void send_session_key();
     // process the input data stream
-    void send_packet(const uint8_t *buf, size_t size);
-    // inject packet by prefixing data with the current IEE and Radiotap header
-    void inject_packet(const uint8_t *buf, size_t size);
+    void processPacket(const uint8_t *buf, size_t size);
+    // send the current session key via WIFI (located in mEncryptor)
+    void sendSessionKey();
     // for the FEC encoder
     void sendFecBlock(const WBDataPacket &xBlock);
+    // inject packet by prefixing data with the current IEE and Radiotap header
+    void injectPacket(const uint8_t *buf, size_t size);
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;

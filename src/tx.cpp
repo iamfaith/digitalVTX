@@ -101,8 +101,8 @@ namespace Helper {
 
 PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,int udp_port,
                                  const std::string &wlan) :
-        RADIO_PORT(radio_port),
         FECEncoder(k,n),
+        RADIO_PORT(radio_port),
         mEncryptor(keypair),
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
@@ -118,7 +118,7 @@ PcapTransmitter::~PcapTransmitter() {
 }
 
 
-void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
+void PcapTransmitter::injectPacket(const uint8_t *buf, size_t size) {
     //std::cout << "PcapTransmitter::inject_packet\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
@@ -130,25 +130,25 @@ void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
 void PcapTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
     //std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
-    inject_packet(data.data(), data.size());
+    injectPacket(data.data(), data.size());
     //if(true){
     //    LatencyTestingPacket latencyTestingPacket;
     //    inject_packet((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
     //}
 }
 
-void PcapTransmitter::send_session_key() {
+void PcapTransmitter::sendSessionKey() {
     //std::cout << "PcapTransmitter::send_session_key\n";
-    inject_packet((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
+    injectPacket((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
 }
 
-void PcapTransmitter::send_packet(const uint8_t *buf, size_t size) {
+void PcapTransmitter::processPacket(const uint8_t *buf, size_t size) {
     //std::cout << "PcapTransmitter::send_packet\n";
     // this calls a callback internally
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
         mEncryptor.makeSessionKey();
-        send_session_key();
+        sendSessionKey();
     }
 }
 
@@ -169,10 +169,10 @@ void PcapTransmitter::loop() {
             const auto cur_ts=std::chrono::steady_clock::now();
             if (cur_ts >= session_key_announce_ts) {
                 // Announce session key
-                send_session_key();
+                sendSessionKey();
                 session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
             }
-            send_packet(buf,message_length);
+            processPacket(buf,message_length);
         }else{
             if(errno==EAGAIN || errno==EWOULDBLOCK){
                 // timeout
