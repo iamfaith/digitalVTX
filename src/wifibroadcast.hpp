@@ -104,7 +104,6 @@ public:
     const uint8_t packet_type=WFB_PACKET_DATA;
     const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
 }  __attribute__ ((packed));
-
 static_assert(sizeof(WBDataHeader)==8+1,"ALWAYS_TRUE");
 
 
@@ -126,7 +125,7 @@ public:
 }  __attribute__ ((packed));
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
-// This one does not specify if it is an FEC data or FEC correction packet (see FECDataHeader)
+// This one does not specify if it is an FEC data or FEC correction packet (see WBDataHeader / FECDataHeader)
 // but it is always of type WFB_PACKET_DATA
 class WBDataPacket{
 public:

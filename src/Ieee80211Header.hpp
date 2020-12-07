@@ -52,11 +52,10 @@ public:
         data[FRAME_SEQ_LB] = seqenceNumber & 0xff;
         data[FRAME_SEQ_HB] = (seqenceNumber >> 8) & 0xff;
     }
-    // FIXME the getters are not tested yet
-    uint8_t getRadioPort(){
+    uint8_t getRadioPort()const{
         return data[SRC_MAC_LASTBYTE];
     }
-    uint16_t getSequenceNumber(){
+    uint16_t getSequenceNumber()const{
         uint16_t ret;
         memcpy(&ret,&data[FRAME_SEQ_LB],sizeof(uint16_t));
         return ret;
