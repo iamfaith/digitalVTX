@@ -67,7 +67,7 @@ public:
     ~Aggregator();
 
     void
-    process_packet(const uint8_t *payload, size_t payloadSize, uint8_t wlan_idx) ;
+    processPacket(uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt);
     void
     processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi);
 
@@ -77,6 +77,7 @@ private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
     }
+    const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
     int sockfd;
     Decryptor mDecryptor;
     antenna_stat_t antenna_stat;
@@ -84,7 +85,6 @@ private:
     uint32_t count_p_bad=0;
     uint32_t count_p_dec_err=0;
     uint32_t count_p_dec_ok=0;
-    const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
 };
 
 // This class listens for WIFI data on the specified wlan and the assigned id

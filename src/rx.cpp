@@ -238,30 +238,49 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_bad = 0;
 }
 
-void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize, uint8_t wlan_idx) {
-    count_p_all += 1;
-    assert(payloadSize>0);
-
+void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt){
+    count_p_all++;
+    // The radio capture header precedes the 802.11 header.
+    const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
+    if(parsedInformation==std::nullopt){
+        fprintf(stderr, "Discarding packet due to pcap parsing error (or wrong checksum)!\n");
+        count_p_bad++;
+        return;
+    }
+    // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
+    if(parsedInformation->payloadSize<=0){
+        fprintf(stderr, "Discarding packet due to no actual payload !\n");
+        count_p_bad++;
+        return;
+    }
+    if (parsedInformation->payloadSize > MAX_FORWARDER_PACKET_SIZE) {
+        fprintf(stderr, "Discarding packet due to payload exceeding max %d\n",(int)parsedInformation->payloadSize);
+        count_p_bad++;
+        return;
+    }
+    processAntennaStats(wlan_idx,parsedInformation->antenna.data(),parsedInformation->rssi.data());
+    // now to the actual payload
+    const uint8_t *payload=parsedInformation->payload;
+    const size_t payloadSize=parsedInformation->payloadSize;
     switch (payload[0]) {
         case WFB_PACKET_DATA:
             if (payloadSize < sizeof(wblock_hdr_t) + sizeof(FECDataHeader)) {
                 fprintf(stderr, "short packet (fec header)\n");
-                count_p_bad += 1;
+                count_p_bad++;
                 return;
             }
             break;
-
         case WFB_PACKET_KEY:
             if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
                 fprintf(stderr, "invalid session key packet\n");
-                count_p_bad += 1;
+                count_p_bad++;
                 return;
             }
             if (mDecryptor.onNewPacketWfbKey(payload)) {
-                count_p_dec_ok += 1;
+                count_p_dec_ok++;
                 FECDecoder::reset();
             } else {
-                count_p_dec_ok += 1;
+                count_p_dec_ok++;
             }
             return;
         case WFB_PACKET_LATENCY_BEACON:{
@@ -283,11 +302,11 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
 
     if(decrypted==std::nullopt){
         fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
-        count_p_dec_err += 1;
+        count_p_dec_err ++;
         return;
     }
 
-    count_p_dec_ok += 1;
+    count_p_dec_ok++;
 
     assert(decrypted->size() <= MAX_FEC_PAYLOAD);
 
@@ -295,6 +314,7 @@ void Aggregator::process_packet(const uint8_t *payload,const size_t payloadSize,
         count_p_bad++;
     }
 }
+
 
 void Aggregator::processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, const int8_t *rssi){
     Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
@@ -318,27 +338,13 @@ void Receiver::loop_iter() {
         if (pkt == nullptr) {
             break;
         }
-        const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
-        const auto latency=std::chrono::system_clock::now() -tmp;
-        std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+        //const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
+        //const auto latency=std::chrono::system_clock::now() -tmp;
+        //std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+        agg->processPacket(wlan_idx,hdr,pkt);
 
-        // The radio capture header precedes the 802.11 header.
-        const auto parsedInformation=Helper::processReceivedPcapPacket(hdr,pkt);
-        if(parsedInformation==std::nullopt){
-            fprintf(stderr, "Discarding packet due to pcap parsing error (or wrong checksum)!\n");
-            continue;
-        }
-        // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
-        if(parsedInformation->payloadSize<=0){
-            fprintf(stderr, "Discarding packet due to no actual payload !\n");
-            continue;
-        }
-        if (parsedInformation->payloadSize > MAX_FORWARDER_PACKET_SIZE) {
-            fprintf(stderr, "Discarding packet due to payload exceeding max %d\n",(int)parsedInformation->payloadSize);
-            continue;
-        }
-        agg->processAntennaStats(wlan_idx,parsedInformation->antenna.data(),parsedInformation->rssi.data());
-        agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx);
+        //agg->processAntennaStats(wlan_idx,parsedInformation->antenna.data(),parsedInformation->rssi.data());
+        //agg->process_packet(parsedInformation->payload,parsedInformation->payloadSize, wlan_idx);
     }
 }
 
