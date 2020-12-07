@@ -51,7 +51,7 @@ extern "C"{
  * ** if WFB_PACKET_KEY
  * *** WBSessionKeyPacket
  * ** if WFB_PACKET_DATA
- * *** wblock_hdr_t
+ * *** WBDataHeader
  * **** encrypted payload data (dynamic size)
  */
 
@@ -104,6 +104,8 @@ public:
     const uint8_t packet_type=WFB_PACKET_DATA;
     const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
 }  __attribute__ ((packed));
+
+static_assert(sizeof(WBDataHeader)==8+1,"ALWAYS_TRUE");
 
 
 // this header is written before the data of each FEC data packet

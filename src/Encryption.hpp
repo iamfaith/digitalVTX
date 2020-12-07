@@ -80,7 +80,6 @@ public:
         // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
         // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
         assert(ret.size()==sizeof(WBDataHeader)+ciphertext_len);
-        //ret.resize(sizeof(wblock_hdr_t)+ciphertext_len);
         return ret;
 #endif
     }
