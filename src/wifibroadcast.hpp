@@ -84,7 +84,7 @@ public:
 static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALWAYS_TRUE");
 
 
-// This header comes with each FEC packet (data or fec correction packet)
+// This header comes with each FEC packet (data OR fec correction packet)
 // This part is not encrypted !
 class WBDataHeader{
 public:
