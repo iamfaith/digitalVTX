@@ -106,11 +106,11 @@ namespace Helper{
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
-    static void writeAntennaStats(antenna_stat_t& antenna_stat,const uint8_t wlan_idx,const std::array<uint8_t,RX_ANT_MAX>& ant, const std::array<int8_t ,RX_ANT_MAX>& rssi){
+    static void writeAntennaStats(antenna_stat_t& antenna_stat,const uint8_t WLAN_IDX,const std::array<uint8_t,RX_ANT_MAX>& ant, const std::array<int8_t ,RX_ANT_MAX>& rssi){
         for (int i = 0; i < RX_ANT_MAX && ant[i] != 0xff; i++) {
-            // key: addr + port + wlan_idx + ant
+            // key: addr + port + WLAN_IDX + ant
             uint64_t key = 0;
-            key |= ((uint64_t) wlan_idx << 8 | (uint64_t) ant[i]);
+            key |= ((uint64_t) WLAN_IDX << 8 | (uint64_t) ant[i]);
 
             antenna_stat[key].addRSSI(rssi[i]);
         }
@@ -204,9 +204,10 @@ namespace Helper{
     }
 }
 
-Aggregator::Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair) :
+Aggregator::Aggregator(const std::string &client_addr, int client_udp_port,uint8_t radio_port, int k, int n, const std::string &keypair) :
 FECDecoder(k,n),
 CLIENT_UDP_PORT(client_udp_port),
+RADIO_PORT(radio_port),
 mDecryptor(keypair){
     sockfd = SocketHelper::open_udp_socket_for_tx(client_addr,client_udp_port);
     callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
@@ -229,6 +230,15 @@ void Aggregator::dump_stats(FILE *fp) {
     fprintf(fp, "%" PRIu64 "\tPKT\t%u:%u:%u:%u:%u:%u\n", runTime, count_p_all, count_p_dec_err, count_p_dec_ok,
             count_p_fec_recovered, count_p_lost, count_p_bad);
     fflush(fp);
+    // the logger of svpcom prints what changed over time,
+    // OpenHD probably doesn't want that
+    statistics.count_p_all+=count_p_all;
+    statistics.count_p_dec_err +=count_p_dec_err;
+    statistics.count_p_dec_ok +=count_p_dec_ok;
+    statistics.count_p_fec_recovered+=count_p_fec_recovered;
+    statistics.count_p_lost+=statistics.count_p_lost;
+    statistics.count_p_bad+=count_p_bad;
+    openHdStatisticsWriter.writeStats(RADIO_PORT,statistics);
 
     count_p_all = 0;
     count_p_dec_err = 0;
@@ -238,7 +248,7 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_bad = 0;
 }
 
-void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt){
+void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,const uint8_t* pkt){
     count_p_all++;
     // The radio capture header precedes the 802.11 header.
     const auto parsedPacket=Helper::processReceivedPcapPacket(hdr,pkt);
@@ -258,7 +268,7 @@ void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
-    Helper::writeAntennaStats(antenna_stat,wlan_idx,parsedPacket->antenna,parsedPacket->rssi);
+    Helper::writeAntennaStats(antenna_stat,WLAN_IDX,parsedPacket->antenna,parsedPacket->rssi);
     // now to the actual payload
     const uint8_t *payload=parsedPacket->payload;
     const size_t payloadSize=parsedPacket->payloadSize;
@@ -316,8 +326,8 @@ void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,con
     }
 }
 
-PcapReceiver::PcapReceiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator* agg) : wlan_idx(wlan_idx), agg(agg) {
-    ppcap=Helper::openRxWithPcap(wlan,radio_port);
+PcapReceiver::PcapReceiver(const std::string wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
+    ppcap=Helper::openRxWithPcap(wlan,RADIO_PORT);
     fd = pcap_get_selectable_fd(ppcap);
 }
 
@@ -337,7 +347,7 @@ void PcapReceiver::loop_iter() {
         //const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
         //const auto latency=std::chrono::system_clock::now() -tmp;
         //std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
-        agg->processPacket(wlan_idx,hdr,pkt);
+        agg->processPacket(WLAN_IDX,hdr,pkt);
     }
 }
 
@@ -446,7 +456,7 @@ int main(int argc, char *const *argv) {
         rxInterfaces.push_back(argv[optind + i]);
     }
     try {
-        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port, k, n, keypair);
+        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port,radio_port, k, n, keypair);
         radio_loop(agg,rxInterfaces, radio_port, log_interval);
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());

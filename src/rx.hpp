@@ -62,7 +62,7 @@ typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
 // and forwards it via UDP
 class Aggregator :  public FECDecoder {
 public:
-    Aggregator(const std::string &client_addr, int client_udp_port, int k, int n, const std::string &keypair);
+    Aggregator(const std::string &client_addr, int client_udp_port,uint8_t radio_port, int k, int n, const std::string &keypair);
 
     ~Aggregator();
 
@@ -70,7 +70,10 @@ public:
     processPacket(uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt);
 
     void dump_stats(FILE *fp) ;
+    // the port data is forwarded to
     const int CLIENT_UDP_PORT;
+    // do not pass data from the receiver to the Aggregator where radio port doesn't match
+    const uint8_t RADIO_PORT;
 private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
@@ -83,9 +86,11 @@ private:
     uint32_t count_p_bad=0;
     uint32_t count_p_dec_err=0;
     uint32_t count_p_dec_ok=0;
+    OpenHDStatisticsWriter openHdStatisticsWriter;
+    OpenHDStatisticsWriter::Data statistics{};
 };
 
-// This class listens for WIFI data on the specified wlan and the assigned id
+// This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT
 // Processing of data is done by the Aggregator
 class PcapReceiver {
 public:
@@ -97,7 +102,10 @@ public:
 
     int getfd() const { return fd; }
 private:
-    const int wlan_idx;
+    // the wifi interface this receiver listens on
+    const int WLAN_IDX;
+    // the radio port it filters pacp packets for
+    const int RADIO_PORT;
     Aggregator* agg;
     // this fd is created by pcap
     int fd;
