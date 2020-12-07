@@ -68,7 +68,7 @@ private:
     int64_t nPacketsFromUdpPort=0;
     int64_t nInjectedPackets=0;
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
-    const std::chrono::milliseconds LOG_INTERVAL=std::chrono::seconds(2);
+    static constexpr const std::chrono::nanoseconds LOG_INTERVAL=std::chrono::milliseconds(1000);
 public:
     // run as long as nothing goes completely wrong
     void loop();

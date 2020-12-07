@@ -108,7 +108,7 @@ PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, co
     mEncryptor.makeSessionKey();
     callback=std::bind(&PcapTransmitter::sendFecBlock, this, std::placeholders::_1);
     ppcap=Helper::openTxWithPcap(wlan);
-    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port,LOG_INTERVAL);
+    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port,PcapTransmitter::LOG_INTERVAL);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
 }
 
@@ -154,19 +154,19 @@ void PcapTransmitter::send_packet(const uint8_t *buf, size_t size) {
 
 void PcapTransmitter::loop() {
     uint8_t buf[MAX_PAYLOAD_SIZE];
+    std::chrono::steady_clock::time_point session_key_announce_ts{};
+    std::chrono::steady_clock::time_point log_ts{};
     for(;;){
-        std::chrono::steady_clock::time_point session_key_announce_ts{};
-        std::chrono::steady_clock::time_point log_ts{};
         const ssize_t message_length = recvfrom(mRxSocket, buf, MAX_PAYLOAD_SIZE,0, nullptr, nullptr);
-        if(std::chrono::steady_clock::now()>log_ts){
+        if(std::chrono::steady_clock::now()>=log_ts){
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
-            std::cout<<StringFormat::convert("%d \t TX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";
+            std::cout<<StringFormat::convert("%d \tTX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";
             //<<" nPacketsFromUdpPort: "<<nPacketsFromUdpPort<<" nInjectedPackets: "<<nInjectedPackets<<"\n";
-            log_ts=std::chrono::steady_clock::now()+LOG_INTERVAL;
+            log_ts=std::chrono::steady_clock::now()+PcapTransmitter::LOG_INTERVAL;
         }
         if(message_length>0){
             nPacketsFromUdpPort++;
-            auto cur_ts=std::chrono::steady_clock::now();
+            const auto cur_ts=std::chrono::steady_clock::now();
             if (cur_ts >= session_key_announce_ts) {
                 // Announce session key
                 send_session_key();
