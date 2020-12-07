@@ -123,8 +123,8 @@ public:
 }__attribute__ ((packed));
 
 struct LatencyTestingPacket{
-    uint8_t packet_type=WFB_PACKET_LATENCY_BEACON;
-    std::chrono::steady_clock::time_point timestamp=std::chrono::steady_clock::now();
+    const uint8_t packet_type=WFB_PACKET_LATENCY_BEACON;
+    const int64_t timestampNs=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }__attribute__ ((packed));
 
 // The pcap packets sent out are never bigger than this size

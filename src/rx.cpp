@@ -286,8 +286,9 @@ void Aggregator::processPacket(const uint8_t wlan_idx,const pcap_pkthdr& hdr,con
         case WFB_PACKET_LATENCY_BEACON:{
             // for testing only. It won't work if the tx and rx are running on different systems
             assert(payloadSize==sizeof(LatencyTestingPacket));
-            LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
-            const auto latency=std::chrono::steady_clock::now()-latencyTestingPacket->timestamp;
+            const LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
+            const auto timestamp=std::chrono::time_point<std::chrono::steady_clock>(std::chrono::nanoseconds(latencyTestingPacket->timestampNs));
+            const auto latency=std::chrono::steady_clock::now()-timestamp;
             std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
         }
             return;
@@ -320,17 +321,17 @@ void Aggregator::processAntennaStats(uint8_t wlan_idx, const uint8_t *antenna, c
     Helper::writeAntennaStats(antenna_stat,wlan_idx,antenna,rssi);
 }
 
-Receiver::Receiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator* agg) : wlan_idx(wlan_idx), agg(agg) {
+PcapReceiver::PcapReceiver(const std::string wlan, int wlan_idx, int radio_port,Aggregator* agg) : wlan_idx(wlan_idx), agg(agg) {
     ppcap=Helper::openRxWithPcap(wlan,radio_port);
     fd = pcap_get_selectable_fd(ppcap);
 }
 
-Receiver::~Receiver() {
+PcapReceiver::~PcapReceiver() {
     close(fd);
     pcap_close(ppcap);
 }
 
-void Receiver::loop_iter() {
+void PcapReceiver::loop_iter() {
     // loop while incoming queue is not empty
     for (;;){
         struct pcap_pkthdr hdr{};
@@ -349,14 +350,14 @@ void
 radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval) {
     const int N_RECEIVERS = rxInterfaces.size();
     struct pollfd fds[N_RECEIVERS];
-    Receiver *rx[N_RECEIVERS];
+    PcapReceiver *rx[N_RECEIVERS];
 
     memset(fds, '\0', sizeof(fds));
     std::stringstream ss;
     ss<<"Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" Assigned WLAN(s):";
 
     for (int i = 0; i < N_RECEIVERS; i++) {
-        rx[i] = new Receiver(rxInterfaces[i], i, radio_port, agg.get());
+        rx[i] = new PcapReceiver(rxInterfaces[i], i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
         ss<<" "<<rxInterfaces[i];
