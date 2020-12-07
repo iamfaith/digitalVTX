@@ -110,7 +110,7 @@ private:
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
         //xBlock.header.packet_type = WFB_PACKET_DATA;
-        const auto nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        const auto nonce=wblock_hdr_t::calculateNonce(block_idx,fragment_idx);
         const uint8_t *dataP = block[fragment_idx];
         WBDataPacket xBlock{nonce,dataP,packet_size};
         callback(xBlock);
@@ -296,8 +296,8 @@ public:
     // returns false if the packet is bad (which should never happen !)
     bool processPacket(const wblock_hdr_t& wblockHdr,const std::vector<uint8_t>& decrypted){
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
-        const uint64_t block_idx = be64toh(wblockHdr.nonce) >> 8;
-        const uint8_t fragment_idx = (uint8_t) (be64toh(wblockHdr.nonce) & 0xff);
+        const uint64_t block_idx=wblock_hdr_t::calculateBlockIdx(wblockHdr.nonce);
+        const uint8_t fragment_idx=wblock_hdr_t::calculateFragmentIdx(wblockHdr.nonce);
 
         // Should never happen due to generating new session key on tx side
         if (block_idx > MAX_BLOCK_IDX) {

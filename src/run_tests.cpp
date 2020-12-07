@@ -160,7 +160,7 @@ namespace TestEncryption{
         const auto data=GenericHelper::createRandomDataBuffer(100);
         const uint64_t block_idx = 0;
         const uint8_t fragment_idx = 0;
-        const auto nonce=htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        const auto nonce=wblock_hdr_t::calculateNonce(block_idx,fragment_idx);
         const WBDataPacket wbDataPacket{nonce,data.data(),data.size()};
 
         const auto encrypted=encryptor.makeEncryptedPacket(wbDataPacket);
