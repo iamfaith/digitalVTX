@@ -129,6 +129,7 @@ public:
     const std::size_t payloadSize;
 }__attribute__ ((packed));
 
+
 struct LatencyTestingPacket{
     const uint8_t packet_type=WFB_PACKET_LATENCY_BEACON;
     const int64_t timestampNs=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();

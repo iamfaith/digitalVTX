@@ -110,15 +110,9 @@ private:
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
         //xBlock.header.packet_type = WFB_PACKET_DATA;
-        auto nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
-        uint8_t *dataP = block[fragment_idx];
-        //const auto tmp=(wpacket_hdr_t*)dataP;
-        //assert(packet_size==tmp->packet_size);
-        //std::cout<<(int)packet_size<<" "<<(int)tmp->get();
+        const auto nonce = htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
+        const uint8_t *dataP = block[fragment_idx];
         WBDataPacket xBlock{nonce,dataP,packet_size};
-
-        //xBlock.payload = dataP;
-        //xBlock.payloadSize = packet_size;
         callback(xBlock);
     }
 };
