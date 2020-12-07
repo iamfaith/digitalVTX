@@ -15,7 +15,7 @@
 static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
 // enable a default deterministic encryption key by using this flag
 #define CREATE_DEFAULT_ENCRYPTION_KEYS
-
+// use this one if you are worried about CPU usage when using encryption
 #define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
 
 class Encryptor {
@@ -61,7 +61,7 @@ public:
         std::vector<uint8_t> ret;
         ret.resize(sizeof(wblock_hdr_t)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
         memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(wblock_hdr_t));
-        memcpy(ret.data(),payload,payloadSize);
+        memcpy(ret.data()+sizeof(wblock_hdr_t),payload,payloadSize);
         return ret;
 #else
         std::vector<uint8_t> ret;
