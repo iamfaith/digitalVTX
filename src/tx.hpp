@@ -64,6 +64,11 @@ private:
     const RadiotapHeader mRadiotapHeader;
     uint16_t ieee80211_seq=0;
     pcap_t* ppcap;
+    // statistics for console
+    int64_t nPacketsFromUdpPort=0;
+    int64_t nInjectedPackets=0;
+    const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
+    const std::chrono::milliseconds LOG_INTERVAL=std::chrono::seconds(2);
 public:
     // run as long as nothing goes completely wrong
     void loop();

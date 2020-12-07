@@ -108,7 +108,7 @@ PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, co
     mEncryptor.makeSessionKey();
     callback=std::bind(&PcapTransmitter::sendFecBlock, this, std::placeholders::_1);
     ppcap=Helper::openTxWithPcap(wlan);
-    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port);
+    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port,LOG_INTERVAL);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
 }
 
@@ -119,15 +119,16 @@ PcapTransmitter::~PcapTransmitter() {
 
 
 void PcapTransmitter::inject_packet(const uint8_t *buf, size_t size) {
-    std::cout << "PcapTransmitter::inject_packet\n";
+    //std::cout << "PcapTransmitter::inject_packet\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
     const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
     Helper::injectPacket(ppcap, packet);
+    nInjectedPackets++;
 }
 
 void PcapTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
-    std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
+    //std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     inject_packet(data.data(), data.size());
     //if(true){
@@ -137,12 +138,12 @@ void PcapTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
 }
 
 void PcapTransmitter::send_session_key() {
-    std::cout << "PcapTransmitter::send_session_key\n";
+    //std::cout << "PcapTransmitter::send_session_key\n";
     inject_packet((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
 }
 
 void PcapTransmitter::send_packet(const uint8_t *buf, size_t size) {
-    std::cout << "PcapTransmitter::send_packet\n";
+    //std::cout << "PcapTransmitter::send_packet\n";
     // this calls a callback internally
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
@@ -155,18 +156,34 @@ void PcapTransmitter::loop() {
     uint8_t buf[MAX_PAYLOAD_SIZE];
     for(;;){
         std::chrono::steady_clock::time_point session_key_announce_ts{};
-        const ssize_t message_length = recvfrom(mRxSocket, buf, MAX_PAYLOAD_SIZE, MSG_WAITALL, nullptr, nullptr);
-        if(message_length<0){
-            if (errno == EINTR || errno == EAGAIN) continue;
+        std::chrono::steady_clock::time_point log_ts{};
+        const ssize_t message_length = recvfrom(mRxSocket, buf, MAX_PAYLOAD_SIZE,0, nullptr, nullptr);
+        if(std::chrono::steady_clock::now()>log_ts){
+            const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
+            std::cout<<StringFormat::convert("%d \t TX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";
+            //<<" nPacketsFromUdpPort: "<<nPacketsFromUdpPort<<" nInjectedPackets: "<<nInjectedPackets<<"\n";
+            log_ts=std::chrono::steady_clock::now()+LOG_INTERVAL;
+        }
+        if(message_length>0){
+            nPacketsFromUdpPort++;
+            auto cur_ts=std::chrono::steady_clock::now();
+            if (cur_ts >= session_key_announce_ts) {
+                // Announce session key
+                send_session_key();
+                session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
+            }
+            send_packet(buf,message_length);
+        }else{
+            if(errno==EAGAIN || errno==EWOULDBLOCK){
+                // timeout
+                continue;
+            }
+            if (errno == EINTR){
+                std::cout<<"Got EINTR"<<"\n";
+                continue;
+            }
             throw std::runtime_error(StringFormat::convert("recvfrom error: %s", strerror(errno)));
         }
-        auto cur_ts=std::chrono::steady_clock::now();
-        if (cur_ts >= session_key_announce_ts) {
-            // Announce session key
-            send_session_key();
-            session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
-        }
-        send_packet(buf,message_length);
     }
 }
 

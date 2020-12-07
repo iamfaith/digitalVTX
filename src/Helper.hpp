@@ -24,6 +24,8 @@
 #include <vector>
 #include <chrono>
 #include <stdarg.h>
+#include <chrono>
+
 
 // For all the stuff that was once in wifibroadcast.hpp
 
@@ -38,6 +40,50 @@ namespace StringFormat{
         vsnprintf(buf.get(), size, format, args);
         va_end(args);
         return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+    }
+}
+
+namespace GenericHelper{
+    static void fillBufferWithRandomData(std::vector<uint8_t>& data){
+        const std::size_t size=data.size();
+        for(std::size_t i=0;i<size;i++){
+            data[i] = rand() % 255;
+        }
+    }
+    // Create a buffer filled with random data of size sizeByes
+    std::vector<uint8_t> createRandomDataBuffer(const ssize_t sizeBytes){
+        std::vector<uint8_t> buf(sizeBytes);
+        fillBufferWithRandomData(buf);
+        return buf;
+    }
+    bool compareVectors(const std::vector<uint8_t>& sb,const std::vector<uint8_t>& rb){
+        if(sb.size()!=rb.size()){
+            return false;
+        }
+        const int result=memcmp (sb.data(),rb.data(),sb.size());
+        return result==0;
+    }
+    using namespace std::chrono;
+    constexpr nanoseconds timevalToDuration(timeval tv){
+        auto duration = seconds{tv.tv_sec}
+                        + microseconds {tv.tv_usec};
+        return duration_cast<nanoseconds>(duration);
+    }
+    constexpr time_point<system_clock, nanoseconds>
+    timevalToTimePointSystemClock(timeval tv){
+        return time_point<system_clock, nanoseconds>{
+                duration_cast<system_clock::duration>(timevalToDuration(tv))};
+    }
+    constexpr time_point<steady_clock, nanoseconds>
+    timevalToTimePointSteadyClock(timeval tv){
+        return time_point<steady_clock, nanoseconds>{
+                duration_cast<steady_clock::duration>(timevalToDuration(tv))};
+    }
+    constexpr timeval durationToTimeval(nanoseconds dur){
+        const auto secs = duration_cast<seconds>(dur);
+        dur -= secs;
+        const auto us=duration_cast<microseconds>(dur);
+        return timeval{secs.count(), us.count()};
     }
 }
 
@@ -94,7 +140,7 @@ namespace SocketHelper{
         return fd;
     }
     // That's what I (Consti10) use
-    static int openUdpSocketForRx(const int port){
+    static int openUdpSocketForRx(const int port,std::chrono::nanoseconds timeout=std::chrono::nanoseconds(0)){
         int fd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (fd < 0) throw std::runtime_error(StringFormat::convert("Error opening socket %d: %s",port, strerror(errno)));
         int enable = 1;
@@ -102,6 +148,12 @@ namespace SocketHelper{
             //throw std::runtime_error(StringFormat::convert("Error setting reuse on socket %d: %s",port, strerror(errno)));
             // don't crash here
             std::cout<<"Cannot set socket reuse\n";
+        }
+        if(timeout!=std::chrono::nanoseconds(0)){
+            auto tv=GenericHelper::durationToTimeval(timeout);
+            if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+                std::cout<<"Cannot set socket timeout "<<timeout.count()<<"\n";
+            }
         }
         struct sockaddr_in saddr{};
         bzero((char *) &saddr, sizeof(saddr));
@@ -115,43 +167,6 @@ namespace SocketHelper{
     }
 }
 
-namespace GenericHelper{
-    static void fillBufferWithRandomData(std::vector<uint8_t>& data){
-        const std::size_t size=data.size();
-        for(std::size_t i=0;i<size;i++){
-            data[i] = rand() % 255;
-        }
-    }
-    // Create a buffer filled with random data of size sizeByes
-    std::vector<uint8_t> createRandomDataBuffer(const ssize_t sizeBytes){
-        std::vector<uint8_t> buf(sizeBytes);
-        fillBufferWithRandomData(buf);
-        return buf;
-    }
-    bool compareVectors(const std::vector<uint8_t>& sb,const std::vector<uint8_t>& rb){
-        if(sb.size()!=rb.size()){
-            return false;
-        }
-        const int result=memcmp (sb.data(),rb.data(),sb.size());
-        return result==0;
-    }
-    using namespace std::chrono;
-    constexpr nanoseconds timevalToDuration(timeval tv){
-        auto duration = seconds{tv.tv_sec}
-                        + microseconds {tv.tv_usec};
-        return duration_cast<nanoseconds>(duration);
-    }
-    constexpr time_point<system_clock, nanoseconds>
-    timevalToTimePointSystemClock(timeval tv){
-        return time_point<system_clock, nanoseconds>{
-                duration_cast<system_clock::duration>(timevalToDuration(tv))};
-    }
-    constexpr time_point<steady_clock, nanoseconds>
-    timevalToTimePointSteadyClock(timeval tv){
-        return time_point<steady_clock, nanoseconds>{
-                duration_cast<steady_clock::duration>(timevalToDuration(tv))};
-    }
-}
 
 
 #endif //WIFIBROADCAST_SOCKETHELPER_H
