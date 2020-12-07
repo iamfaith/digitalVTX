@@ -185,9 +185,23 @@ int main(int argc, char *const *argv){
                 TestFEC::test3(k,n,1200);
             }
         }*/
-        TestFEC::test(4,8,1000);
-        TestFEC::test2(4,8,100);
-        TestFEC::test3(4,8,1000);
+        int k=0;
+        int n=0;
+        for(int i=0;i<2;i++){
+            if(i==0){
+                k=4;
+                n=8;
+            }else if(i==1){
+                k=6;
+                n=12;
+            }else if(i==2){
+                k=8;
+                n=16;
+            }
+            TestFEC::test(k,n,1200);
+            TestFEC::test2(k,n,1200);
+            TestFEC::test3(k,n,1200);
+        }
         //
         //std::cout<<"Testing Encryption\n";
         //TestEncryption::test();
