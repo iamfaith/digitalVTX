@@ -90,7 +90,7 @@ class wblock_hdr_t{
 public:
     // conversion from / to nonce
     static uint64_t calculateNonce(const uint64_t block_idx,const uint8_t fragment_idx){
-        //assert(block_idx<MAX_BLOCK_IDX); // should never happen
+        assert(block_idx<=MAX_BLOCK_IDX); // should never happen
         return htobe64(((block_idx & BLOCK_IDX_MASK) << 8) + fragment_idx);
     }
     static uint64_t calculateBlockIdx(const uint64_t nonce){
