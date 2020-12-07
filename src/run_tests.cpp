@@ -176,7 +176,7 @@ int main(int argc, char *const *argv){
     std::cout<<"Tests for Wifibroadcast\n";
     try {
         std::cout<<"Testing FEC\n";
-        // is there a bug with the testing method or with the fec implementation ?
+        // hm this doesn't work
         /*for(int k=4;k<=8;k+=4){
             for(int n=k+4;n<=12;n+=4){
                 std::cout<<"k:"<<k<<" n:"<<n<<"\n";
@@ -187,7 +187,7 @@ int main(int argc, char *const *argv){
         }*/
         int k=0;
         int n=0;
-        for(int i=0;i<2;i++){
+        for(int i=0;i<3;i++){
             if(i==0){
                 k=4;
                 n=8;
