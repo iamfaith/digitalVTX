@@ -393,11 +393,6 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 
 
 int main(int argc, char *const *argv) {
-    TestFEC::test(4,8,1);
-    TestFEC::test(4,8,1000);
-    TestFEC::test2(4,8,100);
-    TestFEC::test3(4,8,1000);
-
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     std::chrono::milliseconds log_interval{1000};

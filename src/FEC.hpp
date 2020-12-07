@@ -370,6 +370,7 @@ protected:
     uint32_t count_p_lost=0;
 };
 
+#include "Helper.hpp"
 namespace TestFEC{
     // test the FECEncoder / FECDecoder tuple
     static void testWithoutPacketLoss(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
@@ -386,7 +387,7 @@ namespace TestFEC{
         };
         encoder.callback=cb1;
         decoder.callback=cb2;
-
+        // If there is no data loss the packets should arrive immediately
         for(std::size_t i=0;i<testIn.size();i++){
             const auto& in=testIn[i];
             encoder.encodePacket(in.data(),in.size());
@@ -442,8 +443,17 @@ namespace TestFEC{
         for (std::size_t i = 0; i < testIn.size(); i++) {
             const auto &in = testIn[i];
             encoder.encodePacket(in.data(), in.size());
+            // now check if everything already sent arrived
+            // since there is packet loss, you have to wait for the fec to do its magic (latency)
+            if(i % n ==0 && i>0){
+                for(std::size_t j=0;j<i;j++){
+                    const auto &in = testIn[j];
+                    const auto &out = testOut[j];
+                    assert(GenericHelper::compareVectors(in, out) == true);
+                }
+            }
         }
-        // now check if everything arrived
+        // now check again if everything is still okay
         for (std::size_t i = 0; i < testIn.size(); i++) {
             const auto &in = testIn[i];
             const auto &out = testOut[i];
