@@ -121,8 +121,12 @@ PcapTransmitter::PcapTransmitter(const std::string &wlan) {
 
 void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
                                    const uint8_t *payload, std::size_t payloadSize) {
+    pcapInjectionTime.start();
     const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
     Helper::injectPacket(ppcap, packet);
+    pcapInjectionTime.stop();
+    //std::cout<<"XX\n";
+    pcapInjectionTime.printInIntervalls(std::chrono::seconds(1), false);
 }
 
 void PcapTransmitter::injectPacket2(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
@@ -167,10 +171,10 @@ void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(wbDataPacket);
     injectPacket(data.data(), data.size());
-    //if(true){
-    //    LatencyTestingPacket latencyTestingPacket;
-    //    inject_packet((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
-    //}
+    if(true){
+        LatencyTestingPacket latencyTestingPacket;
+        injectPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
+    }
 }
 
 void WBTransmitter::sendSessionKey() {
