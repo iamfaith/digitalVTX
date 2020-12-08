@@ -129,7 +129,7 @@ static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 // but it is always of type WFB_PACKET_DATA
 class WBDataPacket{
 public:
-    // custom constructor
+    // constructor that
     explicit WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
     header(nonce1),payload(payload1),payloadSize(payloadSize1){};
 public:
@@ -146,13 +146,16 @@ struct LatencyTestingPacket{
     const int64_t timestampNs=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }__attribute__ ((packed));
 
-// The pcap packets sent out are never bigger than this size
-static constexpr const auto MAX_PACKET_SIZE=1510;
+// The final packet size ( radiotap header + iee80211 header + payload ) is never bigger than that
+// the reasoning behind this value: https://github.com/svpcom/wifibroadcast/issues/69
+static constexpr const auto MAX_PCAP_PACKET_SIZE=1510;
 static constexpr const auto MAX_RX_INTERFACES=8;
 
-static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
-static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES);
-static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES);
+// 1510-(13+24+9+16+2)
+//A: Any UDP with packet size <= 1466. For example x264 inside RTP or Mavlink.
+static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
+static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES);
+static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES);
 
 
 #endif //__WIFIBROADCAST_HPP__

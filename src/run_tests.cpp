@@ -156,7 +156,7 @@ namespace TestEncryption{
         encryptor.makeSessionKey();
         assert(decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.sessionKeyPacket)==true);
 
-        const auto data=GenericHelper::createRandomDataBuffer(100);
+        const auto data=GenericHelper::createRandomDataBuffer(MAX_PAYLOAD_SIZE);
         const uint64_t block_idx = 0;
         const uint8_t fragment_idx = 0;
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);

@@ -41,13 +41,16 @@ extern "C"{
 }
 
 namespace Helper {
-    // constructs a pcap packet by prefixing data with radiotap and iee header
+    // construct a pcap packet with the following data layout:
+    // RadiotapHeader | Ieee80211Header | customHeader | payload
+    // both customHeader and payload can have size 0, in this case there is nothing written for customHeader or payload
     static std::vector<uint8_t>
     createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                     const uint8_t *buf, size_t size) {
-        assert(size <= MAX_FORWARDER_PACKET_SIZE);
+                      const uint8_t *customHeader, std::size_t customHeaderSize, const uint8_t *payload, std::size_t payloadSize) {
+        const auto customHeaderAndPayloadSize=customHeaderSize + payloadSize;
+        assert((customHeaderAndPayloadSize) <= MAX_FORWARDER_PACKET_SIZE);
         std::vector<uint8_t> ret;
-        ret.resize(radiotapHeader.getSize() + ieee80211Header.getSize() + size);
+        ret.resize(radiotapHeader.getSize() + ieee80211Header.getSize() + customHeaderAndPayloadSize);
         uint8_t *p = ret.data();
         // radiotap header
         memcpy(p, radiotapHeader.getData(), radiotapHeader.getSize());
@@ -55,9 +58,23 @@ namespace Helper {
         // ieee80211 header
         memcpy(p, ieee80211Header.getData(), ieee80211Header.getSize());
         p += ieee80211Header.getSize();
-        // data
-        memcpy(p, buf, size);
+        if(customHeaderSize>0){
+            // customHeader
+            memcpy(p, customHeader, customHeaderSize);
+            p+=customHeaderSize;
+        }
+        if(payloadSize>0){
+            // payload
+            memcpy(p, payload, payloadSize);
+        }
         return ret;
+    }
+    // same as above, but only works if customHeader and payload are stored at the same memory location or
+    // the implementation doesn't need a custom header
+    static std::vector<uint8_t>
+    createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
+                     const uint8_t *buf, size_t size) {
+        return createPcapPacket(radiotapHeader,ieee80211Header,buf,size, nullptr,0);
     }
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
@@ -109,9 +126,10 @@ void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const I
 }
 
 void PcapTransmitter::injectPacket2(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                                    const uint8_t *header, std::size_t headerSize, const uint8_t *payload,
+                                    const uint8_t *customHeader, std::size_t customHeaderSize, const uint8_t *payload,
                                     std::size_t payloadSize) {
-
+    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, customHeader, customHeaderSize, payload, payloadSize);
+    Helper::injectPacket(ppcap, packet);
 }
 
 PcapTransmitter::~PcapTransmitter() {
@@ -145,9 +163,9 @@ void WBTransmitter::injectPacket(const uint8_t *buf, size_t size) {
     nInjectedPackets++;
 }
 
-void WBTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
-    //std::cout << "WBTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
-    const auto data= mEncryptor.makeEncryptedPacket(xBlock);
+void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
+    //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
+    const auto data= mEncryptor.makeEncryptedPacket(wbDataPacket);
     injectPacket(data.data(), data.size());
     //if(true){
     //    LatencyTestingPacket latencyTestingPacket;
@@ -219,6 +237,8 @@ int main(int argc, char *const *argv) {
     int mcs_index = 1;
 
     std::string keypair = "drone.key";
+
+    std::cout<<"MAX_PAYLOAD_SIZE:"<<MAX_PAYLOAD_SIZE<<"\n";
 
     while ((opt = getopt(argc, argv, "K:k:n:u:r:p:B:G:S:L:M:")) != -1) {
         switch (opt) {

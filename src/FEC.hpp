@@ -27,6 +27,13 @@ extern "C"{
  * I extracted the 'FEC part' into here
  */
 
+namespace FECCPlusPlus{
+    // const fec_t* code, const gf** src, gf** fecs, size_t sz
+    //template<std::size_t S>
+    //static void convertToPointers(std::vector<std::array<uint8_t,S>> in){
+    //
+    //}
+}
 // Takes a continuous stream of packets and
 // encodes them via FEC such that they can be decoded by FECDecoder
 // The encoding is slightly different from traditional FEC. It
@@ -44,6 +51,7 @@ public:
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
+        //block.resize(fec_n);
     }
 
     ~FECEncoder() {
@@ -60,6 +68,7 @@ private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
+    //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> block; nah leave it in c style since fec is also c
     size_t max_packet_size = 0;
 public:
     void encodePacket(const uint8_t *buf, size_t size) {
@@ -86,6 +95,8 @@ public:
         }
         // once enough data has been buffered, create and send all the FEC packets
         fec_encode(fec_p, (const uint8_t **) block, block + fec_k, max_packet_size);
+        //fec_encode(fec_p, (const uint8_t **) block.data(), (uint8_t**) block.data() + fec_k , max_packet_size);
+
         while (fragment_idx < fec_n) {
             send_block_fragment(max_packet_size);
             fragment_idx += 1;
@@ -104,7 +115,6 @@ public:
         }
         return false;
     }
-
 private:
     // construct WB FEC data, either DATA blocks or FEC blocks
     // then forward via the callback
@@ -170,7 +180,7 @@ private:
     const int fec_n;  // RS total number of fragments in block
     uint32_t seq = 0;
     //rx_ring_item_t rx_ring[RX_RING_SIZE];
-    std::array<rx_ring_item_t,RX_RING_SIZE> rx_ring;
+    std::array<rx_ring_item_t,RX_RING_SIZE> rx_ring{};
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
     uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
