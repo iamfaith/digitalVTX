@@ -1,5 +1,0 @@
-Copied the rx / tx here (in its current, working state) before I removed the part that was only needed for 'advanced setup' in svpcom.
-Because doing stuff like having a pi for encoding and another pi for transmission is out of the scope of OpenHD
-( and obsolete with better HW like the Pi 4)
-
-But if we somehow need these functionalities again, look here
