@@ -48,7 +48,7 @@ private:
 
 // WBTransmitter uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX
-// It does all the FEC encoding & encryption for this stream, then injects the generated packets
+// It does all the FEC encoding & encryption for this stream, then uses PcapTransmitter to inject the generated packets
 class WBTransmitter: private FECEncoder{
 public:
     WBTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
