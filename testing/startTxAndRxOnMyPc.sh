@@ -2,7 +2,8 @@
 # Given a PC with 2 wifi cards connected that support monitor mode,
 # This starts the tx on one of them and the rx on the other one
 
-MY_TX="wlxc4e984126183"
+#MY_TX="wlxc4e984126183"
+MY_TX="wlx000f00460445"
 MY_RX="wlxc4e9840e3cbe"
 WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
 

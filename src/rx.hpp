@@ -32,6 +32,7 @@
 #include "FEC.hpp"
 #include "Helper.hpp"
 #include "OpenHDStatisticsWriter.hpp"
+#include "HelperSources/TimeHelper.hpp"
 
 static constexpr const auto RX_ANT_MAX=4;
 class antennaItem {
@@ -88,6 +89,9 @@ private:
     uint32_t count_p_dec_ok=0;
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
     OpenHDStatisticsWriter::Data statistics{};
+private:
+    // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
+    AvgCalculator avgPcapToApplicationLatency;
 };
 
 // This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT

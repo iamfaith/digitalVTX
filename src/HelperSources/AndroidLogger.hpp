@@ -5,13 +5,11 @@
 #ifndef FPV_VR_PRIVATE_MDEBUG_H
 #define FPV_VR_PRIVATE_MDEBUG_H
 
-#ifndef __ANDROID__
-#include <iostream>
-#define MLOGD std::cout
-#define MLOGE std::cout
-#else
 
+#ifdef __ANDROID__
 #include "android/log.h"
+#endif
+
 #include <string.h>
 #include <sstream>
 
@@ -23,6 +21,7 @@
 #undef LOGE
 #endif
 
+#ifdef __ANDROID__
 // See https://medium.com/@geierconstantinabc/best-way-to-log-in-android-native-code-c-style-7461005610f6
 // Handles logging in all my android studio projects with native code
 // inspired by https://android.googlesource.com/platform/system/core/+/refs/heads/master/base/include/android-base/logging.h
@@ -66,6 +65,59 @@ AndroidLogger& operator<<(AndroidLogger&& record, T&& t) {
     return record << std::forward<T>(t);
 }
 
+#else
+constexpr auto ANDROID_LOG_DEBUG=0;
+constexpr auto ANDROID_LOG_ERROR=1;
+class StdCoutLogger{
+public:
+    // Chrome university https://www.youtube.com/watch?v=UNJrgsQXvCA
+    // 'New style C++ ' https://google.github.io/styleguide/cppguide.html
+    StdCoutLogger(const int priority, const std::string TAG): M_PRIORITY(priority), M_TAG(std::move(TAG)) {}
+    ~StdCoutLogger() {
+        logBigMessage(stream.str());
+    }
+    StdCoutLogger(const StdCoutLogger& other)=delete;
+private:
+    std::stringstream stream;
+    const std::string M_TAG;
+    const int M_PRIORITY;
+    // taken from https://android.googlesource.com/platform/system/core/+/android-2.1_r1/liblog/logd_write.c
+    static constexpr const auto ANDROID_LOG_BUFF_SIZE=1024;
+    //Splits debug messages that exceed the android log maximum length into smaller log(s)
+    //Recursive declaration
+    void logBigMessage(const std::string& message){
+        if(message.length()>ANDROID_LOG_BUFF_SIZE){
+            if(M_PRIORITY==ANDROID_LOG_DEBUG){
+                std::cout<<M_TAG<<" "<<message.substr(0,ANDROID_LOG_BUFF_SIZE);
+            }else{
+                std::cerr<<M_TAG<<" "<<message.substr(0,ANDROID_LOG_BUFF_SIZE);
+            }
+            logBigMessage(message.substr(ANDROID_LOG_BUFF_SIZE));
+        }else{
+            if(M_PRIORITY==ANDROID_LOG_DEBUG){
+                std::cout<<M_TAG<<" "<<message;
+            }else{
+                std::cerr<<M_TAG<<" "<<message;
+            }
+        }
+    }
+    // the non-member function operator<< will now have access to private members
+    template <typename T>
+    friend StdCoutLogger& operator<<(StdCoutLogger& record, T&& t);
+};
+template <typename T>
+StdCoutLogger& operator<<(StdCoutLogger& record, T&& t) {
+    record.stream << std::forward<T>(t);
+    return record;
+}
+template <typename T>
+StdCoutLogger& operator<<(StdCoutLogger&& record, T&& t) {
+    return record << std::forward<T>(t);
+}
+using AndroidLogger=StdCoutLogger;
+#endif
+
+
 
 // taken from https://stackoverflow.com/questions/1666802/is-there-a-class-macro-in-c
 // also see https://gcc.gnu.org/onlinedocs/gcc/Function-Names.html
@@ -88,7 +140,7 @@ namespace PrettyFunctionHelper{
         // for example "void ","std::optional<std::string> ", "static std::string "
         // See how the 3rd example return type also contains a " ".
         // However, it is guaranteed that the area NamespaceAndClassName does not contain an empty space
-        const size_t begin1 = returnTypeAndNamespaceAndClassName.rfind(" ");
+        const size_t begin1 = returnTypeAndNamespaceAndClassName.rfind(' ');
         if(begin1 == std::string::npos)return UNKNOWN_CLASS_NAME;
         const std::string namespaceAndClassName=returnTypeAndNamespaceAndClassName.substr(begin1+1);
         return namespaceAndClassName;
@@ -153,6 +205,7 @@ static AndroidLogger MLOGE2(const std::string CUSTOM_TAG){
     return AndroidLogger(ANDROID_LOG_ERROR,std::move(CUSTOM_TAG));
 }
 
+#ifdef __ANDROID__
 // print some example LOGs
 namespace TEST_LOGGING_ON_ANDROID{
     static void test2(){
@@ -161,6 +214,7 @@ namespace TEST_LOGGING_ON_ANDROID{
         __android_log_print(ANDROID_LOG_DEBUG,"TAG","After");
     }
 }
+#endif
 
 /*static void test(){
        LOG::D("TestText %d",1);
@@ -201,5 +255,3 @@ namespace TEST_LOGGING_ON_ANDROID{
 }*/
 #endif //FPV_VR_PRIVATE_MDEBUG_H
 
-
-#endif //__ANDROID__

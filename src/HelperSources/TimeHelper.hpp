@@ -176,7 +176,7 @@ private:
 public:
     // Use zero for infinite n of recorded samples
 	// Be carefully with memory in this case
-    AvgCalculator2(size_t sampleSize=60):sampleSize(sampleSize){};
+    explicit AvgCalculator2(size_t sampleSize=60):sampleSize(sampleSize){};
     //
     void add(const std::chrono::nanoseconds& value){
         if(value<std::chrono::nanoseconds(0)){
@@ -287,8 +287,7 @@ public:
         const auto now=std::chrono::steady_clock::now();
         if(now-lastLog>interval){
             lastLog=now;
-            //MLOGD2(mName)<<"Avg: "<<AvgCalculator::getAvgReadable(avgOnly);
-            std::cout<<mName<<" "<<AvgCalculator::getAvgReadable(avgOnly)<<"\n";
+            MLOGD2(mName)<<"Avg: "<<AvgCalculator::getAvgReadable(avgOnly);
             reset();
         }
     }
@@ -312,7 +311,7 @@ public:
         sumAtLastCall = sum;
         return ret;
     }
-    long getAbsolute(){
+    long getAbsolute()const{
         return sum;
     }
     void reset(){

@@ -48,7 +48,7 @@ public:
     void injectPacket2(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* customHeader, std::size_t customHeaderSize, const uint8_t* payload, std::size_t payloadSize);
 private:
     pcap_t* ppcap;
-    Chronometer pcapInjectionTime;
+    Chronometer pcapInjectionTime{"PcapInjectionTime"};
 };
 
 // WBTransmitter uses an UDP port as input for the data stream

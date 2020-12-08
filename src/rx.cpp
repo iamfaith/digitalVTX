@@ -246,9 +246,14 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_fec_recovered = 0;
     count_p_lost = 0;
     count_p_bad = 0;
+    std::cout<<"avgPcapToApplicationLatency:"<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
 }
 
 void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,const uint8_t* pkt){
+    const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
+    const auto latency=std::chrono::system_clock::now() -tmp;
+    avgPcapToApplicationLatency.add(latency);
+
     count_p_all++;
     // The radio capture header precedes the 802.11 header.
     const auto parsedPacket=Helper::processReceivedPcapPacket(hdr,pkt);
@@ -301,7 +306,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             const LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
             const auto timestamp=std::chrono::time_point<std::chrono::steady_clock>(std::chrono::nanoseconds(latencyTestingPacket->timestampNs));
             const auto latency=std::chrono::steady_clock::now()-timestamp;
-            std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+            //std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
         }
             return;
         default:
@@ -346,9 +351,6 @@ void PcapReceiver::loop_iter() {
         if (pkt == nullptr) {
             break;
         }
-        //const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
-        //const auto latency=std::chrono::system_clock::now() -tmp;
-        //std::cout<<"PacketTimeLatency "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
         agg->processPacket(WLAN_IDX,hdr,pkt);
     }
 }
