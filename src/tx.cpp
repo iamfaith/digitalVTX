@@ -98,37 +98,51 @@ namespace Helper {
     }
 }
 
-
-PcapTransmitter::PcapTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port,int udp_port,
-                                 const std::string &wlan) :
-        FECEncoder(k,n),
-        RADIO_PORT(radio_port),
-        mEncryptor(keypair),
-        mRadiotapHeader(radiotapHeader){
-    mEncryptor.makeSessionKey();
-    callback=std::bind(&PcapTransmitter::sendFecBlock, this, std::placeholders::_1);
+PcapTransmitter::PcapTransmitter(const std::string &wlan) {
     ppcap=Helper::openTxWithPcap(wlan);
-    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port,PcapTransmitter::LOG_INTERVAL);
-    fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
+}
+
+void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
+                                   const uint8_t *buf, std::size_t size) {
+    const auto packet = Helper::createPcapPacket(radiotapHeader,ieee80211Header, buf, size);
+    Helper::injectPacket(ppcap, packet);
 }
 
 PcapTransmitter::~PcapTransmitter() {
     pcap_close(ppcap);
+}
+
+
+WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port, int udp_port,
+                             const std::string &wlan) :
+        FECEncoder(k,n),
+        mPcapTransmitter(wlan),
+        RADIO_PORT(radio_port),
+        mEncryptor(keypair),
+        mRadiotapHeader(radiotapHeader){
+    mEncryptor.makeSessionKey();
+    callback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
+    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port, WBTransmitter::LOG_INTERVAL);
+    fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
+}
+
+WBTransmitter::~WBTransmitter() {
     close(mRxSocket);
 }
 
 
-void PcapTransmitter::injectPacket(const uint8_t *buf, size_t size) {
-    //std::cout << "PcapTransmitter::inject_packet\n";
+void WBTransmitter::injectPacket(const uint8_t *buf, size_t size) {
+    //std::cout << "WBTransmitter::inject_packet\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
-    const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
-    Helper::injectPacket(ppcap, packet);
+    mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,buf,size);
+    //const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
+    //Helper::injectPacket(ppcap, packet);
     nInjectedPackets++;
 }
 
-void PcapTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
-    //std::cout << "PcapTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
+void WBTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
+    //std::cout << "WBTransmitter::sendFecBlock"<<(int)xBlock.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacket(xBlock);
     injectPacket(data.data(), data.size());
     //if(true){
@@ -137,22 +151,23 @@ void PcapTransmitter::sendFecBlock(const WBDataPacket &xBlock) {
     //}
 }
 
-void PcapTransmitter::sendSessionKey() {
-    //std::cout << "PcapTransmitter::send_session_key\n";
+void WBTransmitter::sendSessionKey() {
+    //std::cout << "WBTransmitter::send_session_key\n";
     injectPacket((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
 }
 
-void PcapTransmitter::processPacket(const uint8_t *buf, size_t size) {
-    //std::cout << "PcapTransmitter::send_packet\n";
+void WBTransmitter::processPacket(const uint8_t *buf, size_t size) {
+    //std::cout << "WBTransmitter::send_packet\n";
     // this calls a callback internally
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
+        // running out of sequence numbers should never happen during the lifetime of the TX instance
         mEncryptor.makeSessionKey();
         sendSessionKey();
     }
 }
 
-void PcapTransmitter::loop() {
+void WBTransmitter::loop() {
     uint8_t buf[MAX_PAYLOAD_SIZE];
     std::chrono::steady_clock::time_point session_key_announce_ts{};
     std::chrono::steady_clock::time_point log_ts{};
@@ -162,7 +177,7 @@ void PcapTransmitter::loop() {
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
             std::cout<<StringFormat::convert("%d \tTX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";
             //<<" nPacketsFromUdpPort: "<<nPacketsFromUdpPort<<" nInjectedPackets: "<<nInjectedPackets<<"\n";
-            log_ts=std::chrono::steady_clock::now()+PcapTransmitter::LOG_INTERVAL;
+            log_ts= std::chrono::steady_clock::now() + WBTransmitter::LOG_INTERVAL;
         }
         if(message_length>0){
             nPacketsFromUdpPort++;
@@ -256,7 +271,7 @@ int main(int argc, char *const *argv) {
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
     try {
-        std::shared_ptr<PcapTransmitter> t = std::make_shared<PcapTransmitter>(
+        std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(
                 radiotapHeader, k, n, keypair, radio_port,udp_port, wlan);
         t->loop();
     } catch (std::runtime_error &e) {

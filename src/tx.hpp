@@ -33,15 +33,26 @@
 #include "FEC.hpp"
 #include "Helper.hpp"
 
-
 // Pcap Transmitter injects packets into the wifi adapter using pcap
+class PcapTransmitter{
+public:
+    explicit PcapTransmitter(const std::string &wlan);
+    ~PcapTransmitter();
+    // inject packet by prefixing data with the proper IEE and Radiotap header
+    void injectPacket(const RadiotapHeader& radiotapHeader,const Ieee80211Header& ieee80211Header,const uint8_t* buf,std::size_t size);
+private:
+    pcap_t* ppcap;
+};
+
+// WBTransmitter injects packets into the wifi adapter using PcapTransmitter
+// Also does the FEC encoding & encryption
 // It uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX
-class PcapTransmitter: public FECEncoder{
+class WBTransmitter: private FECEncoder{
 public:
-    PcapTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
-                    int udp_port,const std::string &wlan);
-    ~PcapTransmitter();
+    WBTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
+                  int udp_port, const std::string &wlan);
+    ~WBTransmitter();
 private:
     // process the input data stream
     void processPacket(const uint8_t *buf, size_t size);
@@ -51,6 +62,8 @@ private:
     void sendFecBlock(const WBDataPacket &xBlock);
     // inject packet by prefixing data with the current IEE and Radiotap header
     void injectPacket(const uint8_t *buf, size_t size);
+    // this once is used for injecting packets
+    PcapTransmitter mPcapTransmitter;
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;
@@ -63,7 +76,6 @@ private:
     // this one never changes,also used to inject packets
     const RadiotapHeader mRadiotapHeader;
     uint16_t ieee80211_seq=0;
-    pcap_t* ppcap;
     // statistics for console
     int64_t nPacketsFromUdpPort=0;
     int64_t nInjectedPackets=0;

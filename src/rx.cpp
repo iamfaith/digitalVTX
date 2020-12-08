@@ -367,7 +367,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
         rx[i] = new PcapReceiver(rxInterfaces[i], i, radio_port, agg.get());
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
-        ss<<" "<<rxInterfaces[i];
+        ss<<rxInterfaces[i]<<" ";
     }
     std::cout<<ss.str()<<"\n";
 
