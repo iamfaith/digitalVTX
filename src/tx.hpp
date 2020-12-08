@@ -34,20 +34,21 @@
 #include "Helper.hpp"
 
 // Pcap Transmitter injects packets into the wifi adapter using pcap
+// It does not specify what the payload is and therefore is just a really small wrapper around the pcap interface
+// that properly opens / closes the interface on construction/destruction
 class PcapTransmitter{
 public:
     explicit PcapTransmitter(const std::string &wlan);
     ~PcapTransmitter();
-    // inject packet by prefixing data with the proper IEE and Radiotap header
-    void injectPacket(const RadiotapHeader& radiotapHeader,const Ieee80211Header& ieee80211Header,const uint8_t* buf,std::size_t size);
+    // inject packet by prefixing payload with the IEE and Radiotap header
+    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* payload, std::size_t payloadSize);
 private:
     pcap_t* ppcap;
 };
 
-// WBTransmitter injects packets into the wifi adapter using PcapTransmitter
-// Also does the FEC encoding & encryption
-// It uses an UDP port as input for the data stream
+// WBTransmitter uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX
+// It does all the FEC encoding & encryption for this stream, then injects the generated packets
 class WBTransmitter: private FECEncoder{
 public:
     WBTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,

@@ -103,8 +103,8 @@ PcapTransmitter::PcapTransmitter(const std::string &wlan) {
 }
 
 void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                                   const uint8_t *buf, std::size_t size) {
-    const auto packet = Helper::createPcapPacket(radiotapHeader,ieee80211Header, buf, size);
+                                   const uint8_t *payload, std::size_t payloadSize) {
+    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
     Helper::injectPacket(ppcap, packet);
 }
 
@@ -136,8 +136,6 @@ void WBTransmitter::injectPacket(const uint8_t *buf, size_t size) {
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
     mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,buf,size);
-    //const auto packet = Helper::createPcapPacket(mRadiotapHeader, mIeee80211Header, buf, size);
-    //Helper::injectPacket(ppcap, packet);
     nInjectedPackets++;
 }
 
