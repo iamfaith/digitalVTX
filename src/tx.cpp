@@ -108,6 +108,12 @@ void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const I
     Helper::injectPacket(ppcap, packet);
 }
 
+void PcapTransmitter::injectPacket2(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
+                                    const uint8_t *header, std::size_t headerSize, const uint8_t *payload,
+                                    std::size_t payloadSize) {
+
+}
+
 PcapTransmitter::~PcapTransmitter() {
     pcap_close(ppcap);
 }
