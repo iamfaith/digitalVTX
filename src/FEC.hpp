@@ -47,8 +47,10 @@ public:
     typedef std::function<void(const WBDataPacket &xBlock)> SEND_BLOCK_FRAGMENT;
     SEND_BLOCK_FRAGMENT callback;
 
-    explicit FECEncoder(int k, int n) : fec_k(k), fec_n(n) {
-        fec_p = fec_new(fec_k, fec_n);
+    explicit FECEncoder(int k, int n) : fec_k(0), fec_n(n) {
+        if(fec_k!=0){
+            fec_p = fec_new(fec_k, fec_n);
+        }
         block = new uint8_t *[fec_n];
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
@@ -61,12 +63,14 @@ public:
             delete block[i];
         }
         delete block;
-        fec_free(fec_p);
+        if(fec_p!= nullptr){
+            fec_free(fec_p);
+        }
     }
 private:
     const int fec_k;  // RS number of primary fragments in block default 8
     const int fec_n;  // RS total number of fragments in block default 12
-    fec_t *fec_p;
+    fec_t *fec_p=nullptr;
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
@@ -81,6 +85,7 @@ public:
             WBDataPacket xBlock{nonce,buf,size};
             callback(xBlock);
             block_idx++;
+            return;
         }
         FECDataHeader packet_hdr(size);
         // write the size of the data part into each packet.
@@ -160,9 +165,10 @@ public:
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
-    explicit FECDecoder(int k, int n) : fec_k(k), fec_n(n) {
-        fec_p = fec_new(fec_k, fec_n);
-
+    explicit FECDecoder(int k, int n) : fec_k(0), fec_n(n) {
+        if(fec_k!=0){
+            fec_p = fec_new(fec_k, fec_n);
+        }
         for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
             rx_ring[ring_idx].block_idx = 0;
             rx_ring[ring_idx].send_fragment_idx = 0;
@@ -184,11 +190,13 @@ public:
             }
             delete rx_ring[ring_idx].fragments;
         }
-        fec_free(fec_p);
+        if(fec_p!= nullptr){
+            fec_free(fec_p);
+        }
     }
 private:
     std::map<uint64_t,std::chrono::steady_clock::time_point> packetEnteredQueue;
-    fec_t *fec_p;
+    fec_t *fec_p=nullptr;
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
     uint32_t seq = 0;
@@ -321,6 +329,7 @@ public:
         //// Use fec_k==0 to completely disable FEC
         if(fec_k==0) {
             callback(decrypted.data(),decrypted.size());
+            return true;
         }
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
 
