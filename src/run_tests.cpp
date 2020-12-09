@@ -20,31 +20,16 @@
 #include <assert.h>
 #include <stdio.h>
 #include <inttypes.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <time.h>
-#include <sys/resource.h>
-#include <pcap/pcap.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <limits.h>
 
 #include <memory>
 #include <string>
-#include <memory>
 #include <chrono>
 #include <sstream>
 
 #include "wifibroadcast.hpp"
 #include "FEC.hpp"
-
-extern "C"{
-#include "ExternalSources/fec.h"
-}
 
 #include "Helper.hpp"
 #include "Encryption.hpp"
@@ -76,7 +61,7 @@ namespace TestFEC{
 
     // No packet loss
     // Fixed packet size
-    static void test(const int k,const int n,const std::size_t N_PACKETS){
+    static void testWithoutPacketLossFixedPacketSize(const int k, const int n, const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
             testIn.push_back(GenericHelper::createRandomDataBuffer(1024));
@@ -86,7 +71,7 @@ namespace TestFEC{
 
     // No packet loss
     // Dynamic packet size (up to N bytes)
-    static void test2(const int k,const int n,const std::size_t N_PACKETS){
+    static void testWithoutPacketLossDynamicPacketSize(const int k, const int n, const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
             const auto size=(rand() % MAX_PAYLOAD_SIZE)+1;
@@ -119,7 +104,7 @@ namespace TestFEC{
                 }
             }else if(DROP_MODE==2){
                 // drop 1 data packet and 1 FEC packet but that still shouldn't pose any issues
-                if(fragmentIdx==n){
+                if(fragmentIdx==0){
                     std::cout<<"Dropping FEC-DATA packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
                 }else if(fragmentIdx==k-1){
                     std::cout<<"Dropping FEC-CORRECTION packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
@@ -191,7 +176,7 @@ int main(int argc, char *argv[]){
     try {
         std::cout<<"Testing FEC\n";
         // first, test with fec disabled
-        TestFEC::test2(0,0,1200);
+        TestFEC::testWithoutPacketLossDynamicPacketSize(0, 0, 1200);
         // now with FEC enabled
         int k=0;
         int n=0;
@@ -206,8 +191,8 @@ int main(int argc, char *argv[]){
                 k=8;
                 n=16;
             }
-            TestFEC::test(k,n,1200);
-            TestFEC::test2(k,n,1200);
+            TestFEC::testWithoutPacketLossFixedPacketSize(k, n, 1200);
+            TestFEC::testWithoutPacketLossDynamicPacketSize(k, n, 1200);
             //TestFEC::test3(k,n,1200,0);
             TestFEC::test3(k,n,1200,2);
         }
