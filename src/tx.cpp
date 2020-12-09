@@ -125,8 +125,10 @@ void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const I
     const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
     Helper::injectPacket(ppcap, packet);
     pcapInjectionTime.stop();
-    //std::cout<<"XX\n";
-    pcapInjectionTime.printInIntervalls(std::chrono::seconds(1), false);
+    if(pcapInjectionTime.getMax()>std::chrono::milliseconds (1)){
+        std::cerr<<"Injecting PCAP packet took really long:"<<pcapInjectionTime.getAvgReadable()<<"\n";
+        pcapInjectionTime.reset();
+    }
 }
 
 void PcapTransmitter::injectPacket2(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,

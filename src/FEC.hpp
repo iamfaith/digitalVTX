@@ -28,13 +28,7 @@ extern "C"{
  * I extracted the 'FEC part' into here
  */
 
-namespace FECCPlusPlus{
-    // const fec_t* code, const gf** src, gf** fecs, size_t sz
-    //template<std::size_t S>
-    //static void convertToPointers(std::vector<std::array<uint8_t,S>> in){
-    //
-    //}
-}
+
 
 // Takes a continuous stream of packets and
 // encodes them via FEC such that they can be decoded by FECDecoder
@@ -42,10 +36,10 @@ namespace FECCPlusPlus{
 // a) makes sure to send out data packets immediately
 // b) Handles packets of size up to N instead of packets of exact size N
 // Due to b) the packet size has to be written into the first two bytes of each data packet. See https://github.com/svpcom/wifibroadcast/issues/67
-// use fec_k==0 to completely skip FEC
+// use fec_k==0 to completely skip FEC for the lowest latency possible
 class FECEncoder {
 public:
-    typedef std::function<void(const WBDataPacket &xBlock)> SEND_BLOCK_FRAGMENT;
+    typedef std::function<void(const WBDataPacket &wbDataPacket)> SEND_BLOCK_FRAGMENT;
     SEND_BLOCK_FRAGMENT callback;
 
     explicit FECEncoder(int k, int n) : fec_k(k), fec_n(n) {
@@ -88,20 +82,20 @@ public:
             block_idx++;
             return;
         }
-        FECDataHeader packet_hdr(size);
+        FECDataHeader dataHeader(size);
         // write the size of the data part into each packet.
         // This is needed for the 'up to n bytes' workaround
-        memcpy(block[fragment_idx], &packet_hdr, sizeof(packet_hdr));
+        memcpy(block[fragment_idx], &dataHeader, sizeof(dataHeader));
         // write the actual data
-        memcpy(block[fragment_idx] + sizeof(packet_hdr), buf, size);
+        memcpy(block[fragment_idx] + sizeof(dataHeader), buf, size);
         // zero out the remaining bytes such that FEC always sees zeroes
         // same is done on the rx. These zero bytes are never transmitted via wifi
         const auto writtenDataSize= sizeof(FECDataHeader) + size;
         memset(block[fragment_idx]+writtenDataSize, '\0', MAX_FEC_PAYLOAD-writtenDataSize);
 
         // send FEC data packet immediately before calculating the FECs
-        send_block_fragment(sizeof(packet_hdr) + size);
-        max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
+        send_block_fragment(sizeof(dataHeader) + size);
+        max_packet_size = std::max(max_packet_size, sizeof(dataHeader) + size);
         fragment_idx += 1;
 
         //std::cout<<"Fragment index is "<<(int)fragment_idx<<"fec_k"<<(int)fec_k<<"\n";
@@ -134,17 +128,19 @@ private:
     // construct WB FEC data, either DATA blocks or FEC blocks
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
-        //xBlock.header.packet_type = WFB_PACKET_DATA;
+        //packet.header.packet_type = WFB_PACKET_DATA;
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
         const uint8_t *dataP = block[fragment_idx];
-        WBDataPacket xBlock{nonce,dataP,packet_size};
-        callback(xBlock);
+        WBDataPacket packet{nonce, dataP, packet_size};
+        callback(packet);
     }
 };
 
 class RxRingItem{
 public:
-
+    //explicit RxRingItem(const int k,const int n){
+    //
+    //}
 public:
     // the block idx this item currently refers to
     uint64_t block_idx;
@@ -165,7 +161,7 @@ static inline int modN(int x, int base) {
 // Most importantly, it also handles re-ordering of packets
 class FECDecoder {
 public:
-    static constexpr auto RX_RING_SIZE = 400;
+    static constexpr auto RX_RING_SIZE = 40;
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
@@ -174,6 +170,8 @@ public:
             fec_p = fec_new(fec_k, fec_n);
         }
         for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
+            auto& rxRingItem=rx_ring[ring_idx];
+
             rx_ring[ring_idx].block_idx = 0;
             rx_ring[ring_idx].send_fragment_idx = 0;
             rx_ring[ring_idx].has_fragments = 0;
@@ -199,12 +197,11 @@ public:
         }
     }
 private:
-    std::map<uint64_t,std::chrono::steady_clock::time_point> packetEnteredQueue;
+    std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredQueue;
     fec_t *fec_p=nullptr;
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
     uint32_t seq = 0;
-    //RxRingItem rx_ring[RX_RING_SIZE];
     std::array<RxRingItem,RX_RING_SIZE> rx_ring{};
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
@@ -238,7 +235,7 @@ private:
     // TODO documentation
     // copy paste from svpcom
     int get_block_ring_idx(uint64_t block_idx) {
-        // check if block is already to the ring
+        // check if block is already in the ring
         for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
             if (rx_ring[i].block_idx == block_idx) return i;
         }
@@ -311,11 +308,12 @@ private:
             fprintf(stderr, "corrupted packet on FECDecoder out %u\n", seq);
         } else {
             //send(sockfd, payload, packet_size, MSG_DONTWAIT);
+            //
             callback(payload,packet_size);
         }
     }
 public:
-    // call on new session key ?!
+    // call on new session key !
     void reset() {
         rx_ring_front = 0;
         rx_ring_alloc = 0;
@@ -336,7 +334,7 @@ public:
             callback(decrypted.data(),decrypted.size());
             return true;
         }
-
+        timePointPacketEnteredQueue.insert({wblockHdr.nonce, std::chrono::steady_clock::now()});
         const uint64_t block_idx=WBDataHeader::calculateBlockIdx(wblockHdr.nonce);
         const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(wblockHdr.nonce);
 
@@ -362,7 +360,6 @@ public:
 
         //ignore already processed fragments
         if (p->fragment_map[fragment_idx]) return true;
-
 
         // write the data where first two bytes are the actual packet size
         memcpy(p->fragments[fragment_idx], decrypted.data(), decrypted.size());
