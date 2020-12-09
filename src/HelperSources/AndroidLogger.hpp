@@ -208,7 +208,7 @@ static AndroidLogger MLOGE2(const std::string CUSTOM_TAG){
 #ifdef __ANDROID__
 // print some example LOGs
 namespace TEST_LOGGING_ON_ANDROID{
-    static void testWithoutPacketLossDynamicPacketSize(){
+    static void test(){
         __android_log_print(ANDROID_LOG_DEBUG,"TAG","Before");
         AndroidLogger(ANDROID_LOG_DEBUG,"MyTAG")<<"Hello World I "<<1<<" F "<<0.0f<<" X";
         __android_log_print(ANDROID_LOG_DEBUG,"TAG","After");
