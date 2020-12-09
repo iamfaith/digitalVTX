@@ -214,14 +214,16 @@ private:
     //reference to the FEC decoder (needed for k,n)
     const FEC& fec;
 public:
-    // the block idx this item currently refers to
+    // the block idx marks which block this element currently refers to
     uint64_t block_idx=0;
     // old c-style is needed for now
     uint8_t **fragments;
+    // TODO what is this
     uint8_t send_fragment_idx=0;
+    // TODO what is this
     uint8_t has_fragments=0;
 private:
-    // for each fragment (aka fragment_idx) store if it has been received yet
+    // for each fragment (via fragment_idx) store if it has been received yet
     enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
     std::vector<FragmentStatus> fragment_map;
 };
@@ -304,10 +306,6 @@ private:
 
         for (int i = 0; i < new_blocks; i++) {
             ring_idx = rx_ring_push();
-            /*rx_ring[ring_idx]->block_idx = block_idx + i + 1 - new_blocks;
-            rx_ring[ring_idx]->send_fragment_idx = 0;
-            rx_ring[ring_idx]->has_fragments = 0;
-            rx_ring[ring_idx]->clearFragmentMap();*/
             rx_ring[ring_idx]->reset();
             rx_ring[ring_idx]->block_idx= block_idx + i + 1 - new_blocks;
         }

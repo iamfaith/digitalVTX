@@ -68,7 +68,7 @@ private:
     void sendFecBlock(const WBDataPacket &wbDataPacket);
     // inject packet by prefixing data with the current IEE and Radiotap header
     void injectPacket(const uint8_t *buf, size_t size);
-    // this once is used for injecting packets
+    // this one is used for injecting packets
     PcapTransmitter mPcapTransmitter;
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
