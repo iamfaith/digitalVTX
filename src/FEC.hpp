@@ -23,11 +23,6 @@ extern "C"{
 #include "ExternalCSources/fec.h"
 }
 
-/**
- * All this code was originally written in svpcom/wifibroadcast
- * I extracted the 'FEC part' into here
- */
-
 // c++ wrapper for the FEC library
 class FEC{
 public:
@@ -50,6 +45,7 @@ public:
 public:
     const int fec_k;  // RS number of primary fragments in block default 8
     const int fec_n;  // RS total number of fragments in block default 12
+private:
     fec_t *fec_p=nullptr;
 };
 
@@ -66,9 +62,6 @@ public:
     SEND_BLOCK_FRAGMENT callback;
 
     explicit FECEncoder(int k, int n) : FEC(k,n) {
-        if(fec_k!=0){
-            fec_p = fec_new(fec_k, fec_n);
-        }
         block = new uint8_t *[fec_n];
         for (int i = 0; i < fec_n; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
@@ -81,9 +74,6 @@ public:
             delete block[i];
         }
         delete block;
-        if(fec_p!= nullptr){
-            fec_free(fec_p);
-        }
     }
 private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
@@ -202,9 +192,6 @@ public:
     SEND_DECODED_PACKET callback;
 
     explicit FECDecoder(int k, int n) : FEC(k,n) {
-        if(fec_k!=0){
-            fec_p = fec_new(fec_k, fec_n);
-        }
         std::cout<<"LALU"<<rx_ring.size()<<"\n";
         /*for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
             auto& rxRingItem=rx_ring[ring_idx];
