@@ -188,6 +188,7 @@ public:
         has_fragments = 0;
         clearFragmentMap();
     }
+    // mark every fragment as not yet received
     void clearFragmentMap(){
         std::fill(fragment_map.begin(),fragment_map.end(),FragmentStatus::UNAVAILABLE);
     }
@@ -383,17 +384,6 @@ public:
             // no data that wasn't already received, return early
             return true;
         }
-
-        //ignore already processed fragments
-        /*if (p->fragment_map[fragment_idx]) return true;
-
-        // write the data where first two bytes are the actual packet size
-        memcpy(p->fragments[fragment_idx], decrypted.data(), decrypted.size());
-        // set the rest to zero such that FEC works
-        memset(p->fragments[fragment_idx]+decrypted.size(), '\0', MAX_FEC_PAYLOAD-decrypted.size());
-
-        p->fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
-        p->has_fragments += 1;*/
 
         if (ring_idx == rx_ring_front) {
             // check if any packets without gaps
