@@ -152,12 +152,12 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
         mRadiotapHeader(radiotapHeader){
     mEncryptor.makeSessionKey();
     callback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
-    mRxSocket=SocketHelper::openUdpSocketForRx(udp_port, WBTransmitter::LOG_INTERVAL);
+    mInputSocket=SocketHelper::openUdpSocketForRx(udp_port, WBTransmitter::LOG_INTERVAL);
     fprintf(stderr, "Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
 }
 
 WBTransmitter::~WBTransmitter() {
-    close(mRxSocket);
+    close(mInputSocket);
 }
 
 
@@ -200,7 +200,7 @@ void WBTransmitter::loop() {
     std::chrono::steady_clock::time_point session_key_announce_ts{};
     std::chrono::steady_clock::time_point log_ts{};
     for(;;){
-        const ssize_t message_length = recvfrom(mRxSocket, buf, MAX_PAYLOAD_SIZE,0, nullptr, nullptr);
+        const ssize_t message_length = recvfrom(mInputSocket, buf, MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
         if(std::chrono::steady_clock::now()>=log_ts){
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
             std::cout<<StringFormat::convert("%d \tTX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";

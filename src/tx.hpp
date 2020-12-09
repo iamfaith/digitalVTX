@@ -74,7 +74,7 @@ private:
     // into the one wfb stream
     const uint8_t RADIO_PORT;
     // the rx socket is set by opening the right UDP port
-    int mRxSocket;
+    int mInputSocket;
     // Used to encrypt the packets
     Encryptor mEncryptor;
     // Used to inject packets
