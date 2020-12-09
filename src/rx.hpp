@@ -92,6 +92,8 @@ private:
 private:
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
     AvgCalculator avgPcapToApplicationLatency;
+    AvgCalculator2 avgLatencyBeaconPacketLatency;
+    int lalu=0;
 };
 
 // This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT
@@ -104,13 +106,17 @@ public:
 
     void loop_iter();
 
+    void xLoop();
+
     int getfd() const { return fd; }
-private:
+
+public:
     // the wifi interface this receiver listens on
     const int WLAN_IDX;
     // the radio port it filters pacp packets for
     const int RADIO_PORT;
     // processes received packets
+public:
     Aggregator* agg;
     // this fd is created by pcap
     int fd;

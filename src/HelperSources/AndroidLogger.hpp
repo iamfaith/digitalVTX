@@ -79,8 +79,8 @@ public:
     StdCoutLogger(const StdCoutLogger& other)=delete;
 private:
     std::stringstream stream;
-    const std::string M_TAG;
     const int M_PRIORITY;
+    const std::string M_TAG;
     // taken from https://android.googlesource.com/platform/system/core/+/android-2.1_r1/liblog/logd_write.c
     static constexpr const auto ANDROID_LOG_BUFF_SIZE=1024;
     //Splits debug messages that exceed the android log maximum length into smaller log(s)
@@ -88,16 +88,16 @@ private:
     void logBigMessage(const std::string& message){
         if(message.length()>ANDROID_LOG_BUFF_SIZE){
             if(M_PRIORITY==ANDROID_LOG_DEBUG){
-                std::cout<<M_TAG<<" "<<message.substr(0,ANDROID_LOG_BUFF_SIZE);
+                std::cout<<M_TAG<<" "<<message.substr(0,ANDROID_LOG_BUFF_SIZE)<<"\n";
             }else{
-                std::cerr<<M_TAG<<" "<<message.substr(0,ANDROID_LOG_BUFF_SIZE);
+                std::cerr<<M_TAG<<" "<<message.substr(0,ANDROID_LOG_BUFF_SIZE)<<"\n";
             }
             logBigMessage(message.substr(ANDROID_LOG_BUFF_SIZE));
         }else{
             if(M_PRIORITY==ANDROID_LOG_DEBUG){
-                std::cout<<M_TAG<<" "<<message;
+                std::cout<<M_TAG<<" "<<message<<"\n";
             }else{
-                std::cerr<<M_TAG<<" "<<message;
+                std::cerr<<M_TAG<<" "<<message<<"\n";
             }
         }
     }

@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <functional>
+#include <map>
 
 extern "C"{
 #include "ExternalSources/fec.h"
@@ -34,6 +35,7 @@ namespace FECCPlusPlus{
     //
     //}
 }
+
 // Takes a continuous stream of packets and
 // encodes them via FEC such that they can be decoded by FECDecoder
 // The encoding is slightly different from traditional FEC. It
@@ -73,6 +75,13 @@ private:
 public:
     void encodePacket(const uint8_t *buf, size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
+        // Use fec_k==0 to completely disable FEC
+        if(fec_k==0) {
+            const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
+            WBDataPacket xBlock{nonce,buf,size};
+            callback(xBlock);
+            block_idx++;
+        }
         FECDataHeader packet_hdr(size);
         // write the size of the data part into each packet.
         // This is needed for the 'up to n bytes' workaround
@@ -139,13 +148,15 @@ static inline int modN(int x, int base) {
     return (base + (x % base)) % base;
 }
 
+//#define SKIP_FEC_FOR_LATENCY_TESTING
+
 // Takes a continuous stream of packets (data and fec correction packets) and
 // processes them such that the output is exactly (or as close as possible) to the
 // Input stream fed to FECEncoder.
 // Most importantly, it also handles re-ordering of packets
 class FECDecoder {
 public:
-    static constexpr auto RX_RING_SIZE = 40;
+    static constexpr auto RX_RING_SIZE = 400;
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
@@ -173,8 +184,10 @@ public:
             }
             delete rx_ring[ring_idx].fragments;
         }
+        fec_free(fec_p);
     }
 private:
+    std::map<uint64_t,std::chrono::steady_clock::time_point> packetEnteredQueue;
     fec_t *fec_p;
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
@@ -305,7 +318,12 @@ public:
     }
     // returns false if the packet is bad (which should never happen !)
     bool processPacket(const WBDataHeader& wblockHdr,const std::vector<uint8_t>& decrypted){
+        //// Use fec_k==0 to completely disable FEC
+        if(fec_k==0) {
+            callback(decrypted.data(),decrypted.size());
+        }
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
+
         const uint64_t block_idx=WBDataHeader::calculateBlockIdx(wblockHdr.nonce);
         const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(wblockHdr.nonce);
 

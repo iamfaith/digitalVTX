@@ -240,13 +240,18 @@ void Aggregator::dump_stats(FILE *fp) {
     statistics.count_p_bad+=count_p_bad;
     openHdStatisticsWriter.writeStats(statistics);
 
-    count_p_all = 0;
+    /*count_p_all = 0;
     count_p_dec_err = 0;
     count_p_dec_ok = 0;
     count_p_fec_recovered = 0;
     count_p_lost = 0;
-    count_p_bad = 0;
+    count_p_bad = 0;*/
     std::cout<<"avgPcapToApplicationLatency:"<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
+    std::cout<<"avgLatencyBeaconPacketLatency"<<avgLatencyBeaconPacketLatency.getAvgReadable()<<"\n";
+    lalu++;
+    if(lalu % 5==0) {
+        std::cout<<"avgLatencyBeaconPacketLatencyX:"<<avgLatencyBeaconPacketLatency.getNValuesLowHigh(20)<<"\n";
+    }
 }
 
 void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,const uint8_t* pkt){
@@ -307,6 +312,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             const auto timestamp=std::chrono::time_point<std::chrono::steady_clock>(std::chrono::nanoseconds(latencyTestingPacket->timestampNs));
             const auto latency=std::chrono::steady_clock::now()-timestamp;
             //std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
+            avgLatencyBeaconPacketLatency.add(latency);
         }
             return;
         default:
@@ -333,9 +339,13 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
 }
 
+//#define USE_PCAP_LOOP_INSTEAD_OF_NEXT
+
 PcapReceiver::PcapReceiver(const std::string wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
     ppcap=Helper::openRxWithPcap(wlan,RADIO_PORT);
+#ifndef USE_PCAP_LOOP_INSTEAD_OF_NEXT
     fd = pcap_get_selectable_fd(ppcap);
+#endif
 }
 
 PcapReceiver::~PcapReceiver() {
@@ -355,6 +365,23 @@ void PcapReceiver::loop_iter() {
     }
 }
 
+
+#ifdef USE_PCAP_LOOP_INSTEAD_OF_NEXT
+static void handler(u_char *user, const struct pcap_pkthdr *hdr,
+                    const u_char * bytes){
+    //const PcapReceiver* self2=(PcapReceiver*)self;
+    //Aggregator* agg=(Aggregator*)user;
+    PcapReceiver* self=(PcapReceiver*)user;
+    //agg->processPacket(0,*hdr,bytes);
+    self->agg->processPacket(self->WLAN_IDX,*hdr,bytes);
+}
+
+void PcapReceiver::xLoop() {
+    pcap_loop(ppcap,0,handler, (u_char*) this);
+}
+#endif
+
+
 void
 radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval) {
     const int N_RECEIVERS = rxInterfaces.size();
@@ -372,7 +399,9 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
         ss<<rxInterfaces[i]<<" ";
     }
     std::cout<<ss.str()<<"\n";
-
+#ifdef USE_PCAP_LOOP_INSTEAD_OF_NEXT
+    rx[0]->xLoop();
+#else
     std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
@@ -403,6 +432,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
             }
         }
     }
+#endif
 }
 
 

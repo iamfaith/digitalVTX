@@ -147,6 +147,31 @@ namespace TestFEC{
         }
         testWithPacketLossButEverythingIsRecoverable(k, n, testIn);
     }
+
+    static void testLol(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
+        std::cout<<"Test K:"<<k<<" N:"<<n<<" N_PACKETS:"<<testIn.size()<<"\n";
+        FECEncoder encoder(k,n);
+        FECDecoder decoder(k,n);
+        std::vector<std::vector<uint8_t>> testOut;
+
+        const auto cb1=[&decoder](const WBDataPacket &xBlock)mutable {
+
+            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
+        };
+        const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
+            testOut.emplace_back(payload,payload+payloadSize);
+        };
+        encoder.callback=cb1;
+        decoder.callback=cb2;
+        // If there is no data loss the packets should arrive immediately
+        for(std::size_t i=0;i<testIn.size();i++){
+            const auto& in=testIn[i];
+            encoder.encodePacket(in.data(),in.size());
+            const auto& out=testOut[i];
+            assert(GenericHelper::compareVectors(in,out)==true);
+        }
+    }
+
 }
 
 namespace TestEncryption{
