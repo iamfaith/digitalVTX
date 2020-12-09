@@ -146,17 +146,13 @@ private:
 
 class RxRingItem{
 public:
-    enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
     explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE){
         fragments = new uint8_t *[fec.FEC_N];
         for (int i = 0; i < fec.FEC_N; i++) {
             fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
-        //fragment_map = new uint8_t[fec.FEC_N];
-        //memset(fragment_map, '\0', fec.FEC_N * sizeof(uint8_t));
     }
     ~RxRingItem(){
-        //delete fragment_map;
         for (int i = 0; i < fec.FEC_N; i++) {
             delete fragments[i];
         }
@@ -190,14 +186,28 @@ public:
         block_idx = 0;
         send_fragment_idx = 0;
         has_fragments = 0;
-        //memset(fragment_map, '\0', fec.FEC_N * sizeof(uint8_t));
         clearFragmentMap();
     }
     void clearFragmentMap(){
         std::fill(fragment_map.begin(),fragment_map.end(),FragmentStatus::UNAVAILABLE);
     }
-    void addFragment(){
-
+    // If the fragment was already added before, do nothing and return false
+    // Else,mark it as received (available) and copy its data.
+    // also, zero out the rest of the data for FEC to work (up to n bytes workaround)
+    bool addFragmentIfNeeded(const uint8_t fragment_idx,const uint8_t* data,std::size_t dataLen){
+        // ignore fragments that are already available
+        if (fragment_map[fragment_idx]==AVAILABLE) return false;
+        // write the data (doesn't matter if FEC data or correction packet)
+        memcpy(fragments[fragment_idx],data,dataLen);
+        // set the rest to zero such that FEC works
+        memset(fragments[fragment_idx]+dataLen, '\0', MAX_FEC_PAYLOAD-dataLen);
+        // mark it as available
+        fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
+        has_fragments += 1;
+        return true;
+    }
+    bool hasFragment(const uint8_t fragmentIdx)const{
+        return fragment_map[fragmentIdx]==AVAILABLE;
     }
 private:
     //reference to the FEC decoder (needed for k,n)
@@ -207,10 +217,12 @@ public:
     uint64_t block_idx=0;
     // old c-style is needed for now
     uint8_t **fragments;
-    //uint8_t *fragment_map;
-    std::vector<FragmentStatus> fragment_map;
     uint8_t send_fragment_idx=0;
     uint8_t has_fragments=0;
+private:
+    // for each fragment (aka fragment_idx) store if it has been received yet
+    enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
+    std::vector<FragmentStatus> fragment_map;
 };
 
 static inline int modN(int x, int base) {
@@ -271,7 +283,7 @@ private:
     }
     // TODO documentation
     // copy paste from svpcom
-    int get_block_ring_idx(uint64_t block_idx) {
+    int get_block_ring_idx(const uint64_t block_idx) {
         // check if block is already in the ring
         for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
             if (rx_ring[i]->block_idx == block_idx) return i;
@@ -291,11 +303,12 @@ private:
 
         for (int i = 0; i < new_blocks; i++) {
             ring_idx = rx_ring_push();
-            rx_ring[ring_idx]->block_idx = block_idx + i + 1 - new_blocks;
+            /*rx_ring[ring_idx]->block_idx = block_idx + i + 1 - new_blocks;
             rx_ring[ring_idx]->send_fragment_idx = 0;
             rx_ring[ring_idx]->has_fragments = 0;
-            //memset(rx_ring[ring_idx]->fragment_map, '\0', FEC_N * sizeof(uint8_t));
-            rx_ring[ring_idx]->clearFragmentMap();
+            rx_ring[ring_idx]->clearFragmentMap();*/
+            rx_ring[ring_idx]->reset();
+            rx_ring[ring_idx]->block_idx= block_idx + i + 1 - new_blocks;
         }
         return ring_idx;
     }
@@ -366,8 +379,13 @@ public:
 
         RxRingItem *p = rx_ring[ring_idx].get();
 
+        if(!p->addFragmentIfNeeded(fragment_idx,decrypted.data(),decrypted.size())){
+            // no data that wasn't already received, return early
+            return true;
+        }
+
         //ignore already processed fragments
-        if (p->fragment_map[fragment_idx]) return true;
+        /*if (p->fragment_map[fragment_idx]) return true;
 
         // write the data where first two bytes are the actual packet size
         memcpy(p->fragments[fragment_idx], decrypted.data(), decrypted.size());
@@ -375,11 +393,11 @@ public:
         memset(p->fragments[fragment_idx]+decrypted.size(), '\0', MAX_FEC_PAYLOAD-decrypted.size());
 
         p->fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
-        p->has_fragments += 1;
+        p->has_fragments += 1;*/
 
         if (ring_idx == rx_ring_front) {
             // check if any packets without gaps
-            while (p->send_fragment_idx < FEC_K && p->fragment_map[p->send_fragment_idx]) {
+            while (p->send_fragment_idx < FEC_K && p->hasFragment(p->send_fragment_idx)) {
                 send_packet(ring_idx, p->send_fragment_idx);
                 p->send_fragment_idx += 1;
             }
