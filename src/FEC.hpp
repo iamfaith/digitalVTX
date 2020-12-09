@@ -66,7 +66,6 @@ public:
         for (int i = 0; i < FEC_N; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
-        //block.resize(FEC_N);
     }
 
     ~FECEncoder() {
@@ -147,33 +146,71 @@ private:
 
 class RxRingItem{
 public:
-    explicit RxRingItem(const int fec_k,const int fec_n):FEC_K(fec_k),FEC_N(fec_n){
+    enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
+    explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE){
+        fragments = new uint8_t *[fec.FEC_N];
+        for (int i = 0; i < fec.FEC_N; i++) {
+            fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
+        }
+        //fragment_map = new uint8_t[fec.FEC_N];
+        //memset(fragment_map, '\0', fec.FEC_N * sizeof(uint8_t));
+    }
+    ~RxRingItem(){
+        //delete fragment_map;
+        for (int i = 0; i < fec.FEC_N; i++) {
+            delete fragments[i];
+        }
+        delete fragments;
+    }
+    void applyFec(){
+        unsigned index[fec.FEC_K];
+        uint8_t *in_blocks[fec.FEC_K];
+        uint8_t *out_blocks[fec.FEC_N - fec.FEC_K];
+        int j = fec.FEC_K;
+        int ob_idx = 0;
+        for (int i = 0; i < fec.FEC_K; i++) {
+            if (fragment_map[i]) {
+                in_blocks[i] = fragments[i];
+                index[i] = i;
+            } else {
+                for (; j < fec.FEC_N; j++) {
+                    if (fragment_map[j]) {
+                        in_blocks[i] = fragments[j];
+                        out_blocks[ob_idx++] = fragments[i];
+                        index[i] = j;
+                        j++;
+                        break;
+                    }
+                }
+            }
+        }
+        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
+    }
+    void reset(){
         block_idx = 0;
         send_fragment_idx = 0;
         has_fragments = 0;
-        fragments = new uint8_t *[fec_n];
-        for (int i = 0; i < fec_n; i++) {
-            fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
-        }
-        fragment_map = new uint8_t[fec_n];
-        memset(fragment_map, '\0', fec_n * sizeof(uint8_t));
+        //memset(fragment_map, '\0', fec.FEC_N * sizeof(uint8_t));
+        clearFragmentMap();
     }
-    ~RxRingItem(){
-        /*delete fragment_map;
-        for (int i = 0; i < FEC_N; i++) {
-            delete fragments[i];
-        }
-        delete fragments;*/
+    void clearFragmentMap(){
+        std::fill(fragment_map.begin(),fragment_map.end(),FragmentStatus::UNAVAILABLE);
+    }
+    void addFragment(){
+
     }
 private:
-    const int FEC_K,FEC_N;
+    //reference to the FEC decoder (needed for k,n)
+    const FEC& fec;
 public:
     // the block idx this item currently refers to
-    uint64_t block_idx;
+    uint64_t block_idx=0;
+    // old c-style is needed for now
     uint8_t **fragments;
-    uint8_t *fragment_map;
-    uint8_t send_fragment_idx;
-    uint8_t has_fragments;
+    //uint8_t *fragment_map;
+    std::vector<FragmentStatus> fragment_map;
+    uint8_t send_fragment_idx=0;
+    uint8_t has_fragments=0;
 };
 
 static inline int modN(int x, int base) {
@@ -185,48 +222,24 @@ static inline int modN(int x, int base) {
 // processes them such that the output is exactly (or as close as possible) to the
 // Input stream fed to FECEncoder.
 // Most importantly, it also handles re-ordering of packets
-class FECDecoder : private FEC{
+class FECDecoder : public FEC{
 public:
     static constexpr auto RX_RING_SIZE = 40;
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
     explicit FECDecoder(int k, int n) : FEC(k,n) {
-        std::cout<<"LALU"<<rx_ring.size()<<"\n";
-        /*for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
-            auto& rxRingItem=rx_ring[ring_idx];
-
-            rxRingItem.block_idx = 0;
-            rxRingItem.send_fragment_idx = 0;
-            rxRingItem.has_fragments = 0;
-            rxRingItem.fragments = new uint8_t *[FEC_N];
-            for (int i = 0; i < FEC_N; i++) {
-                rxRingItem.fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
-            }
-            rxRingItem.fragment_map = new uint8_t[FEC_N];
-            memset(rxRingItem.fragment_map, '\0', FEC_N * sizeof(uint8_t));
-        }*/
         for(int i=0;i<RX_RING_SIZE;i++){
-            rx_ring.emplace_back(k,n);
+            rx_ring[i]=std::make_unique<RxRingItem>(*this);
         }
     }
-
-    ~FECDecoder() {
-        /*for (int ring_idx = 0; ring_idx < RX_RING_SIZE; ring_idx++) {
-            auto& rxRingItem=rx_ring[ring_idx];
-
-            delete rxRingItem.fragment_map;
-            for (int i = 0; i < FEC_N; i++) {
-                delete rxRingItem.fragments[i];
-            }
-            delete rxRingItem.fragments;
-        }*/
-    }
+    ~FECDecoder() = default;
 private:
     std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredQueue;
     uint32_t seq = 0;
     //std::array<RxRingItem,RX_RING_SIZE> rx_ring{RxRingItem(FEC_K,FEC_N)};
-    std::vector<RxRingItem> rx_ring;
+    //std::vector<RxRingItem> rx_ring;
+    std::array<std::unique_ptr<RxRingItem>,RX_RING_SIZE> rx_ring;
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
     uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
@@ -250,8 +263,8 @@ private:
           2. Reduce packet injection speed or try to unify RX hardware.
         */
 
-        fprintf(stderr, "override block 0x%" PRIx64 " with %d fragments\n", rx_ring[idx].block_idx,
-                rx_ring[idx].has_fragments);
+        fprintf(stderr, "override block 0x%" PRIx64 " with %d fragments\n", rx_ring[idx]->block_idx,
+                rx_ring[idx]->has_fragments);
 
         rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
         return idx;
@@ -261,7 +274,7 @@ private:
     int get_block_ring_idx(uint64_t block_idx) {
         // check if block is already in the ring
         for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
-            if (rx_ring[i].block_idx == block_idx) return i;
+            if (rx_ring[i]->block_idx == block_idx) return i;
         }
 
         // check if block is already known and not in the ring then it is already processed
@@ -278,47 +291,21 @@ private:
 
         for (int i = 0; i < new_blocks; i++) {
             ring_idx = rx_ring_push();
-            rx_ring[ring_idx].block_idx = block_idx + i + 1 - new_blocks;
-            rx_ring[ring_idx].send_fragment_idx = 0;
-            rx_ring[ring_idx].has_fragments = 0;
-            memset(rx_ring[ring_idx].fragment_map, '\0', FEC_N * sizeof(uint8_t));
+            rx_ring[ring_idx]->block_idx = block_idx + i + 1 - new_blocks;
+            rx_ring[ring_idx]->send_fragment_idx = 0;
+            rx_ring[ring_idx]->has_fragments = 0;
+            //memset(rx_ring[ring_idx]->fragment_map, '\0', FEC_N * sizeof(uint8_t));
+            rx_ring[ring_idx]->clearFragmentMap();
         }
         return ring_idx;
     }
-    // TODO documentation
-    // copy paste from svpcom
-    void apply_fec(int ring_idx) {
-        unsigned index[FEC_K];
-        uint8_t *in_blocks[FEC_K];
-        uint8_t *out_blocks[FEC_N - FEC_K];
-        int j = FEC_K;
-        int ob_idx = 0;
-
-        for (int i = 0; i < FEC_K; i++) {
-            if (rx_ring[ring_idx].fragment_map[i]) {
-                in_blocks[i] = rx_ring[ring_idx].fragments[i];
-                index[i] = i;
-            } else {
-                for (; j < FEC_N; j++) {
-                    if (rx_ring[ring_idx].fragment_map[j]) {
-                        in_blocks[i] = rx_ring[ring_idx].fragments[j];
-                        out_blocks[ob_idx++] = rx_ring[ring_idx].fragments[i];
-                        index[i] = j;
-                        j++;
-                        break;
-                    }
-                }
-            }
-        }
-        fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
-    }
     // this one calls the callback with reconstructed data and payload in order
     void send_packet(int ring_idx, int fragment_idx){
-        const FECDataHeader *packet_hdr = (FECDataHeader *) (rx_ring[ring_idx].fragments[fragment_idx]);
+        const FECDataHeader *packet_hdr = (FECDataHeader *) (rx_ring[ring_idx]->fragments[fragment_idx]);
 
-        const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(FECDataHeader);
+        const uint8_t *payload = (rx_ring[ring_idx]->fragments[fragment_idx]) + sizeof(FECDataHeader);
         const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
-        const uint32_t packet_seq = rx_ring[ring_idx].block_idx * FEC_K + fragment_idx;
+        const uint32_t packet_seq = rx_ring[ring_idx]->block_idx * FEC_K + fragment_idx;
 
         if (packet_seq > seq + 1) {
             fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
@@ -344,10 +331,7 @@ public:
         last_known_block = (uint64_t) -1;
         seq = 0;
         for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
-            rx_ring[ring_idx].block_idx = 0;
-            rx_ring[ring_idx].send_fragment_idx = 0;
-            rx_ring[ring_idx].has_fragments = 0;
-            memset(rx_ring[ring_idx].fragment_map, '\0', FEC_N * sizeof(uint8_t));
+            rx_ring[ring_idx]->reset();
         }
     }
     // returns false if the packet is bad (which should never happen !)
@@ -380,7 +364,7 @@ public:
         //ignore already processed blocks
         if (ring_idx < 0) return true;
 
-        RxRingItem *p = &rx_ring[ring_idx];
+        RxRingItem *p = rx_ring[ring_idx].get();
 
         //ignore already processed fragments
         if (p->fragment_map[fragment_idx]) return true;
@@ -390,7 +374,7 @@ public:
         // set the rest to zero such that FEC works
         memset(p->fragments[fragment_idx]+decrypted.size(), '\0', MAX_FEC_PAYLOAD-decrypted.size());
 
-        p->fragment_map[fragment_idx] = 1;
+        p->fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
         p->has_fragments += 1;
 
         if (ring_idx == rx_ring_front) {
@@ -404,7 +388,8 @@ public:
         // or we can reconstruct gaps via FEC
         if (p->send_fragment_idx < FEC_K && p->has_fragments == FEC_K) {
             //printf("do fec\n");
-            apply_fec(ring_idx);
+            //apply_fec(ring_idx);
+            p->applyFec();
             while (p->send_fragment_idx < FEC_K) {
                 count_p_fec_recovered += 1;
                 send_packet(ring_idx, p->send_fragment_idx);
