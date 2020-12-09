@@ -47,7 +47,7 @@ public:
     typedef std::function<void(const WBDataPacket &xBlock)> SEND_BLOCK_FRAGMENT;
     SEND_BLOCK_FRAGMENT callback;
 
-    explicit FECEncoder(int k, int n) : fec_k(0), fec_n(n) {
+    explicit FECEncoder(int k, int n) : fec_k(k), fec_n(n) {
         if(fec_k!=0){
             fec_p = fec_new(fec_k, fec_n);
         }
@@ -165,7 +165,7 @@ public:
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
-    explicit FECDecoder(int k, int n) : fec_k(0), fec_n(n) {
+    explicit FECDecoder(int k, int n) : fec_k(k), fec_n(n) {
         if(fec_k!=0){
             fec_p = fec_new(fec_k, fec_n);
         }
