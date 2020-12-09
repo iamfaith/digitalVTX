@@ -42,6 +42,7 @@ namespace FECCPlusPlus{
 // a) makes sure to send out data packets immediately
 // b) Handles packets of size up to N instead of packets of exact size N
 // Due to b) the packet size has to be written into the first two bytes of each data packet. See https://github.com/svpcom/wifibroadcast/issues/67
+// use fec_k==0 to completely skip FEC
 class FECEncoder {
 public:
     typedef std::function<void(const WBDataPacket &xBlock)> SEND_BLOCK_FRAGMENT;
@@ -153,7 +154,6 @@ static inline int modN(int x, int base) {
     return (base + (x % base)) % base;
 }
 
-//#define SKIP_FEC_FOR_LATENCY_TESTING
 
 // Takes a continuous stream of packets (data and fec correction packets) and
 // processes them such that the output is exactly (or as close as possible) to the

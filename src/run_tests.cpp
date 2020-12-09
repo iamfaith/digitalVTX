@@ -187,7 +187,7 @@ namespace TestEncryption{
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
         const WBDataPacket wbDataPacket{nonce,data.data(),data.size()};
 
-        const auto encrypted=encryptor.makeEncryptedPacket(wbDataPacket);
+        const auto encrypted= encryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
 
         const auto decrypted=decryptor.decryptPacket(wbDataPacket.header,&encrypted[sizeof(WBDataHeader)],encrypted.size()-sizeof(WBDataHeader));
 

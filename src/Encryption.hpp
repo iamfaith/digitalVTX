@@ -58,7 +58,7 @@ public:
     // TODO: Here the WBDataHeader is included as bytes in the returned array
     // For generalization, this should probably be seperated
     std::vector<uint8_t>
-    makeEncryptedPacket(const WBDataHeader& wblockHdr,const uint8_t* payload,std::size_t payloadSize) {
+    makeEncryptedPacketIncludingHeader(const WBDataHeader& wblockHdr, const uint8_t* payload, std::size_t payloadSize) {
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
         std::vector<uint8_t> ret;
         ret.resize(sizeof(WBDataHeader)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
@@ -85,8 +85,8 @@ public:
         return ret;
 #endif
     }
-    std::vector<uint8_t> makeEncryptedPacket(const WBDataPacket& xBlock) {
-        return makeEncryptedPacket(xBlock.header,xBlock.payload,xBlock.payloadSize);
+    std::vector<uint8_t> makeEncryptedPacketIncludingHeader(const WBDataPacket& xBlock) {
+        return makeEncryptedPacketIncludingHeader(xBlock.header, xBlock.payload, xBlock.payloadSize);
     }
 private:
     // tx->rx keypair

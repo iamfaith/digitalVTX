@@ -169,7 +169,7 @@ void WBTransmitter::injectPacket(const uint8_t *buf, size_t size) {
 
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
-    const auto data= mEncryptor.makeEncryptedPacket(wbDataPacket);
+    const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
     injectPacket(data.data(), data.size());
     if(true){
         LatencyTestingPacket latencyTestingPacket;
