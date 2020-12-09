@@ -26,9 +26,9 @@ extern "C"{
 // c++ wrapper for the FEC library
 class FEC{
 public:
-    explicit FEC(int k, int n) : fec_k(k), fec_n(n){
-        if(fec_k!=0){
-            fec_p = fec_new(fec_k, fec_n);
+    explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
+        if(FEC_K != 0){
+            fec_p = fec_new(FEC_K, FEC_N);
         }
     }
     ~FEC(){
@@ -43,8 +43,8 @@ public:
         fec_decode(fec_p,inpkts,outpkts,index,sz);
     }
 public:
-    const int fec_k;  // RS number of primary fragments in block default 8
-    const int fec_n;  // RS total number of fragments in block default 12
+    const int FEC_K;  // RS number of primary fragments in block default 8
+    const int FEC_N;  // RS total number of fragments in block default 12
 private:
     fec_t *fec_p=nullptr;
 };
@@ -55,22 +55,22 @@ private:
 // a) makes sure to send out data packets immediately
 // b) Handles packets of size up to N instead of packets of exact size N
 // Due to b) the packet size has to be written into the first two bytes of each data packet. See https://github.com/svpcom/wifibroadcast/issues/67
-// use fec_k==0 to completely skip FEC for the lowest latency possible
+// use FEC_K==0 to completely skip FEC for the lowest latency possible
 class FECEncoder : private FEC{
 public:
     typedef std::function<void(const WBDataPacket &wbDataPacket)> SEND_BLOCK_FRAGMENT;
     SEND_BLOCK_FRAGMENT callback;
 
     explicit FECEncoder(int k, int n) : FEC(k,n) {
-        block = new uint8_t *[fec_n];
-        for (int i = 0; i < fec_n; i++) {
+        block = new uint8_t *[FEC_N];
+        for (int i = 0; i < FEC_N; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
-        //block.resize(fec_n);
+        //block.resize(FEC_N);
     }
 
     ~FECEncoder() {
-        for (int i = 0; i < fec_n; i++) {
+        for (int i = 0; i < FEC_N; i++) {
             delete block[i];
         }
         delete block;
@@ -84,8 +84,8 @@ private:
 public:
     void encodePacket(const uint8_t *buf, size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
-        // Use fec_k==0 to completely disable FEC
-        if(fec_k==0) {
+        // Use FEC_K==0 to completely disable FEC
+        if(FEC_K == 0) {
             const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
             WBDataPacket xBlock{nonce,buf,size};
             callback(xBlock);
@@ -108,14 +108,14 @@ public:
         max_packet_size = std::max(max_packet_size, sizeof(dataHeader) + size);
         fragment_idx += 1;
 
-        //std::cout<<"Fragment index is "<<(int)fragment_idx<<"fec_k"<<(int)fec_k<<"\n";
-        if (fragment_idx < fec_k) {
+        //std::cout<<"Fragment index is "<<(int)fragment_idx<<"FEC_K"<<(int)FEC_K<<"\n";
+        if (fragment_idx < FEC_K) {
             return;
         }
         // once enough data has been buffered, create and send all the FEC packets
-        fecEncode( (const uint8_t **) block, block + fec_k, max_packet_size);
+        fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
 
-        while (fragment_idx < fec_n) {
+        while (fragment_idx < FEC_N) {
             send_block_fragment(max_packet_size);
             fragment_idx += 1;
         }
@@ -199,12 +199,12 @@ public:
             rxRingItem.block_idx = 0;
             rxRingItem.send_fragment_idx = 0;
             rxRingItem.has_fragments = 0;
-            rxRingItem.fragments = new uint8_t *[fec_n];
-            for (int i = 0; i < fec_n; i++) {
+            rxRingItem.fragments = new uint8_t *[FEC_N];
+            for (int i = 0; i < FEC_N; i++) {
                 rxRingItem.fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
             }
-            rxRingItem.fragment_map = new uint8_t[fec_n];
-            memset(rxRingItem.fragment_map, '\0', fec_n * sizeof(uint8_t));
+            rxRingItem.fragment_map = new uint8_t[FEC_N];
+            memset(rxRingItem.fragment_map, '\0', FEC_N * sizeof(uint8_t));
         }*/
         for(int i=0;i<RX_RING_SIZE;i++){
             rx_ring.emplace_back(k,n);
@@ -216,7 +216,7 @@ public:
             auto& rxRingItem=rx_ring[ring_idx];
 
             delete rxRingItem.fragment_map;
-            for (int i = 0; i < fec_n; i++) {
+            for (int i = 0; i < FEC_N; i++) {
                 delete rxRingItem.fragments[i];
             }
             delete rxRingItem.fragments;
@@ -225,7 +225,7 @@ public:
 private:
     std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredQueue;
     uint32_t seq = 0;
-    //std::array<RxRingItem,RX_RING_SIZE> rx_ring{RxRingItem(fec_k,fec_n)};
+    //std::array<RxRingItem,RX_RING_SIZE> rx_ring{RxRingItem(FEC_K,FEC_N)};
     std::vector<RxRingItem> rx_ring;
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
@@ -281,25 +281,25 @@ private:
             rx_ring[ring_idx].block_idx = block_idx + i + 1 - new_blocks;
             rx_ring[ring_idx].send_fragment_idx = 0;
             rx_ring[ring_idx].has_fragments = 0;
-            memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
+            memset(rx_ring[ring_idx].fragment_map, '\0', FEC_N * sizeof(uint8_t));
         }
         return ring_idx;
     }
     // TODO documentation
     // copy paste from svpcom
     void apply_fec(int ring_idx) {
-        unsigned index[fec_k];
-        uint8_t *in_blocks[fec_k];
-        uint8_t *out_blocks[fec_n - fec_k];
-        int j = fec_k;
+        unsigned index[FEC_K];
+        uint8_t *in_blocks[FEC_K];
+        uint8_t *out_blocks[FEC_N - FEC_K];
+        int j = FEC_K;
         int ob_idx = 0;
 
-        for (int i = 0; i < fec_k; i++) {
+        for (int i = 0; i < FEC_K; i++) {
             if (rx_ring[ring_idx].fragment_map[i]) {
                 in_blocks[i] = rx_ring[ring_idx].fragments[i];
                 index[i] = i;
             } else {
-                for (; j < fec_n; j++) {
+                for (; j < FEC_N; j++) {
                     if (rx_ring[ring_idx].fragment_map[j]) {
                         in_blocks[i] = rx_ring[ring_idx].fragments[j];
                         out_blocks[ob_idx++] = rx_ring[ring_idx].fragments[i];
@@ -318,7 +318,7 @@ private:
 
         const uint8_t *payload = (rx_ring[ring_idx].fragments[fragment_idx]) + sizeof(FECDataHeader);
         const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
-        const uint32_t packet_seq = rx_ring[ring_idx].block_idx * fec_k + fragment_idx;
+        const uint32_t packet_seq = rx_ring[ring_idx].block_idx * FEC_K + fragment_idx;
 
         if (packet_seq > seq + 1) {
             fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
@@ -347,14 +347,14 @@ public:
             rx_ring[ring_idx].block_idx = 0;
             rx_ring[ring_idx].send_fragment_idx = 0;
             rx_ring[ring_idx].has_fragments = 0;
-            memset(rx_ring[ring_idx].fragment_map, '\0', fec_n * sizeof(uint8_t));
+            memset(rx_ring[ring_idx].fragment_map, '\0', FEC_N * sizeof(uint8_t));
         }
     }
     // returns false if the packet is bad (which should never happen !)
     bool processPacket(const WBDataHeader& wblockHdr,const std::vector<uint8_t>& decrypted){
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
-        // Use fec_k==0 to completely disable FEC
-        if(fec_k==0) {
+        // Use FEC_K==0 to completely disable FEC
+        if(FEC_K == 0) {
             callback(decrypted.data(),decrypted.size());
             return true;
         }
@@ -368,7 +368,7 @@ public:
             return false;
         }
 
-        if (fragment_idx >= fec_n) {
+        if (fragment_idx >= FEC_N) {
             fprintf(stderr, "invalid fragment_idx: %d\n", fragment_idx);
             return false;
         }
@@ -395,24 +395,24 @@ public:
 
         if (ring_idx == rx_ring_front) {
             // check if any packets without gaps
-            while (p->send_fragment_idx < fec_k && p->fragment_map[p->send_fragment_idx]) {
+            while (p->send_fragment_idx < FEC_K && p->fragment_map[p->send_fragment_idx]) {
                 send_packet(ring_idx, p->send_fragment_idx);
                 p->send_fragment_idx += 1;
             }
         }
 
         // or we can reconstruct gaps via FEC
-        if (p->send_fragment_idx < fec_k && p->has_fragments == fec_k) {
+        if (p->send_fragment_idx < FEC_K && p->has_fragments == FEC_K) {
             //printf("do fec\n");
             apply_fec(ring_idx);
-            while (p->send_fragment_idx < fec_k) {
+            while (p->send_fragment_idx < FEC_K) {
                 count_p_fec_recovered += 1;
                 send_packet(ring_idx, p->send_fragment_idx);
                 p->send_fragment_idx += 1;
             }
         }
 
-        if (p->send_fragment_idx == fec_k) {
+        if (p->send_fragment_idx == FEC_K) {
             int nrm = modN(ring_idx - rx_ring_front, FECDecoder::RX_RING_SIZE);
             for (int i = 0; i <= nrm; i++) {
                 rx_ring_front = modN(rx_ring_front + 1, FECDecoder::RX_RING_SIZE);
