@@ -42,7 +42,7 @@
 #include "wifibroadcast.hpp"
 #include "rx.hpp"
 extern "C"{
-#include "ExternalSources/fec.h"
+#include "ExternalCSources/fec.h"
 }
 
 namespace Helper{
