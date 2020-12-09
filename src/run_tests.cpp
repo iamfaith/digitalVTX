@@ -89,7 +89,7 @@ namespace TestFEC{
     static void test2(const int k,const int n,const std::size_t N_PACKETS){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
-            const auto size=rand() % MAX_PAYLOAD_SIZE;
+            const auto size=(rand() % MAX_PAYLOAD_SIZE)+1;
             testIn.push_back(GenericHelper::createRandomDataBuffer(size));
         }
         testWithoutPacketLoss(k, n, testIn);
@@ -97,21 +97,35 @@ namespace TestFEC{
 
     // test with packet loss
     // but only drop one data packet per sequence
-    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn) {
+    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE) {
         assert(testIn.size() % n==0);
-        std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() << "\n";
+        std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() <<" DROP_MODE:"<<DROP_MODE<< "\n";
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
-        int packetIdx = 0;
-        const auto cb1 = [&decoder, &packetIdx, n](const WBDataPacket &xBlock)mutable {
-            if (packetIdx % n == 0) {
-                // new sequence, drop one data packet (which FEC can correct for)
-                //std::cout<<"Dropping packet "<<packetIdx<<"\n";
-            }else{
-                decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+        const auto cb1 = [&decoder,n,k,DROP_MODE](const WBDataPacket &xBlock)mutable {
+            const auto blockIdx=WBDataHeader::calculateBlockIdx(xBlock.header.nonce);
+            const auto fragmentIdx=WBDataHeader::calculateFragmentIdx(xBlock.header.nonce);
+            if(DROP_MODE==0){
+                // drop all FEC correction packets but no data packets (everything should be still recoverable
+                if(fragmentIdx>=k){
+                    std::cout<<"Dropping FEC-CORRECTION packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                    return;
+                }
+            }else if(DROP_MODE==1){
+                // drop 1 data packet and let FEC do its magic
+                if(fragmentIdx==0){
+                    std::cout<<"Dropping FEC-DATA packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                }
+            }else if(DROP_MODE==2){
+                // drop 1 data packet and 1 FEC packet but that still shouldn't pose any issues
+                if(fragmentIdx==n){
+                    std::cout<<"Dropping FEC-DATA packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                }else if(fragmentIdx==k-1){
+                    std::cout<<"Dropping FEC-CORRECTION packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                }
             }
-            packetIdx++;
+            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
         };
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
             testOut.emplace_back(payload, payload + payloadSize);
@@ -122,7 +136,7 @@ namespace TestFEC{
             const auto &in = testIn[i];
             encoder.encodePacket(in.data(), in.size());
             // now check if everything already sent arrived
-            // since there is packet loss, you have to wait for the fec to do its magic (latency)
+            // since there can be packet loss, you might have to wait for the fec to do its magic (latency)
             if(i % n ==0 && i>0){
                 for(std::size_t j=0;j<i;j++){
                     const auto &in = testIn[j];
@@ -139,37 +153,13 @@ namespace TestFEC{
         }
     }
 
-    static void test3(const int k,const int n,const std::size_t N_PACKETS){
+    static void test3(const int k,const int n,const std::size_t N_PACKETS,const int DROP_MODE){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
-            const auto size=rand() % MAX_PAYLOAD_SIZE;
+            const auto size=(rand() % MAX_PAYLOAD_SIZE)+1;
             testIn.push_back(GenericHelper::createRandomDataBuffer(size));
         }
-        testWithPacketLossButEverythingIsRecoverable(k, n, testIn);
-    }
-
-    static void testLol(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
-        std::cout<<"Test K:"<<k<<" N:"<<n<<" N_PACKETS:"<<testIn.size()<<"\n";
-        FECEncoder encoder(k,n);
-        FECDecoder decoder(k,n);
-        std::vector<std::vector<uint8_t>> testOut;
-
-        const auto cb1=[&decoder](const WBDataPacket &xBlock)mutable {
-
-            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
-        };
-        const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
-            testOut.emplace_back(payload,payload+payloadSize);
-        };
-        encoder.callback=cb1;
-        decoder.callback=cb2;
-        // If there is no data loss the packets should arrive immediately
-        for(std::size_t i=0;i<testIn.size();i++){
-            const auto& in=testIn[i];
-            encoder.encodePacket(in.data(),in.size());
-            const auto& out=testOut[i];
-            assert(GenericHelper::compareVectors(in,out)==true);
-        }
+        testWithPacketLossButEverythingIsRecoverable(k, n, testIn,DROP_MODE);
     }
 
 }
@@ -196,19 +186,13 @@ namespace TestEncryption{
     }
 }
 
-int main(int argc, char *const *argv){
+int main(int argc, char *argv[]){
     std::cout<<"Tests for Wifibroadcast\n";
     try {
         std::cout<<"Testing FEC\n";
-        // hm this doesn't work
-        /*for(int k=4;k<=8;k+=4){
-            for(int n=k+4;n<=12;n+=4){
-                std::cout<<"k:"<<k<<" n:"<<n<<"\n";
-                TestFEC::test(k,n,1200);
-                TestFEC::test2(k,n,1200);
-                TestFEC::test3(k,n,1200);
-            }
-        }*/
+        // first, test with fec disabled
+        TestFEC::test2(0,0,1200);
+        // now with FEC enabled
         int k=0;
         int n=0;
         for(int i=0;i<3;i++){
@@ -224,7 +208,8 @@ int main(int argc, char *const *argv){
             }
             TestFEC::test(k,n,1200);
             TestFEC::test2(k,n,1200);
-            TestFEC::test3(k,n,1200);
+            //TestFEC::test3(k,n,1200,0);
+            TestFEC::test3(k,n,1200,2);
         }
         //
         std::cout<<"Testing Encryption\n";

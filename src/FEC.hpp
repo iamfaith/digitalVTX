@@ -99,7 +99,7 @@ public:
         const auto writtenDataSize= sizeof(FECDataHeader) + size;
         memset(block[fragment_idx]+writtenDataSize, '\0', MAX_FEC_PAYLOAD-writtenDataSize);
 
-        // send immediately before calculating the FECs
+        // send FEC data packet immediately before calculating the FECs
         send_block_fragment(sizeof(packet_hdr) + size);
         max_packet_size = std::max(max_packet_size, sizeof(packet_hdr) + size);
         fragment_idx += 1;
@@ -142,13 +142,17 @@ private:
     }
 };
 
-typedef struct {
+class RxRingItem{
+public:
+
+public:
+    // the block idx this item currently refers to
     uint64_t block_idx;
     uint8_t **fragments;
     uint8_t *fragment_map;
     uint8_t send_fragment_idx;
     uint8_t has_fragments;
-} rx_ring_item_t;
+};
 
 static inline int modN(int x, int base) {
     return (base + (x % base)) % base;
@@ -200,8 +204,8 @@ private:
     const int fec_k;  // RS number of primary fragments in block
     const int fec_n;  // RS total number of fragments in block
     uint32_t seq = 0;
-    //rx_ring_item_t rx_ring[RX_RING_SIZE];
-    std::array<rx_ring_item_t,RX_RING_SIZE> rx_ring{};
+    //RxRingItem rx_ring[RX_RING_SIZE];
+    std::array<RxRingItem,RX_RING_SIZE> rx_ring{};
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
     uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
@@ -326,12 +330,12 @@ public:
     }
     // returns false if the packet is bad (which should never happen !)
     bool processPacket(const WBDataHeader& wblockHdr,const std::vector<uint8_t>& decrypted){
-        //// Use fec_k==0 to completely disable FEC
+        assert(wblockHdr.packet_type==WFB_PACKET_DATA);
+        // Use fec_k==0 to completely disable FEC
         if(fec_k==0) {
             callback(decrypted.data(),decrypted.size());
             return true;
         }
-        assert(wblockHdr.packet_type==WFB_PACKET_DATA);
 
         const uint64_t block_idx=WBDataHeader::calculateBlockIdx(wblockHdr.nonce);
         const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(wblockHdr.nonce);
@@ -354,7 +358,7 @@ public:
         //ignore already processed blocks
         if (ring_idx < 0) return true;
 
-        rx_ring_item_t *p = &rx_ring[ring_idx];
+        RxRingItem *p = &rx_ring[ring_idx];
 
         //ignore already processed fragments
         if (p->fragment_map[fragment_idx]) return true;

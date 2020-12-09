@@ -14,6 +14,7 @@ sudo ifconfig $MY_TX down
 sudo iw dev $MY_TX set monitor otherbss fcsfail
 sudo ifconfig $MY_TX up
 sudo iwconfig $MY_TX channel 13
+# doesnt work iw dev $MY_TX set channel "13" HT40+
 
 sudo ifconfig $MY_RX down
 sudo iw dev $MY_RX set monitor otherbss fcsfail
