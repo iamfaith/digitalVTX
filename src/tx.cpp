@@ -125,10 +125,12 @@ void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const I
     const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
     Helper::injectPacket(ppcap, packet);
     pcapInjectionTime.stop();
+#ifdef ENABLE_ADVANCED_DEBUGGING
     if(pcapInjectionTime.getMax()>std::chrono::milliseconds (1)){
         std::cerr<<"Injecting PCAP packet took really long:"<<pcapInjectionTime.getAvgReadable()<<"\n";
         pcapInjectionTime.reset();
     }
+#endif
 }
 
 void PcapTransmitter::injectPacket2(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
@@ -173,10 +175,10 @@ void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
     injectPacket(data.data(), data.size());
-    if(true){
-        LatencyTestingPacket latencyTestingPacket;
-        injectPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
-    }
+#ifdef ENABLE_ADVANCED_DEBUGGING
+    LatencyTestingPacket latencyTestingPacket;
+    injectPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
+#endif
 }
 
 void WBTransmitter::sendSessionKey() {

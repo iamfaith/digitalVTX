@@ -90,10 +90,11 @@ private:
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
     OpenHDStatisticsWriter::Data statistics{};
 private:
+#ifdef ENABLE_ADVANCED_DEBUGGING
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
     AvgCalculator avgPcapToApplicationLatency;
     AvgCalculator2 avgLatencyBeaconPacketLatency;
-    int lalu=0;
+#endif
 };
 
 // This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT

@@ -239,27 +239,27 @@ void Aggregator::dump_stats(FILE *fp) {
     statistics.count_p_lost+=statistics.count_p_lost;
     statistics.count_p_bad+=count_p_bad;
     openHdStatisticsWriter.writeStats(statistics);
-
+    // it is actually much more understandable when I use the absolute values for the logging
     /*count_p_all = 0;
     count_p_dec_err = 0;
     count_p_dec_ok = 0;
     count_p_fec_recovered = 0;
     count_p_lost = 0;
     count_p_bad = 0;*/
+#ifdef ENABLE_ADVANCED_DEBUGGING
     std::cout<<"avgPcapToApplicationLatency:"<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
     std::cout<<"avgLatencyBeaconPacketLatency"<<avgLatencyBeaconPacketLatency.getAvgReadable()<<"\n";
-    lalu++;
-    if(lalu % 5==0) {
-        std::cout<<"avgLatencyBeaconPacketLatencyX:"<<avgLatencyBeaconPacketLatency.getNValuesLowHigh(20)<<"\n";
-    }
+    //std::cout<<"avgLatencyBeaconPacketLatencyX:"<<avgLatencyBeaconPacketLatency.getNValuesLowHigh(20)<<"\n";
     std::cout<<"avgLatencyPacketInQueue"<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
+#endif
 }
 
 void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,const uint8_t* pkt){
+#ifdef ENABLE_ADVANCED_DEBUGGING
     const auto tmp=GenericHelper::timevalToTimePointSystemClock(hdr.ts);
     const auto latency=std::chrono::system_clock::now() -tmp;
     avgPcapToApplicationLatency.add(latency);
-
+#endif
     count_p_all++;
     // The radio capture header precedes the 802.11 header.
     const auto parsedPacket=Helper::processReceivedPcapPacket(hdr,pkt);
@@ -307,6 +307,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             }
             return;
         case WFB_PACKET_LATENCY_BEACON:{
+#ifdef ENABLE_ADVANCED_DEBUGGING
             // for testing only. It won't work if the tx and rx are running on different systems
             assert(payloadSize==sizeof(LatencyTestingPacket));
             const LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
@@ -314,6 +315,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             const auto latency=std::chrono::steady_clock::now()-timestamp;
             //std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
             avgLatencyBeaconPacketLatency.add(latency);
+#endif
         }
             return;
         default:
