@@ -212,10 +212,15 @@ public:
                 }
             }
         }
-        assert(tmpMaxPacketSize!=0);
+        /*assert(tmpMaxPacketSize!=0);
         // TODO why did he originally use MAX_FEC_PAYLOAD here ?
         // fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
-        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
+        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);*/
+        if(tmpMaxPacketSize!=0){
+            fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
+        }else{
+            fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
+        }
     }
 private:
     //reference to the FEC decoder (needed for k,n)
