@@ -81,14 +81,14 @@ namespace TestFEC{
     }
 
     // test with packet loss
-    // but only drop one data packet per sequence
-    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE,const int N_DUPLICATES=0) {
+    // but only drop as much as everything must be still recoverable
+    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE,const bool SEND_DUPLICATES=false) {
         assert(testIn.size() % n==0);
         std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() <<" DROP_MODE:"<<DROP_MODE<< "\n";
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
-        const auto cb1 = [&decoder,n,k,DROP_MODE,N_DUPLICATES](const WBDataPacket &xBlock)mutable {
+        const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const WBDataPacket &xBlock)mutable {
             const auto blockIdx=WBDataHeader::calculateBlockIdx(xBlock.header.nonce);
             const auto fragmentIdx=WBDataHeader::calculateFragmentIdx(xBlock.header.nonce);
             if(DROP_MODE==0){
@@ -113,7 +113,7 @@ namespace TestFEC{
                     return;
                 }
             }
-            if(N_DUPLICATES>0){
+            if(SEND_DUPLICATES){
                 // emulate not more than N multiple wifi cards as rx
                 const auto duplicates=std::rand() % 8;
                 for(int i=0;i<duplicates+1;i++){
@@ -149,13 +149,13 @@ namespace TestFEC{
         }
     }
 
-    static void test3(const int k,const int n,const std::size_t N_PACKETS,const int DROP_MODE){
+    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::size_t N_PACKETS, const int DROP_MODE){
         std::vector<std::vector<uint8_t>> testIn;
         for(std::size_t i=0;i<N_PACKETS;i++){
             const auto size=(rand() % MAX_PAYLOAD_SIZE)+1;
             testIn.push_back(GenericHelper::createRandomDataBuffer(size));
         }
-        testWithPacketLossButEverythingIsRecoverable(k, n, testIn,DROP_MODE);
+        testWithPacketLossButEverythingIsRecoverable(k, n, testIn,DROP_MODE, true);
     }
 
 }
@@ -204,8 +204,9 @@ int main(int argc, char *argv[]){
             }
             TestFEC::testWithoutPacketLossFixedPacketSize(k, n, 1200);
             TestFEC::testWithoutPacketLossDynamicPacketSize(k, n, 1200);
-            //TestFEC::test3(k,n,1200,0);
-            TestFEC::test3(k,n,1200,2);
+            for(int dropMode=0;dropMode<3;dropMode++){
+                TestFEC::testWithPacketLossButEverythingIsRecoverable(k, n, 1200, dropMode);
+            }
         }
         //
         std::cout<<"Testing Encryption\n";
@@ -215,6 +216,6 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);
     }
-    std::cout<<"Tests Passing\n";
+    std::cout<<"All Tests Passing\n";
     return 0;
 }
