@@ -18,6 +18,7 @@
 #include <iostream>
 #include <functional>
 #include <map>
+#include "HelperSources/TimeHelper.hpp"
 
 extern "C"{
 #include "ExternalCSources/fec.h"
@@ -41,9 +42,8 @@ public:
         fec_encode(fec_p,src,fecs,sz);
     }
     // c++ - style declaration
-    void fecEncode2(const std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& inpkts,std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& outpkts,std::size_t size){
-
-    }
+    //void fecEncode2(const std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& inpkts,std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& outpkts,std::size_t size){
+    //}
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         fec_decode(fec_p,inpkts,outpkts,index,sz);
     }
@@ -151,43 +151,10 @@ private:
 
 class RxRingItem{
 public:
-    explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE){
-        fragments.resize(fec.FEC_N);
-        /*fragments = new uint8_t *[fec.FEC_N];
-        for (int i = 0; i < fec.FEC_N; i++) {
-            fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
-        }*/
+    explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE),fragments(fec.FEC_N){
     }
-    ~RxRingItem(){
-        /*for (int i = 0; i < fec.FEC_N; i++) {
-            delete fragments[i];
-        }
-        delete fragments;*/
-    }
-    void applyFec(){
-        unsigned index[fec.FEC_K];
-        uint8_t *in_blocks[fec.FEC_K];
-        uint8_t *out_blocks[fec.FEC_N - fec.FEC_K];
-        int j = fec.FEC_K;
-        int ob_idx = 0;
-        for (int i = 0; i < fec.FEC_K; i++) {
-            if (fragment_map[i]) {
-                in_blocks[i] = fragments[i].data();
-                index[i] = i;
-            } else {
-                for (; j < fec.FEC_N; j++) {
-                    if (fragment_map[j]) {
-                        in_blocks[i] = fragments[j].data();
-                        out_blocks[ob_idx++] = fragments[i].data();
-                        index[i] = j;
-                        j++;
-                        break;
-                    }
-                }
-            }
-        }
-        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
-    }
+    ~RxRingItem()= default;
+public:
     void reset(){
         block_idx = 0;
         send_fragment_idx = 0;
@@ -213,6 +180,7 @@ public:
         has_fragments += 1;
         return true;
     }
+    // returns true if the block at position fragmentIdx has been already received
     bool hasFragment(const uint8_t fragmentIdx)const{
         return fragment_map[fragmentIdx]==AVAILABLE;
     }
@@ -220,6 +188,30 @@ public:
     // else this is a secondary fragment
     const uint8_t* getFragment(const uint8_t fragmentIdx)const {
         return fragments[fragmentIdx].data();
+    }
+    void applyFec(){
+        unsigned index[fec.FEC_K];
+        uint8_t *in_blocks[fec.FEC_K];
+        uint8_t *out_blocks[fec.FEC_N - fec.FEC_K];
+        int j = fec.FEC_K;
+        int ob_idx = 0;
+        for (int i = 0; i < fec.FEC_K; i++) {
+            if (fragment_map[i]) {
+                in_blocks[i] = fragments[i].data();
+                index[i] = i;
+            } else {
+                for (; j < fec.FEC_N; j++) {
+                    if (fragment_map[j]) {
+                        in_blocks[i] = fragments[j].data();
+                        out_blocks[ob_idx++] = fragments[i].data();
+                        index[i] = j;
+                        j++;
+                        break;
+                    }
+                }
+            }
+        }
+        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
     }
 private:
     //reference to the FEC decoder (needed for k,n)
@@ -235,8 +227,7 @@ private:
     // for each fragment (via fragment_idx) store if it has been received yet
     enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
     std::vector<FragmentStatus> fragment_map;
-    // old c-style is needed for now
-    //uint8_t **fragments;
+    // holds all the fragments (if fragment_map says UNAVALIABLE at this position, content is undefined)
     std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
 };
 
@@ -261,11 +252,10 @@ public:
         }
     }
     ~FECDecoder() = default;
+    AvgCalculator avgLatencyPacketInQueue;
 private:
-    std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredQueue;
+    std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredRxRing;
     uint64_t seq = 0;
-    //std::array<RxRingItem,RX_RING_SIZE> rx_ring{RxRingItem(FEC_K,FEC_N)};
-    //std::vector<RxRingItem> rx_ring;
     std::array<std::unique_ptr<RxRingItem>,RX_RING_SIZE> rx_ring;
     int rx_ring_front = 0; // current packet
     int rx_ring_alloc = 0; // number of allocated entries
@@ -333,6 +323,18 @@ private:
         const uint16_t packet_size = packet_hdr->get();
         const uint64_t packet_seq = rxRingItem.block_idx * FEC_K + fragment_idx;
 
+        const auto tmp=WBDataHeader::calculateNonce(rxRingItem.block_idx,fragment_idx);
+        auto search = timePointPacketEnteredRxRing.find(tmp);
+        if(search != timePointPacketEnteredRxRing.end()){
+            // found time point for this fragment
+            const auto latency=std::chrono::steady_clock::now()-search->second;
+            timePointPacketEnteredRxRing.erase(search);
+            avgLatencyPacketInQueue.add(latency);
+            //std::cout<<"avgLatencyPacketInQueue "<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
+        }else{
+            //std::cout<<"Cannot calc latency (fec corrected packet)\n";
+        }
+
         if (packet_seq > seq + 1) {
             fprintf(stderr, "%" PRIu64" packets lost\n", packet_seq - seq - 1);
             count_p_lost += (packet_seq - seq - 1);
@@ -368,7 +370,7 @@ public:
             callback(decrypted.data(),decrypted.size());
             return true;
         }
-        timePointPacketEnteredQueue.insert({wblockHdr.nonce, std::chrono::steady_clock::now()});
+        timePointPacketEnteredRxRing.insert({wblockHdr.nonce, std::chrono::steady_clock::now()});
         const uint64_t block_idx=WBDataHeader::calculateBlockIdx(wblockHdr.nonce);
         const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(wblockHdr.nonce);
 
