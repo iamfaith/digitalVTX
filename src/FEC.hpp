@@ -24,6 +24,7 @@ extern "C"{
 }
 
 // c++ wrapper for the FEC library
+// If K and N were known at compile time we could make this much cleaner !
 class FEC{
 public:
     explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
@@ -147,16 +148,17 @@ private:
 class RxRingItem{
 public:
     explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE){
-        fragments = new uint8_t *[fec.FEC_N];
+        fragments.resize(fec.FEC_N);
+        /*fragments = new uint8_t *[fec.FEC_N];
         for (int i = 0; i < fec.FEC_N; i++) {
             fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
-        }
+        }*/
     }
     ~RxRingItem(){
-        for (int i = 0; i < fec.FEC_N; i++) {
+        /*for (int i = 0; i < fec.FEC_N; i++) {
             delete fragments[i];
         }
-        delete fragments;
+        delete fragments;*/
     }
     void applyFec(){
         unsigned index[fec.FEC_K];
@@ -166,13 +168,13 @@ public:
         int ob_idx = 0;
         for (int i = 0; i < fec.FEC_K; i++) {
             if (fragment_map[i]) {
-                in_blocks[i] = fragments[i];
+                in_blocks[i] = fragments[i].data();
                 index[i] = i;
             } else {
                 for (; j < fec.FEC_N; j++) {
                     if (fragment_map[j]) {
-                        in_blocks[i] = fragments[j];
-                        out_blocks[ob_idx++] = fragments[i];
+                        in_blocks[i] = fragments[j].data();
+                        out_blocks[ob_idx++] = fragments[i].data();
                         index[i] = j;
                         j++;
                         break;
@@ -199,9 +201,9 @@ public:
         // ignore fragments that are already available
         if (fragment_map[fragment_idx]==AVAILABLE) return false;
         // write the data (doesn't matter if FEC data or correction packet)
-        memcpy(fragments[fragment_idx],data,dataLen);
+        memcpy(fragments[fragment_idx].data(),data,dataLen);
         // set the rest to zero such that FEC works
-        memset(fragments[fragment_idx]+dataLen, '\0', MAX_FEC_PAYLOAD-dataLen);
+        memset(fragments[fragment_idx].data()+dataLen, '\0', MAX_FEC_PAYLOAD-dataLen);
         // mark it as available
         fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
         has_fragments += 1;
@@ -210,14 +212,17 @@ public:
     bool hasFragment(const uint8_t fragmentIdx)const{
         return fragment_map[fragmentIdx]==AVAILABLE;
     }
+    // if fragmentIdx<FEC_K this is a primary fragment
+    // else this is a secondary fragment
+    const uint8_t* getFragment(const uint8_t fragmentIdx)const {
+        return fragments[fragmentIdx].data();
+    }
 private:
     //reference to the FEC decoder (needed for k,n)
     const FEC& fec;
 public:
     // the block idx marks which block this element currently refers to
     uint64_t block_idx=0;
-    // old c-style is needed for now
-    uint8_t **fragments;
     // TODO what is this
     uint8_t send_fragment_idx=0;
     // TODO what is this
@@ -226,6 +231,9 @@ private:
     // for each fragment (via fragment_idx) store if it has been received yet
     enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
     std::vector<FragmentStatus> fragment_map;
+    // old c-style is needed for now
+    //uint8_t **fragments;
+    std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
 };
 
 static inline int modN(int x, int base) {
@@ -251,7 +259,7 @@ public:
     ~FECDecoder() = default;
 private:
     std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredQueue;
-    uint32_t seq = 0;
+    uint64_t seq = 0;
     //std::array<RxRingItem,RX_RING_SIZE> rx_ring{RxRingItem(FEC_K,FEC_N)};
     //std::vector<RxRingItem> rx_ring;
     std::array<std::unique_ptr<RxRingItem>,RX_RING_SIZE> rx_ring;
@@ -312,15 +320,17 @@ private:
         return ring_idx;
     }
     // this one calls the callback with reconstructed data and payload in order
-    void send_packet(int ring_idx, int fragment_idx){
-        const FECDataHeader *packet_hdr = (FECDataHeader *) (rx_ring[ring_idx]->fragments[fragment_idx]);
+    void send_packet(const int ring_idx,const uint8_t fragment_idx){
+        const RxRingItem& rxRingItem=*rx_ring[ring_idx].get();
+        const uint8_t* primaryFragment=rxRingItem.getFragment(fragment_idx);
+        const FECDataHeader *packet_hdr = (FECDataHeader *)primaryFragment;
 
-        const uint8_t *payload = (rx_ring[ring_idx]->fragments[fragment_idx]) + sizeof(FECDataHeader);
-        const uint16_t packet_size = packet_hdr->get();//be16toh(packet_hdr->packet_size);
-        const uint32_t packet_seq = rx_ring[ring_idx]->block_idx * FEC_K + fragment_idx;
+        const uint8_t *payload = primaryFragment + sizeof(FECDataHeader);
+        const uint16_t packet_size = packet_hdr->get();
+        const uint64_t packet_seq = rxRingItem.block_idx * FEC_K + fragment_idx;
 
         if (packet_seq > seq + 1) {
-            fprintf(stderr, "%u packets lost\n", packet_seq - seq - 1);
+            fprintf(stderr, "%" PRIu64" packets lost\n", packet_seq - seq - 1);
             count_p_lost += (packet_seq - seq - 1);
         }
 
@@ -328,7 +338,7 @@ private:
 
         if (packet_size > MAX_PAYLOAD_SIZE) {
             // this should never happen !
-            fprintf(stderr, "corrupted packet on FECDecoder out %u\n", seq);
+            fprintf(stderr, "corrupted packet on FECDecoder out %" PRIu64"\n", seq);
         } else {
             //send(sockfd, payload, packet_size, MSG_DONTWAIT);
             //
