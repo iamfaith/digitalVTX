@@ -214,12 +214,8 @@ public:
         }
         assert(tmpMaxPacketSize!=0);
         // TODO why did he originally use MAX_FEC_PAYLOAD here ?
-        if(tmpMaxPacketSize==0){
-            fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
-        }else{
-            //std::cout<<"XXX"<<(int)tmpMaxPacketSize<<"\n";
-            fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
-        }
+        // fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
+        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
     }
 private:
     //reference to the FEC decoder (needed for k,n)
@@ -419,7 +415,6 @@ public:
         // or we can reconstruct gaps via FEC
         if (p->send_fragment_idx < FEC_K && p->availableFragmentsCount == FEC_K) {
             //printf("do fec\n");
-            //apply_fec(ring_idx);
             p->applyFec();
             while (p->send_fragment_idx < FEC_K) {
                 count_p_fec_recovered += 1;
