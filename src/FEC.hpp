@@ -155,8 +155,9 @@ public:
     }
     ~RxRingItem()= default;
 public:
-    void reset(){
-        block_idx = 0;
+    // call this once the decoder is done with this item and uses it for a different block
+    void repurpose(const uint64_t new_block_idx= 0){
+        block_idx = new_block_idx;
         send_fragment_idx = 0;
         availableFragmentsCount = 0;
         clearFragmentMap();
@@ -211,6 +212,7 @@ public:
                 }
             }
         }
+        assert(tmpMaxPacketSize!=0);
         // TODO why did he originally use MAX_FEC_PAYLOAD here ?
         if(tmpMaxPacketSize==0){
             fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
@@ -316,8 +318,8 @@ private:
 
         for (int i = 0; i < new_blocks; i++) {
             ring_idx = rx_ring_push();
-            rx_ring[ring_idx]->reset();
-            rx_ring[ring_idx]->block_idx= block_idx + i + 1 - new_blocks;
+            const auto newBlockIdx=block_idx + i + 1 - new_blocks;
+            rx_ring[ring_idx]->repurpose(newBlockIdx);
         }
         return ring_idx;
     }
@@ -365,7 +367,7 @@ public:
         last_known_block = (uint64_t) -1;
         seq = 0;
         for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
-            rx_ring[ring_idx]->reset();
+            rx_ring[ring_idx]->repurpose();
         }
     }
     // returns false if the packet is bad (which should never happen !)

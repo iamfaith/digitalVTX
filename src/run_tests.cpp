@@ -82,13 +82,13 @@ namespace TestFEC{
 
     // test with packet loss
     // but only drop one data packet per sequence
-    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE) {
+    static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE,const int N_DUPLICATES=0) {
         assert(testIn.size() % n==0);
         std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() <<" DROP_MODE:"<<DROP_MODE<< "\n";
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
-        const auto cb1 = [&decoder,n,k,DROP_MODE](const WBDataPacket &xBlock)mutable {
+        const auto cb1 = [&decoder,n,k,DROP_MODE,N_DUPLICATES](const WBDataPacket &xBlock)mutable {
             const auto blockIdx=WBDataHeader::calculateBlockIdx(xBlock.header.nonce);
             const auto fragmentIdx=WBDataHeader::calculateFragmentIdx(xBlock.header.nonce);
             if(DROP_MODE==0){
@@ -101,16 +101,27 @@ namespace TestFEC{
                 // drop 1 data packet and let FEC do its magic
                 if(fragmentIdx==0){
                     std::cout<<"Dropping FEC-DATA packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                    return;
                 }
             }else if(DROP_MODE==2){
                 // drop 1 data packet and 1 FEC packet but that still shouldn't pose any issues
                 if(fragmentIdx==0){
                     std::cout<<"Dropping FEC-DATA packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                    return;
                 }else if(fragmentIdx==k-1){
                     std::cout<<"Dropping FEC-CORRECTION packet:["<<blockIdx<<","<<(int)fragmentIdx<<"]\n";
+                    return;
                 }
             }
-            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+            if(N_DUPLICATES>0){
+                // emulate not more than N multiple wifi cards as rx
+                const auto duplicates=std::rand() % 8;
+                for(int i=0;i<duplicates+1;i++){
+                    decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+                }
+            }else{
+                decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+            }
         };
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
             testOut.emplace_back(payload, payload + payloadSize);
