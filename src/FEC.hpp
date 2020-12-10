@@ -165,6 +165,10 @@ public:
     void clearFragmentMap(){
         std::fill(fragment_map.begin(),fragment_map.end(),FragmentStatus::UNAVAILABLE);
     }
+    // returns true if the fragment at position fragmentIdx has been already received
+    bool hasFragment(const uint8_t fragmentIdx)const{
+        return fragment_map[fragmentIdx]==AVAILABLE;
+    }
     // copy the fragment data and mark it as available
     // you should check if it is already available with hasFragment() to avoid storing a fragment multiple times
     // when using multiple RX cards
@@ -176,10 +180,6 @@ public:
         // mark it as available
         fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
         availableFragmentsCount ++;
-    }
-    // returns true if the block at position fragmentIdx has been already received
-    bool hasFragment(const uint8_t fragmentIdx)const{
-        return fragment_map[fragmentIdx]==AVAILABLE;
     }
     // if fragmentIdx<FEC_K this is a primary fragment
     // else this is a secondary fragment
@@ -208,6 +208,7 @@ public:
                 }
             }
         }
+        // TODO why use MAX_FEC_PAYLOAD here ?
         fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
     }
 private:
@@ -343,8 +344,6 @@ private:
             // this should never happen !
             fprintf(stderr, "corrupted packet on FECDecoder out %" PRIu64"\n", seq);
         } else {
-            //send(sockfd, payload, packet_size, MSG_DONTWAIT);
-            //
             callback(payload,packet_size);
         }
     }
