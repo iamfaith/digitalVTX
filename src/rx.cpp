@@ -391,7 +391,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 
     memset(fds, '\0', sizeof(fds));
     std::stringstream ss;
-    ss<<"Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" Assigned WLAN(s):";
+    ss<<"WB-RX Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" Assigned WLAN(s):";
 
     for (int i = 0; i < N_RECEIVERS; i++) {
         rx[i] = new PcapReceiver(rxInterfaces[i], i, radio_port, agg.get());
