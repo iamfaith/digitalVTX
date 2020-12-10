@@ -151,7 +151,7 @@ private:
 
 class RxRingItem{
 public:
-    explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE),fragments(fec.FEC_N){
+    explicit RxRingItem(const FEC& fec): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE),fragments(fec.FEC_N),originalSizeOfFragments(fec.FEC_N){
     }
     ~RxRingItem()= default;
 public:
@@ -180,6 +180,7 @@ public:
         // mark it as available
         fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
         availableFragmentsCount ++;
+        originalSizeOfFragments[fragment_idx]=dataLen;
     }
     // if fragmentIdx<FEC_K this is a primary fragment
     // else this is a secondary fragment
@@ -192,6 +193,7 @@ public:
         uint8_t *out_blocks[fec.FEC_N - fec.FEC_K];
         int j = fec.FEC_K;
         int ob_idx = 0;
+        std::size_t tmpMaxPacketSize=0;
         for (int i = 0; i < fec.FEC_K; i++) {
             if (fragment_map[i]) {
                 in_blocks[i] = fragments[i].data();
@@ -199,6 +201,7 @@ public:
             } else {
                 for (; j < fec.FEC_N; j++) {
                     if (fragment_map[j]) {
+                        tmpMaxPacketSize=originalSizeOfFragments[j];
                         in_blocks[i] = fragments[j].data();
                         out_blocks[ob_idx++] = fragments[i].data();
                         index[i] = j;
@@ -208,8 +211,13 @@ public:
                 }
             }
         }
-        // TODO why use MAX_FEC_PAYLOAD here ?
-        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
+        // TODO why did he originally use MAX_FEC_PAYLOAD here ?
+        if(tmpMaxPacketSize==0){
+            fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, MAX_FEC_PAYLOAD);
+        }else{
+            //std::cout<<"XXX"<<(int)tmpMaxPacketSize<<"\n";
+            fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
+        }
     }
 private:
     //reference to the FEC decoder (needed for k,n)
@@ -225,8 +233,10 @@ private:
     // for each fragment (via fragment_idx) store if it has been received yet
     enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
     std::vector<FragmentStatus> fragment_map;
-    // holds all the fragments (if fragment_map says UNAVALIABLE at this position, content is undefined)
+    // holds all the data for all received fragments (if fragment_map says UNAVALIABLE at this position, content is undefined)
     std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
+    // holds the original size for all received fragments
+    std::vector<std::size_t> originalSizeOfFragments;
 };
 
 static inline int modN(int x, int base) {

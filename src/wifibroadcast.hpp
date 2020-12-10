@@ -84,7 +84,7 @@ public:
 static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALWAYS_TRUE");
 
 
-// This header comes with each FEC packet (data OR fec correction packet)
+// This header comes with each FEC packet (primary or secondary)
 // This part is not encrypted !
 class WBDataHeader{
 public:
@@ -107,8 +107,8 @@ public:
 static_assert(sizeof(WBDataHeader)==8+1,"ALWAYS_TRUE");
 
 
-// this header is written before the data of each FEC data packet
-// ONLY for data packets though ! (up to n bytes workaround)
+// this header is written before the data of each primary FEC fragment
+// ONLY for primary FEC fragment though ! (up to n bytes workaround)
 class FECDataHeader {
 private:
     // private member to make sure it has always the right endian
