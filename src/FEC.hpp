@@ -40,6 +40,10 @@ public:
     void fecEncode(const uint8_t** src,uint8_t ** fecs, size_t sz)const{
         fec_encode(fec_p,src,fecs,sz);
     }
+    // c++ - style declaration
+    void fecEncode2(const std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& inpkts,std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& outpkts,std::size_t size){
+
+    }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         fec_decode(fec_p,inpkts,outpkts,index,sz);
     }
