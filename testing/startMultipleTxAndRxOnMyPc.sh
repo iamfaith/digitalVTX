@@ -20,10 +20,10 @@ sudo ifconfig $MY_RX up
 sudo iwconfig $MY_RX channel 13
 
 gnome-terminal -- $WFB_FOLDER/wfb_tx -M 4 -k 4 -n 8 -u 6000 -p 0 -K $WFB_FOLDER/drone.key $MY_TX
-#gnome-terminal -- $WFB_FOLDER/wfb_tx -M 4 -k 4 -n 8 -u 6001 -p 1 -K $WFB_FOLDER/drone.key $MY_TX
+gnome-terminal -- $WFB_FOLDER/wfb_tx -M 4 -k 4 -n 8 -u 6001 -p 1 -K $WFB_FOLDER/drone.key $MY_TX
 
 gnome-terminal -- $WFB_FOLDER/wfb_rx -k 4 -n 8 -c 127.0.0.1 -u 6100 -p 0 -K $WFB_FOLDER/gs.key $MY_RX
-#gnome-terminal -- $WFB_FOLDER/wfb_rx -k 4 -n 8 -c 127.0.0.1 -u 6101 -p 1 -K $WFB_FOLDER/gs.key $MY_RX
+gnome-terminal -- $WFB_FOLDER/wfb_rx -k 4 -n 8 -c 127.0.0.1 -u 6101 -p 1 -K $WFB_FOLDER/gs.key $MY_RX
 
 #gnome-terminal -- nc -u localhost 6000
 #gnome-terminal -- nc -u localhost 6001
