@@ -158,27 +158,24 @@ public:
     void reset(){
         block_idx = 0;
         send_fragment_idx = 0;
-        has_fragments = 0;
+        availableFragmentsCount = 0;
         clearFragmentMap();
     }
     // mark every fragment as not yet received
     void clearFragmentMap(){
         std::fill(fragment_map.begin(),fragment_map.end(),FragmentStatus::UNAVAILABLE);
     }
-    // If the fragment was already added before, do nothing and return false
-    // Else,mark it as received (available) and copy its data.
-    // also, zero out the rest of the data for FEC to work (up to n bytes workaround)
-    bool addFragmentIfNeeded(const uint8_t fragment_idx,const uint8_t* data,std::size_t dataLen){
-        // ignore fragments that are already available
-        if (fragment_map[fragment_idx]==AVAILABLE) return false;
+    // copy the fragment data and mark it as available
+    // you should check if it is already available with hasFragment() to avoid storing a fragment multiple times
+    // when using multiple RX cards
+    void addFragment(const uint8_t fragment_idx, const uint8_t* data, std::size_t dataLen){
         // write the data (doesn't matter if FEC data or correction packet)
         memcpy(fragments[fragment_idx].data(),data,dataLen);
         // set the rest to zero such that FEC works
         memset(fragments[fragment_idx].data()+dataLen, '\0', MAX_FEC_PAYLOAD-dataLen);
         // mark it as available
         fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
-        has_fragments += 1;
-        return true;
+        availableFragmentsCount ++;
     }
     // returns true if the block at position fragmentIdx has been already received
     bool hasFragment(const uint8_t fragmentIdx)const{
@@ -222,7 +219,7 @@ public:
     // TODO what is this
     uint8_t send_fragment_idx=0;
     // TODO what is this
-    uint8_t has_fragments=0;
+    uint8_t availableFragmentsCount=0;
 private:
     // for each fragment (via fragment_idx) store if it has been received yet
     enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
@@ -281,7 +278,7 @@ private:
         */
 
         fprintf(stderr, "override block 0x%" PRIx64 " with %d fragments\n", rx_ring[idx]->block_idx,
-                rx_ring[idx]->has_fragments);
+                rx_ring[idx]->availableFragmentsCount);
 
         rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
         return idx;
@@ -393,10 +390,11 @@ public:
         if (ring_idx < 0) return true;
 
         RxRingItem *p = rx_ring[ring_idx].get();
-
-        if(!p->addFragmentIfNeeded(fragment_idx,decrypted.data(),decrypted.size())){
-            // no data that wasn't already received, return early
+        if(p->hasFragment(fragment_idx)){
+            // return early
             return true;
+        }else{
+            p->addFragment(fragment_idx, decrypted.data(), decrypted.size());
         }
 
         if (ring_idx == rx_ring_front) {
@@ -408,7 +406,7 @@ public:
         }
 
         // or we can reconstruct gaps via FEC
-        if (p->send_fragment_idx < FEC_K && p->has_fragments == FEC_K) {
+        if (p->send_fragment_idx < FEC_K && p->availableFragmentsCount == FEC_K) {
             //printf("do fec\n");
             //apply_fec(ring_idx);
             p->applyFec();
