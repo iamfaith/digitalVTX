@@ -173,7 +173,7 @@ public:
     // copy the fragment data and mark it as available
     // you should check if it is already available with hasFragment() to avoid storing a fragment multiple times
     // when using multiple RX cards
-    void addFragment(const uint8_t fragment_idx, const uint8_t* data, std::size_t dataLen){
+    void addFragment(const uint8_t fragment_idx, const uint8_t* data,const std::size_t dataLen){
         // write the data (doesn't matter if FEC data or correction packet)
         memcpy(fragments[fragment_idx].data(),data,dataLen);
         // set the rest to zero such that FEC works
@@ -398,7 +398,7 @@ public:
 
         RxRingItem *p = rx_ring[ring_idx].get();
         if(p->hasFragment(fragment_idx)){
-            // return early
+            // return early (ignore already processed fragments)
             return true;
         }else{
             p->addFragment(fragment_idx, decrypted.data(), decrypted.size());
