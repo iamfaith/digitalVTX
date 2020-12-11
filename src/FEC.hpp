@@ -385,8 +385,8 @@ public:
             return true;
         }
         timePointPacketEnteredRxRing.insert({wblockHdr.nonce, std::chrono::steady_clock::now()});
-        const uint64_t block_idx=WBDataHeader::calculateBlockIdx(wblockHdr.nonce);
-        const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(wblockHdr.nonce);
+        const uint64_t block_idx=wblockHdr.getBlockIdx();
+        const uint8_t fragment_idx=wblockHdr.getFragmentIdx();
 
         // Should never happen due to generating new session key on tx side
         if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
