@@ -172,7 +172,6 @@ namespace Helper{
                     mIEEE80211_RADIOTAP_FLAGS = *(uint8_t *) (iterator.this_arg);
                     break;
                 case IEEE80211_RADIOTAP_MCS:
-                    std::cout<<"XXX\n";
                     mIEEE80211_RADIOTAP_MCS = *(uint8_t *) (iterator.this_arg);
                 default:
                     break;
@@ -190,9 +189,10 @@ namespace Helper{
             //std::cout<<"Packet has IEEE80211_RADIOTAP_F_FCS";
             pktlen -= 4;
         }
+#ifdef ENABLE_ADVANCED_DEBUGGING
         std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_MCS(mIEEE80211_RADIOTAP_MCS)<<"\n";
         std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
-
+#endif
         /* discard the radiotap header part */
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;
