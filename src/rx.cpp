@@ -192,14 +192,14 @@ namespace Helper{
 #ifdef ENABLE_ADVANCED_DEBUGGING
         std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_MCS(mIEEE80211_RADIOTAP_MCS)<<"\n";
         std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
-#endif
-        /* discard the radiotap header part */
-        pkt += iterator._max_length;
-        pktlen -= iterator._max_length;
         // With AR9271 I get 39 as max_length of the radio-tap header
         // With my internal laptop wifi chip I get 36 as max_length of the radio-tap header
         //
         std::cout<<"iterator._max_length was "<<iterator._max_length<<"\n";
+#endif
+        /* discard the radiotap header part */
+        pkt += iterator._max_length;
+        pktlen -= iterator._max_length;
         //
         const Ieee80211Header* ieee80211Header=(Ieee80211Header*)pkt;
         const uint8_t* payload=pkt+Ieee80211Header::SIZE_BYTES;
