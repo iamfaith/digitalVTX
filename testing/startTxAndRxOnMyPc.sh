@@ -29,7 +29,8 @@ sudo ifconfig $MY_RX up
 sudo iwconfig $MY_RX channel 6
 #sudo iwconfig $MY_RX channel "6" HT40+
 
-gnome-terminal -- $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 7 -K $WFB_FOLDER/drone.key $MY_TX
+# $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 7 -K $WFB_FOLDER/drone.key $MY_TX
+xterm -hold -e $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 7 -K $WFB_FOLDER/drone.key $MY_TX &
 
 $WFB_FOLDER/wfb_rx -k $FEC_K -n $FEC_N -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key $MY_RX
 
