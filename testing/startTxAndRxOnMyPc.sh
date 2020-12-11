@@ -7,6 +7,9 @@ MY_TX="wlx000f00460445"
 MY_RX="wlxc4e9840e3cbe"
 WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
 
+FEC_K=0
+FEC_N=0
+
 sudo rfkill unblock wifi
 #sudo killall ifplugd #stop management of interface
 
@@ -21,9 +24,9 @@ sudo iw dev $MY_RX set monitor otherbss fcsfail
 sudo ifconfig $MY_RX up
 sudo iwconfig $MY_RX channel 13
 
-gnome-terminal -- $WFB_FOLDER/wfb_tx -k 4 -n 8 -u 6000 -p 60 -K $WFB_FOLDER/drone.key $MY_TX
+gnome-terminal -- $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -K $WFB_FOLDER/drone.key $MY_TX
 
-$WFB_FOLDER/wfb_rx -k 4 -n 8 -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key $MY_RX
+$WFB_FOLDER/wfb_rx -k $FEC_K -n $FEC_N -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key $MY_RX
 
 #other usefull commands:
 #sudo iw dev

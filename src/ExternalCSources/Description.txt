@@ -1,3 +1,7 @@
 Here I collect code that once came from 'some github repository' and should not be modified.
 Only maybe 'Updated' when these repositories receive updates
 Also, all this code is written in 'c' not 'c++'
+
+fec.c / fec.h comes from https://github.com/tahoe-lafs/zfec/tree/master/zfec
+
+The "radiotap stuff" comes from https://github.com/radiotap/radiotap-library

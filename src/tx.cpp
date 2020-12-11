@@ -79,7 +79,7 @@ namespace Helper {
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
         if (pcap_inject(pcap, packetData.data(), packetData.size()) != (int)packetData.size()) {
-            throw std::runtime_error(StringFormat::convert("Unable to inject packet"));
+            throw std::runtime_error(StringFormat::convert("Unable to inject packet %s",pcap_geterr(pcap)));
         }
     }
     // copy paste from svpcom
@@ -176,8 +176,8 @@ void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
     injectPacket(data.data(), data.size());
 #ifdef ENABLE_ADVANCED_DEBUGGING
-    LatencyTestingPacket latencyTestingPacket;
-    injectPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
+    //LatencyTestingPacket latencyTestingPacket;
+    //injectPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
 #endif
 }
 

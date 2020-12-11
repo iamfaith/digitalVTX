@@ -134,7 +134,8 @@ namespace Helper{
         std::array<int8_t ,RX_ANT_MAX> rssi{};
         // Fill all rssi slots with minimum value
         rssi.fill(SCHAR_MIN);
-        uint8_t flags = 0;
+        uint8_t mIEEE80211_RADIOTAP_FLAGS = 0;
+        uint8_t mIEEE80211_RADIOTAP_MCS=0;
         struct ieee80211_radiotap_iterator iterator{};
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
 
@@ -154,13 +155,15 @@ namespace Helper{
                  * iterator.this_arg for type "type" safely on all arches.
                  */
 
-                // case IEEE80211_RADIOTAP_RATE:
-                //     /* radiotap "rate" u8 is in
-                //      * 500kbps units, eg, 0x02=1Mbps
-                //      */
-                //     pkt_rate = (*(uint8_t*)(iterator.this_arg))/2;
-                //     break;
-
+                 /*case IEEE80211_RADIOTAP_RATE:
+                     // radiotap "rate" u8 is in
+                     // 500kbps units, eg, 0x02=1Mbps
+                 {
+                     uint8_t pkt_rate = (*(uint8_t*)(iterator.this_arg))/2;
+                     int rateInMbps=pkt_rate*2;
+                     std::cout<<"Packet rate is "<<rateInMbps<<"\n";
+                 }
+                     break;*/
                 case IEEE80211_RADIOTAP_ANTENNA:
                     // FIXME
                     // In case of multiple antenna stats in one packet this index will be irrelivant
@@ -174,9 +177,11 @@ namespace Helper{
                     break;
 
                 case IEEE80211_RADIOTAP_FLAGS:
-                    flags = *(uint8_t *) (iterator.this_arg);
+                    mIEEE80211_RADIOTAP_FLAGS = *(uint8_t *) (iterator.this_arg);
                     break;
-
+                case IEEE80211_RADIOTAP_MCS:
+                    std::cout<<"XXX\n";
+                    mIEEE80211_RADIOTAP_MCS = *(uint8_t *) (iterator.this_arg);
                 default:
                     break;
             }
@@ -185,14 +190,17 @@ namespace Helper{
             fprintf(stderr, "Error parsing radiotap header!\n");
             return std::nullopt;
         }
-        if (flags & IEEE80211_RADIOTAP_F_BADFCS) {
+        if (mIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_BADFCS) {
             fprintf(stderr, "Got packet with bad fsc\n");
             return std::nullopt;
         }
-        if (flags & IEEE80211_RADIOTAP_F_FCS) {
+        if (mIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_FCS) {
             //std::cout<<"Packet has IEEE80211_RADIOTAP_F_FCS";
             pktlen -= 4;
         }
+        std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_MCS(mIEEE80211_RADIOTAP_MCS)<<"\n";
+        std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
+
         /* discard the radiotap header part */
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;

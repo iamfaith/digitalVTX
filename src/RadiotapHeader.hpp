@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <sstream>
 
 extern "C"{
 #include "ExternalCSources/ieee80211_radiotap.h"
@@ -107,8 +108,54 @@ public:
 }__attribute__ ((packed));
 static_assert(sizeof(RadiotapHeader) == RadiotapHeader::SIZE_BYTES, "ALWAYS TRUE");
 
-namespace RadiotapHelper{
-    //static constexpr const auto RX_ANT_MAX=4;
+namespace RadiotapFlagsToString{
+    std::string flagsIEEE80211_RADIOTAP_MCS(const uint8_t flags) {
+        std::stringstream ss;
+        ss<<"All IEEE80211_RADIOTAP_MCS flags: ";
+        if(flags &  IEEE80211_RADIOTAP_MCS_HAVE_BW) {
+            auto bw=flags & IEEE80211_RADIOTAP_MCS_BW_MASK;
+            ss<<"HAVE_BW["<<(int)bw<<"],";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
+            ss<<"HAVE_MCS,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_GI) {
+            ss<<"HAVE_GI,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FMT) {
+            ss<<"HAVE_FMT,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FEC) {
+            ss<<"HAVE_FEC,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_STBC ) {
+            ss<<"HAVE_STBC,";
+        }
+        return ss.str();
+    }
+    std::string flagsIEEE80211_RADIOTAP_FLAGS(uint8_t flags){
+        std::stringstream ss;
+        ss<<"All IEEE80211_RADIOTAP flags: ";
+        if(flags & IEEE80211_RADIOTAP_F_CFP){
+            ss<<"CFP,";
+        }
+        if(flags & IEEE80211_RADIOTAP_F_SHORTPRE){
+            ss<<"SHORTPRE,";
+        }
+        if(flags & IEEE80211_RADIOTAP_F_WEP){
+            ss<<"WEP,";
+        }
+        if(flags & IEEE80211_RADIOTAP_F_FRAG){
+            ss<<"FRAG,";
+        }
+        if(flags & IEEE80211_RADIOTAP_F_FCS){
+            ss<<"FCS,";
+        }
+        if(flags & IEEE80211_RADIOTAP_F_DATAPAD){
+            ss<<"DATAPAD,";
+        }
+        return ss.str();
+    }
 }
 
 #endif //__WIFIBROADCAST_RADIOTAP_HEADER_HPP__
