@@ -13,35 +13,33 @@
 // For developing or when encryption is not important, you can use this default seed to
 // create deterministic rx and tx keys
 static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
-// enable a default deterministic encryption key by using this flag
-//#define CREATE_DEFAULT_ENCRYPTION_KEYS
 // use this one if you are worried about CPU usage when using encryption
 //#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
 
 class Encryptor {
 public:
-    explicit Encryptor(const std::string &keypair) {
-#ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
-        crypto_box_seed_keypair(rx_publickey.data(),tx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
-        std::cout<<"Using default keys\n";
-        //for(int i=0;i<crypto_box_SEEDBYTES;i++) {
-        //    std::cout<<"Seed "<<i<<":"<<((int)DEFAULT_ENCRYPTION_SEED_TX[i])<<"\n";
-        //}
-#else
-        FILE *fp;
-        if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
-            throw std::runtime_error(StringFormat::convert("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
-        }
-        if (fread(tx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1) {
+    // enable a default deterministic encryption key by using std::nullopt
+    // else, pass path to file with encryption keys
+    explicit Encryptor(std::optional<std::string> keypair) {
+        if(keypair==std::nullopt){
+            // use default encryption keys
+            crypto_box_seed_keypair(rx_publickey.data(),tx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+            std::cout<<"Using default keys\n";
+        }else{
+            FILE *fp;
+            if ((fp = fopen(keypair->c_str(), "r")) == nullptr) {
+                throw std::runtime_error(StringFormat::convert("Unable to open %s: %s", keypair->c_str(), strerror(errno)));
+            }
+            if (fread(tx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1) {
+                fclose(fp);
+                throw std::runtime_error(StringFormat::convert("Unable to read tx secret key: %s", strerror(errno)));
+            }
+            if (fread(rx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1) {
+                fclose(fp);
+                throw std::runtime_error(StringFormat::convert("Unable to read rx public key: %s", strerror(errno)));
+            }
             fclose(fp);
-            throw std::runtime_error(StringFormat::convert("Unable to read tx secret key: %s", strerror(errno)));
         }
-        if (fread(rx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1) {
-            fclose(fp);
-            throw std::runtime_error(StringFormat::convert("Unable to read rx public key: %s", strerror(errno)));
-        }
-        fclose(fp);
-#endif
     }
     // Don't forget to send the session key after creating a new one
     void makeSessionKey() {
@@ -100,28 +98,29 @@ public:
 
 class Decryptor {
 public:
-    explicit Decryptor(const std::string &keypair) {
-#ifdef CREATE_DEFAULT_ENCRYPTION_KEYS
-        crypto_box_seed_keypair(tx_publickey.data(),rx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
-        std::cout<<"Using default keys\n";
-#else
-        FILE *fp;
-        if ((fp = fopen(keypair.c_str(), "r")) == NULL) {
-            throw std::runtime_error(StringFormat::convert("Unable to open %s: %s", keypair.c_str(), strerror(errno)));
-        }
-        if (fread(rx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1) {
+    // enable a default deterministic encryption key by using std::nullopt
+    // else, pass path to file with encryption keys
+    explicit Decryptor(std::optional<std::string> keypair) {
+        if(keypair==std::nullopt){
+            crypto_box_seed_keypair(tx_publickey.data(),rx_secretkey.data(),DEFAULT_ENCRYPTION_SEED.data());
+            std::cout<<"Using default keys\n";
+        }else{
+            FILE *fp;
+            if ((fp = fopen(keypair->c_str(), "r")) == nullptr) {
+                throw std::runtime_error(StringFormat::convert("Unable to open %s: %s", keypair->c_str(), strerror(errno)));
+            }
+            if (fread(rx_secretkey.data(), crypto_box_SECRETKEYBYTES, 1, fp) != 1) {
+                fclose(fp);
+                throw std::runtime_error(StringFormat::convert("Unable to read rx secret key: %s", strerror(errno)));
+            }
+            if (fread(tx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1) {
+                fclose(fp);
+                throw std::runtime_error(StringFormat::convert("Unable to read tx public key: %s", strerror(errno)));
+            }
             fclose(fp);
-            throw std::runtime_error(StringFormat::convert("Unable to read rx secret key: %s", strerror(errno)));
         }
-        if (fread(tx_publickey.data(), crypto_box_PUBLICKEYBYTES, 1, fp) != 1) {
-            fclose(fp);
-            throw std::runtime_error(StringFormat::convert("Unable to read tx public key: %s", strerror(errno)));
-        }
-        fclose(fp);
-#endif
         memset(session_key.data(), '\0', sizeof(session_key));
     }
-
 public:
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> rx_secretkey{};
 public:
