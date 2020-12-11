@@ -282,8 +282,11 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         return;
     }
     Helper::writeAntennaStats(antenna_stat,WLAN_IDX,parsedPacket->antenna,parsedPacket->rssi);
-    //const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
+    const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
     //std::cout<<"RADIO_PORT"<<(int)tmpHeader->getRadioPort()<<" IEEE_SEQ_NR "<<(int)tmpHeader->getSequenceNumber()<<"\n";
+    //std::cout<<"FrameControl:"<<(int)tmpHeader->getFrameControl()<<"\n";
+    //std::cout<<"DurationOrConnectionId:"<<(int)tmpHeader->getDurationOrConnectionId()<<"\n";
+
     // now to the actual payload
     const uint8_t *payload=parsedPacket->payload;
     const size_t payloadSize=parsedPacket->payloadSize;

@@ -64,12 +64,12 @@ public:
     constexpr std::size_t getSize()const{
         return data.size();
     }
-    std::array<uint8_t,2> getFrameControl(){
-        std::array<uint8_t,2> ret;
-        memcpy(ret.data(),data.data(),2);
+    uint16_t getFrameControl()const{
+        uint16_t ret;
+        memcpy(&ret,&data[0],2);
         return ret;
     }
-    uint16_t getDurationOrConnectionId(){
+    uint16_t getDurationOrConnectionId()const{
         uint16_t ret;
         memcpy(&ret,&data[2],2);
         return ret;
