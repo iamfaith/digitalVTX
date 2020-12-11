@@ -351,7 +351,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 
 //#define USE_PCAP_LOOP_INSTEAD_OF_NEXT
 
-PcapReceiver::PcapReceiver(const std::string wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
+PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
     ppcap=Helper::openRxWithPcap(wlan,RADIO_PORT);
 #ifndef USE_PCAP_LOOP_INSTEAD_OF_NEXT
     fd = pcap_get_selectable_fd(ppcap);

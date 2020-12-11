@@ -101,7 +101,7 @@ private:
 // Processing of data is done by the Aggregator
 class PcapReceiver {
 public:
-    PcapReceiver(const std::string wlan, int wlan_idx, int radio_port, Aggregator *agg);
+    PcapReceiver(const std::string& wlan, int wlan_idx, int radio_port, Aggregator *agg);
 
     ~PcapReceiver();
 
