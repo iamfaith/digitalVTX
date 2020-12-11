@@ -109,6 +109,11 @@ public:
 
         // send FEC data packet immediately before calculating the FECs
         send_block_fragment(sizeof(dataHeader) + size);
+        // the packet size for FEC encoding is determined by calculating the max of all primary fragments in this block.
+        // Since the rest of the bytes are zeroed out we can run FEC with dynamic packet size.
+        // As long as the deviation in packet size of primary fragments isn't too high the loss in raw bandwidth is negligible
+        // Note,the loss in raw bandwidth comes from the size of the FEC secondary packets, which always has to be the max of all primary fragments
+        // Not from the primary fragments, they are transmitted without the "zeroed out" part
         max_packet_size = std::max(max_packet_size, sizeof(dataHeader) + size);
         fragment_idx += 1;
 
