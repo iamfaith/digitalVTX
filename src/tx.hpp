@@ -51,6 +51,7 @@ private:
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
 };
 
+// Doesn't use pcap but somehow directly talks to the OS via socket
 class RawSocketTransmitter{
 public:
     explicit RawSocketTransmitter(const std::string &wlan);
@@ -78,8 +79,8 @@ private:
     // inject packet by prefixing data with the current IEE and Radiotap header
     void injectPacket(const uint8_t *buf, size_t size);
     // this one is used for injecting packets
-    //PcapTransmitter mPcapTransmitter;
-    RawSocketTransmitter mPcapTransmitter;
+    PcapTransmitter mPcapTransmitter;
+    //RawSocketTransmitter mPcapTransmitter;
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;
