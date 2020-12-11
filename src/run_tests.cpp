@@ -186,8 +186,9 @@ int main(int argc, char *argv[]){
     std::cout<<"Tests for Wifibroadcast\n";
     try {
         std::cout<<"Testing FEC\n";
+        const int N_PACKETS=2400;
         // first, test with fec disabled
-        TestFEC::testWithoutPacketLossDynamicPacketSize(0, 0, 1200);
+        TestFEC::testWithoutPacketLossDynamicPacketSize(0, 0, N_PACKETS);
 
         // now with FEC enabled
         const std::vector<std::pair<uint8_t,uint8_t>> fecParams={
@@ -196,10 +197,10 @@ int main(int argc, char *argv[]){
         for(auto fecParam:fecParams){
             const uint8_t k=fecParam.first;
             const uint8_t n=fecParam.second;
-            TestFEC::testWithoutPacketLossFixedPacketSize(k, n, 1200);
-            TestFEC::testWithoutPacketLossDynamicPacketSize(k, n, 1200);
+            TestFEC::testWithoutPacketLossFixedPacketSize(k, n, N_PACKETS);
+            TestFEC::testWithoutPacketLossDynamicPacketSize(k, n, N_PACKETS);
             for(int dropMode=0;dropMode<3;dropMode++){
-                TestFEC::testWithPacketLossButEverythingIsRecoverable(k, n, 1200, dropMode);
+                TestFEC::testWithPacketLossButEverythingIsRecoverable(k, n, N_PACKETS, dropMode);
             }
         }
         //
