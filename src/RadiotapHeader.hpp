@@ -22,7 +22,7 @@
 #include <sstream>
 
 extern "C"{
-#include "ExternalCSources/ieee80211_radiotap.h"
+#include "ExternalCSources/radiotap.h"
 };
 
 // Default is MCS#1 -- QPSK 1/2 40MHz SGI -- 30 Mbit/s

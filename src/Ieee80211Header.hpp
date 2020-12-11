@@ -21,7 +21,7 @@
 #include <chrono>
 
 extern "C"{
-#include "ExternalCSources/ieee80211_radiotap.h"
+#include "ExternalCSources/radiotap.h"
 };
 
 // Wrapper around the Ieee80211 header (declared as raw array initially)

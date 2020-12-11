@@ -43,6 +43,7 @@
 #include "rx.hpp"
 extern "C"{
 #include "ExternalCSources/fec.h"
+#include "ExternalCSources/radiotap_iter.h"
 }
 
 namespace Helper{
