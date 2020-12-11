@@ -21,6 +21,7 @@
 #include <chrono>
 
 // Wrapper around the Ieee80211 header (declared as raw array initially)
+// info https://witestlab.poly.edu/blog/802-11-wireless-lan-2/
 class Ieee80211Header{
 public:
     static constexpr auto SIZE_BYTES=24;
@@ -31,6 +32,7 @@ public:
     static constexpr const auto FRAME_SEQ_HB=23;
     // raw data buffer
     // unfortunately I do not know what these 'default bytes' mean
+    // more info https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L175
     std::array<uint8_t,SIZE_BYTES> data={
             0x08, 0x01, 0x00, 0x00,
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -61,6 +63,16 @@ public:
     }
     constexpr std::size_t getSize()const{
         return data.size();
+    }
+    std::array<uint8_t,2> getFrameControl(){
+        std::array<uint8_t,2> ret;
+        memcpy(ret.data(),data.data(),2);
+        return ret;
+    }
+    uint16_t getDurationOrConnectionId(){
+        uint16_t ret;
+        memcpy(&ret,&data[2],2);
+        return ret;
     }
 }__attribute__ ((packed));
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
