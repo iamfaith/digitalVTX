@@ -279,7 +279,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         return;
     }
     if (parsedPacket->payloadSize > MAX_FORWARDER_PACKET_SIZE) {
-        std::cerr<<"Discarding packet due to payload exceeding max \n"<<(int)parsedPacket->payloadSize<<"\n";
+        std::cerr<<"Discarding packet due to payload exceeding max "<<(int)parsedPacket->payloadSize<<"\n";
         count_p_bad++;
         return;
     }
