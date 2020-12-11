@@ -89,8 +89,8 @@ namespace TestFEC{
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
         const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const WBDataPacket &xBlock)mutable {
-            const auto blockIdx=WBDataHeader::calculateBlockIdx(xBlock.header.nonce);
-            const auto fragmentIdx=WBDataHeader::calculateFragmentIdx(xBlock.header.nonce);
+            const auto blockIdx=xBlock.header.getBlockIdx();
+            const auto fragmentIdx=xBlock.header.getFragmentIdx();
             if(DROP_MODE==0){
                 // drop all FEC correction packets but no data packets (everything should be still recoverable
                 if(fragmentIdx>=k){

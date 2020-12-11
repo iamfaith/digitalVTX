@@ -107,6 +107,9 @@ public:
     uint64_t getBlockIdx()const{
         return calculateBlockIdx(nonce);
     }
+    uint64_t getNonce()const{
+        return nonce;
+    }
 public:
     const uint8_t packet_type=WFB_PACKET_DATA;
     const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
