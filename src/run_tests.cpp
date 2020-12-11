@@ -208,7 +208,7 @@ int main(int argc, char *argv[]){
         TestEncryption::test();
 
     }catch (std::runtime_error &e) {
-        fprintf(stderr, "Error: %s\n", e.what());
+        std::cerr<<"Error: "<<std::string(e.what());
         exit(1);
     }
     std::cout<<"All Tests Passing\n";

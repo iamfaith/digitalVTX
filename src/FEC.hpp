@@ -296,9 +296,7 @@ private:
              Some cards can do this due to packet reordering inside, diffent chipset and/or firmware or your RX hosts have different CPU power.
           2. Reduce packet injection speed or try to unify RX hardware.
         */
-
-        fprintf(stderr, "override block 0x%" PRIx64 " with %d fragments\n", rx_ring[idx]->block_idx,
-                rx_ring[idx]->availableFragmentsCount);
+        std::cerr<<"override block "<<rx_ring[idx]->block_idx<<" with "<< rx_ring[idx]->availableFragmentsCount<<" fragments\n";
 
         rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
         return idx;
@@ -353,15 +351,16 @@ private:
         }
 
         if (packet_seq > seq + 1) {
-            fprintf(stderr, "%" PRIu64" packets lost\n", packet_seq - seq - 1);
-            count_p_lost += (packet_seq - seq - 1);
+            const auto packetsLost=(packet_seq - seq - 1);
+            std::cerr<<packetsLost<<"packets lost\n";
+            count_p_lost += packetsLost;
         }
 
         seq = packet_seq;
 
         if (packet_size > MAX_PAYLOAD_SIZE) {
             // this should never happen !
-            fprintf(stderr, "corrupted packet on FECDecoder out %" PRIu64"\n", seq);
+            std::cerr<<"corrupted packet on FECDecoder out "<<seq;
         } else {
             callback(payload,packet_size);
         }
@@ -391,12 +390,12 @@ public:
 
         // Should never happen due to generating new session key on tx side
         if (block_idx > MAX_BLOCK_IDX) {
-            fprintf(stderr, "block_idx overflow\n");
+            std::cerr<<"block_idx overflow\n";
             return false;
         }
 
         if (fragment_idx >= FEC_N) {
-            fprintf(stderr, "invalid fragment_idx: %d\n", fragment_idx);
+            std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
             return false;
         }
 

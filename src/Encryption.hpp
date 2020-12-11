@@ -136,12 +136,12 @@ public:
                                  sessionKeyPacket->session_key_nonce,
                                  tx_publickey.data(), rx_secretkey.data()) != 0) {
             // this basically should just never happen
-            fprintf(stderr, "unable to decrypt session key\n");
+            std::cerr<<"unable to decrypt session key\n";
             return false;
         }
         if (memcmp(session_key.data(), new_session_key.data(), sizeof(session_key)) != 0) {
             // this is NOT an error
-            fprintf(stderr, "New session detected\n");
+            std::cerr<<"New session detected\n";
             session_key = new_session_key;
             return true;
         }
