@@ -86,12 +86,12 @@ namespace Helper{
         std::string program;
         switch (link_encap) {
             case DLT_PRISM_HEADER:
-                fprintf(stderr, "%s has DLT_PRISM_HEADER Encap\n", wlan.c_str());
+                std::cerr<<wlan<<" has DLT_PRISM_HEADER Encap\n";
                 program = StringFormat::convert("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
                 break;
 
             case DLT_IEEE802_11_RADIO:
-                fprintf(stderr, "%s has DLT_IEEE802_11_RADIO Encap\n", wlan.c_str());
+                std::cerr<<wlan<<" has DLT_IEEE802_11_RADIO Encap\n";
                 program = StringFormat::convert("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
                 break;
 
@@ -178,11 +178,11 @@ namespace Helper{
             }
         }  /* while more rt headers */
         if (ret != -ENOENT && ant_idx < RX_ANT_MAX) {
-            fprintf(stderr, "Error parsing radiotap header!\n");
+            std::cerr<<"Error parsing radiotap header!\n";
             return std::nullopt;
         }
         if (mIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_BADFCS) {
-            fprintf(stderr, "Got packet with bad fsc\n");
+            std::cerr<<"Got packet with bad fsc\n";
             return std::nullopt;
         }
         if (mIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_FCS) {
@@ -268,18 +268,18 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     // The radio capture header precedes the 802.11 header.
     const auto parsedPacket=Helper::processReceivedPcapPacket(hdr,pkt);
     if(parsedPacket==std::nullopt){
-        fprintf(stderr, "Discarding packet due to pcap parsing error (or wrong checksum)!\n");
+        std::cerr<< "Discarding packet due to pcap parsing error (or wrong checksum)!\n";
         count_p_bad++;
         return;
     }
     // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
     if(parsedPacket->payloadSize<=0){
-        fprintf(stderr, "Discarding packet due to no actual payload !\n");
+        std::cerr<<"Discarding packet due to no actual payload !\n";
         count_p_bad++;
         return;
     }
     if (parsedPacket->payloadSize > MAX_FORWARDER_PACKET_SIZE) {
-        fprintf(stderr, "Discarding packet due to payload exceeding max %d\n",(int)parsedPacket->payloadSize);
+        std::cerr<<"Discarding packet due to payload exceeding max \n"<<(int)parsedPacket->payloadSize<<"\n";
         count_p_bad++;
         return;
     }
@@ -295,14 +295,14 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     switch (payload[0]) {
         case WFB_PACKET_DATA:
             if (payloadSize < sizeof(WBDataHeader) + sizeof(FECDataHeader)) {
-                fprintf(stderr, "short packet (fec header)\n");
+                std::cerr<<"short packet (fec header)\n";
                 count_p_bad++;
                 return;
             }
             break;
         case WFB_PACKET_KEY:
             if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
-                fprintf(stderr, "invalid session key packet\n");
+                std::cerr<<"invalid session key packet\n";
                 count_p_bad++;
                 return;
             }
@@ -326,7 +326,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         }
             return;
         default:
-            fprintf(stderr, "Unknown packet type 0x%x\n", payload[0]);
+            std::cerr<<"Unknown packet type "<<(int)payload[0]<<" \n";
             count_p_bad += 1;
             return;
     }
@@ -335,7 +335,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     const auto decrypted=mDecryptor.decryptPacket(*block_hdr,&payload[sizeof(WBDataHeader)],payloadSize-sizeof(WBDataHeader));
 
     if(decrypted==std::nullopt){
-        fprintf(stderr, "unable to decrypt packet #0x%" PRIx64 "\n", be64toh(block_hdr->nonce));
+        std::cerr<<"unable to decrypt packet (block_idx,fragment_idx):"<<block_hdr->getBlockIdx()<<","<<(int)block_hdr->getFragmentIdx()<<"\n";
         count_p_dec_err ++;
         return;
     }

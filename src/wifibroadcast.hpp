@@ -100,6 +100,12 @@ public:
         return (uint8_t) (be64toh(nonce) & 0xff);
     }
     explicit WBDataHeader(uint64_t nonce1):nonce(nonce1){};
+    uint8_t getFragmentIdx()const{
+        return calculateFragmentIdx(nonce);
+    }
+    uint64_t getBlockIdx()const{
+        return calculateBlockIdx(nonce);
+    }
 public:
     const uint8_t packet_type=WFB_PACKET_DATA;
     const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx

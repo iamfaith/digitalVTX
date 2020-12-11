@@ -197,7 +197,7 @@ void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
 }
 
 void WBTransmitter::sendSessionKey() {
-    //std::cout << "WBTransmitter::send_session_key\n";
+    std::cout << "sendSessionKey()\n";
     injectPacket((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
 }
 
