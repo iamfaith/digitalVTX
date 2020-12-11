@@ -20,10 +20,6 @@
 #include <vector>
 #include <chrono>
 
-extern "C"{
-#include "ExternalCSources/radiotap.h"
-};
-
 // Wrapper around the Ieee80211 header (declared as raw array initially)
 class Ieee80211Header{
 public:

@@ -145,17 +145,8 @@ namespace Helper{
             if (ret){
                 continue;
             }
-
             /* see if this argument is something we can use */
-
             switch (iterator.this_arg_index) {
-                /*
-                 * You must take care when dereferencing iterator.this_arg
-                 * for multibyte types... the pointer is not aligned.  Use
-                 * get_unaligned((type *)iterator.this_arg) to dereference
-                 * iterator.this_arg for type "type" safely on all arches.
-                 */
-
                  /*case IEEE80211_RADIOTAP_RATE:
                      // radiotap "rate" u8 is in
                      // 500kbps units, eg, 0x02=1Mbps
