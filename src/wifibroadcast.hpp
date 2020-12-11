@@ -67,6 +67,7 @@ static constexpr const uint8_t WFB_PACKET_LATENCY_BEACON=0x3;
 
 // the encryption key is sent every n seconds ( but not re-created every n seconds, it is only re-created when reaching the max sequence number)
 // also it is only sent if a new packet needs to be transmitted to save bandwidth
+// it needs to be sent multiple times instead of once since it might get lost on the first or nth time respective
 static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(1);
 
 
