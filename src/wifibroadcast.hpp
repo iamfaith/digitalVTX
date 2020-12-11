@@ -56,10 +56,6 @@ extern "C"{
  */
 
 
-// nonce:  56bit block_idx + 8bit fragment_idx
-#define BLOCK_IDX_MASK ((1LLU << 56) - 1)
-#define MAX_BLOCK_IDX ((1LLU << 55) - 1)
-
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
 // for testing, do not use in production (just don't send it on the tx)
@@ -89,6 +85,9 @@ static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALW
 // This part is not encrypted !
 class WBDataHeader{
 public:
+    // nonce:  56bit block_idx + 8bit fragment_idx
+    static constexpr auto BLOCK_IDX_MASK=((1LLU << 56) - 1);
+    static constexpr uint64_t MAX_BLOCK_IDX=((1LLU << 55) - 1);
     // conversion from / to nonce
     static uint64_t calculateNonce(const uint64_t block_idx,const uint8_t fragment_idx){
         assert(block_idx<=MAX_BLOCK_IDX); // should never happen

@@ -136,7 +136,7 @@ public:
     // returns true if the block_idx has reached its maximum
     // You want to send a new session key in this case
     bool resetOnOverflow() {
-        if (block_idx > MAX_BLOCK_IDX) {
+        if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
             block_idx = 0;
             return true;
         }
@@ -389,7 +389,7 @@ public:
         const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(wblockHdr.nonce);
 
         // Should never happen due to generating new session key on tx side
-        if (block_idx > MAX_BLOCK_IDX) {
+        if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
             std::cerr<<"block_idx overflow\n";
             return false;
         }
