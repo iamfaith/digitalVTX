@@ -144,6 +144,21 @@ PcapTransmitter::~PcapTransmitter() {
     pcap_close(ppcap);
 }
 
+RawSocketTransmitter::RawSocketTransmitter(const std::string &wlan) {
+    sockFd=SocketHelper::openWifiInterfaceAsTx(wlan);
+}
+
+RawSocketTransmitter::~RawSocketTransmitter() {
+    close(sockFd);
+}
+
+void RawSocketTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
+                                        const uint8_t *payload, std::size_t payloadSize) {
+    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
+    if (write(sockFd,packet.data(),packet.size()) !=packet.size()) {
+        throw std::runtime_error(StringFormat::convert("Unable to inject packet (raw sock) %s",strerror(errno)));
+    }
+}
 
 WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port, int udp_port,
                              const std::string &wlan) :

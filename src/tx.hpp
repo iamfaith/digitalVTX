@@ -51,6 +51,15 @@ private:
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
 };
 
+class RawSocketTransmitter{
+public:
+    explicit RawSocketTransmitter(const std::string &wlan);
+    ~RawSocketTransmitter();
+    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* payload, std::size_t payloadSize);
+private:
+    int sockFd;
+};
+
 // WBTransmitter uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX
 // It does all the FEC encoding & encryption for this stream, then uses PcapTransmitter to inject the generated packets
@@ -69,7 +78,8 @@ private:
     // inject packet by prefixing data with the current IEE and Radiotap header
     void injectPacket(const uint8_t *buf, size_t size);
     // this one is used for injecting packets
-    PcapTransmitter mPcapTransmitter;
+    //PcapTransmitter mPcapTransmitter;
+    RawSocketTransmitter mPcapTransmitter;
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;

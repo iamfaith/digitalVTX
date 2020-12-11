@@ -5,3 +5,6 @@ Also, all this code is written in 'c' not 'c++'
 fec.c / fec.h comes from https://github.com/tahoe-lafs/zfec/tree/master/zfec
 
 The "radiotap stuff" comes from https://github.com/radiotap/radiotap-library
+
+// Other links that might be usefully
+https://github.com/vanhoefm/modwifi-tools/blob/master/ieee80211header.h
