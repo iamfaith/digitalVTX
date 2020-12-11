@@ -197,6 +197,8 @@ namespace Helper{
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;
         // With AR9271 I get 39 as max_length of the radio-tap header
+        // With my internal laptop wifi chip I get 36 as max_length of the radio-tap header
+        //
         std::cout<<"iterator._max_length was "<<iterator._max_length<<"\n";
         //
         const Ieee80211Header* ieee80211Header=(Ieee80211Header*)pkt;
