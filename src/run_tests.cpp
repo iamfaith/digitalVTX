@@ -188,20 +188,14 @@ int main(int argc, char *argv[]){
         std::cout<<"Testing FEC\n";
         // first, test with fec disabled
         TestFEC::testWithoutPacketLossDynamicPacketSize(0, 0, 1200);
+
         // now with FEC enabled
-        int k=0;
-        int n=0;
-        for(int i=0;i<3;i++){
-            if(i==0){
-                k=4;
-                n=8;
-            }else if(i==1){
-                k=6;
-                n=12;
-            }else if(i==2){
-                k=8;
-                n=16;
-            }
+        const std::vector<std::pair<uint8_t,uint8_t>> fecParams={
+                {2,4},{4,8},{6,12},{8,16},{12,24}
+        };
+        for(auto fecParam:fecParams){
+            const uint8_t k=fecParam.first;
+            const uint8_t n=fecParam.second;
             TestFEC::testWithoutPacketLossFixedPacketSize(k, n, 1200);
             TestFEC::testWithoutPacketLossDynamicPacketSize(k, n, 1200);
             for(int dropMode=0;dropMode<3;dropMode++){
