@@ -20,6 +20,7 @@
 #include <vector>
 #include <chrono>
 #include <sstream>
+#include <iostream>
 
 extern "C"{
 #include "ExternalCSources/radiotap.h"
@@ -68,7 +69,7 @@ public:
                 flags |= IEEE80211_RADIOTAP_MCS_BW_40;
                 break;
             default:
-                fprintf(stderr, "Unsupported bandwidth: %d\n", params.bandwidth);
+                std::cerr<<"Unsupported bandwidth: "<<params.bandwidth;
                 exit(1);
         }
         if(params.short_gi){
@@ -87,7 +88,7 @@ public:
                 flags |= (IEEE80211_RADIOTAP_MCS_STBC_3 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
                 break;
             default:
-                fprintf(stderr, "Unsupported STBC type: %d\n",params.stbc);
+                std::cerr<<"Unsupported STBC type: "<<params.stbc;
                 exit(1);
         }
         if(params.ldpc){
