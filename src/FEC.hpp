@@ -193,6 +193,7 @@ public:
     const uint8_t* getFragment(const uint8_t fragmentIdx)const {
         return fragments[fragmentIdx].data();
     }
+    // TODO documentation
     void applyFec(){
         unsigned index[fec.FEC_K];
         uint8_t *in_blocks[fec.FEC_K];
