@@ -84,7 +84,8 @@ namespace TestFEC{
     // but only drop as much as everything must be still recoverable
     static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE,const bool SEND_DUPLICATES=false) {
         assert(testIn.size() % k==0);
-        if(DROP_MODE==2)assert((n-k)>2);
+        // drop mode 2 is impossible if (n-k)<2
+        if(DROP_MODE==2)assert((n-k)>=2);
         std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() <<" DROP_MODE:"<<DROP_MODE<< "\n";
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
