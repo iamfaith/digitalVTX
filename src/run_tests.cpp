@@ -83,7 +83,7 @@ namespace TestFEC{
     // test with packet loss
     // but only drop as much as everything must be still recoverable
     static void testWithPacketLossButEverythingIsRecoverable(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn,const int DROP_MODE,const bool SEND_DUPLICATES=false) {
-        assert(testIn.size() % n==0);
+        assert(testIn.size() % k==0);
         std::cout << "Test (with packet loss) K:" << k << " N:" << n << " N_PACKETS:" << testIn.size() <<" DROP_MODE:"<<DROP_MODE<< "\n";
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
@@ -131,17 +131,16 @@ namespace TestFEC{
         for (std::size_t i = 0; i < testIn.size(); i++) {
             const auto &in = testIn[i];
             encoder.encodePacket(in.data(), in.size());
-            // now check if everything already sent arrived
-            // since there can be packet loss, you might have to wait for the fec to do its magic (latency)
-            if(i % n ==0 && i>0){
+            // every time we have sent enough packets to form a block, check if everything arrived
+            // This way we would also catch any unwanted latency created by the decoder as an error
+            if(i % k ==0 && i>0){
                 for(std::size_t j=0;j<i;j++){
-                    const auto &in = testIn[j];
-                    const auto &out = testOut[j];
-                    assert(GenericHelper::compareVectors(in, out) == true);
+                    assert(GenericHelper::compareVectors(testIn[j], testOut[j]) == true);
                 }
             }
         }
-        // now check again if everything is still okay
+        // just to be sure, check again
+        assert(testIn.size()==testOut.size());
         for (std::size_t i = 0; i < testIn.size(); i++) {
             const auto &in = testIn[i];
             const auto &out = testOut[i];
@@ -157,7 +156,6 @@ namespace TestFEC{
         }
         testWithPacketLossButEverythingIsRecoverable(k, n, testIn,DROP_MODE, true);
     }
-
 }
 
 namespace TestEncryption{
@@ -192,6 +190,7 @@ int main(int argc, char *argv[]){
 
         // now with FEC enabled
         const std::vector<std::pair<uint8_t,uint8_t>> fecParams={
+                {3,5},{3,6},{6,9},
                 {2,4},{4,8},{6,12},{8,16},{12,24}
         };
         for(auto fecParam:fecParams){

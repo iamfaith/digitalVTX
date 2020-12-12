@@ -393,7 +393,7 @@ public:
             std::cerr<<"block_idx overflow\n";
             return false;
         }
-
+        // fragment index must be in the range [0,...,FEC_N[
         if (fragment_idx >= FEC_N) {
             std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
             return false;
