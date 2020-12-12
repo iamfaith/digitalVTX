@@ -192,8 +192,10 @@ int main(int argc, char *argv[]){
 
         // now with FEC enabled
         const std::vector<std::pair<uint8_t,uint8_t>> fecParams={
-                {3,5},{3,6},{6,9},
-                {2,4},{4,8},{6,12},{8,16},{12,24}
+                {3,5},{3,6},{6,8},{6,9},
+                {2,4},{4,8},{6,12},{8,16},{12,24},
+                {4,6},
+                {12,14}
         };
         for(auto fecParam:fecParams){
             const uint8_t k=fecParam.first;
