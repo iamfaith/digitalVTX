@@ -14,7 +14,7 @@
 // create deterministic rx and tx keys
 static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
 // use this one if you are worried about CPU usage when using encryption
-#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+//#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
 
 class Encryptor {
 public:
@@ -50,43 +50,8 @@ public:
             throw std::runtime_error("Unable to make session key!");
         }
     }
-    // create a wfb packet by copying the header and
-    // then putting the encrypted data right behind
-    // the WBDataHeader is needed for calling the encryption method since it contains the 'nonce' for the message
-    // TODO: Here the WBDataHeader is included as bytes in the returned array
-    // For generalization, this should probably be seperated
-    std::vector<uint8_t>
-    makeEncryptedPacketIncludingHeader(const WBDataHeader& wblockHdr, const uint8_t* payload, std::size_t payloadSize) {
-#ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
-        std::vector<uint8_t> ret;
-        ret.resize(sizeof(WBDataHeader)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
-        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(WBDataHeader));
-        memcpy(ret.data()+sizeof(WBDataHeader),payload,payloadSize);
-        return ret;
-#else
-        std::vector<uint8_t> ret;
-        ret.resize(sizeof(WBDataHeader)+payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
-        // copy the wblockHdr data (this part is not encrypted)
-        memcpy(ret.data(),(uint8_t*)&wblockHdr,sizeof(WBDataHeader));
-        // pointer to where the encrypted data begins
-        uint8_t* cyphertext=&ret[sizeof(WBDataHeader)];
-        long long unsigned int ciphertext_len;
-
-        crypto_aead_chacha20poly1305_encrypt(cyphertext, &ciphertext_len,
-                                             payload, payloadSize,
-                                             (uint8_t *) &wblockHdr, sizeof(WBDataHeader),
-                                             nullptr,
-                                             (uint8_t *) (&(wblockHdr.nonce)), session_key.data());
-        // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
-        // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
-        assert(ret.size()==sizeof(WBDataHeader)+ciphertext_len);
-        return ret;
-#endif
-    }
-    std::vector<uint8_t> makeEncryptedPacketIncludingHeader(const WBDataPacket& wbDataPacket) {
-        return makeEncryptedPacketIncludingHeader(wbDataPacket.wbDataHeader, wbDataPacket.payload, wbDataPacket.payloadSize);
-    }
     // encrypt the payload of the WBDataPacket
+    // and return a new WBDataPacket where payload now points to the encrypted payload and payloadSize=originalPayloadSize+crypto_aead_chacha20poly1305_ABYTES
     WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
         // we need to allocate a new buffer to also hold the encrypted bytes
         std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_unique<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
