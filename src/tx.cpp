@@ -216,11 +216,11 @@ void WBTransmitter::processPacket(const uint8_t *buf, size_t size) {
 }
 
 void WBTransmitter::loop() {
-    uint8_t buf[MAX_PAYLOAD_SIZE];
+    std::array<uint8_t,MAX_PAYLOAD_SIZE> buf{};
     std::chrono::steady_clock::time_point session_key_announce_ts{};
     std::chrono::steady_clock::time_point log_ts{};
     for(;;){
-        const ssize_t message_length = recvfrom(mInputSocket, buf, MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
+        const ssize_t message_length = recvfrom(mInputSocket, buf.data(), MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
         if(std::chrono::steady_clock::now()>=log_ts){
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
             std::cout<<StringFormat::convert("%d \tTX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";
@@ -235,7 +235,7 @@ void WBTransmitter::loop() {
                 sendSessionKey();
                 session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
             }
-            processPacket(buf,message_length);
+            processPacket(buf.data(),message_length);
         }else{
             if(errno==EAGAIN || errno==EWOULDBLOCK){
                 // timeout
