@@ -29,12 +29,13 @@ extern "C"{
 // Default is MCS#1 -- QPSK 1/2 40MHz SGI -- 30 Mbit/s
 // MCS_FLAGS = (IEEE80211_RADIOTAP_MCS_BW_40 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
 
-#define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC)
+//#define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC)
 
 // Wrapper around the radiotap header (declared as raw array initially)
 // Used for injecting packets with the right parameters
 class RadiotapHeader{
 public:
+    static constexpr uint8_t MY_RADIOTAP_FLAG_MCS_HAVE=(IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC);
     static constexpr auto SIZE_BYTES=13;
     // offset of MCS_FLAGS and MCS index
     static constexpr const auto MCS_FLAGS_OFF=11;
@@ -46,7 +47,9 @@ public:
             0x0d, 0x00, // <- radiotap header length
             0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
             0x08, 0x00,  // RADIOTAP_F_TX_NOACK
-            MCS_KNOWN , 0x00, 0x00 // bitmap, flags, mcs_index
+            MY_RADIOTAP_FLAG_MCS_HAVE ,    // for everything in ieee80211_radiotap_mcs_have
+            0x00,              // for everything in ieee80211_radiotap_mcs_flags
+            0x00               //mcs_index, doesn't work with Atheros properly
     };
     // default constructor
     RadiotapHeader()=default;
@@ -197,6 +200,28 @@ std::array<uint8_t,RadiotapHeader::SIZE_BYTES> radiotap_rc_ath9k={
           48, // <-- flags                 (0x30)
            0, // <-- mcs_index             (0x00)
 };
+
+
+// https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L123
+namespace LULATSCH{
+    static uint8_t u8aRadiotapHeader[] = {
+            0x00, 0x00,             // <-- radiotap version
+            0x0c, 0x00,             // <- radiotap header length
+            0x04, 0x80, 0x00, 0x00, // <-- radiotap present flags
+            0x00,                   // datarate (will be overwritten later)
+            0x00,
+            0x00, 0x00
+    };
+    static uint8_t u8aRadiotapHeader80211n[] = {
+            0x00, 0x00,             // <-- radiotap version
+            0x0d, 0x00,             // <- radiotap header length
+            0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags (tx flags, mcs)
+            0x08, 0x00,             // tx-flag
+            0x37,                   // mcs have: bw, gi, stbc ,fec
+            0x30,                   // mcs: 20MHz bw, long guard interval, stbc, ldpc
+            0x00,                   // mcs index 0 (speed level, will be overwritten later)
+    };
+}
 
 
 
