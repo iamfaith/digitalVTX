@@ -6,6 +6,7 @@
 #define WIFIBROADCAST_RAWTRANSMITTER_HPP
 
 #include "wifibroadcast.hpp"
+#include <chrono>
 
 // Doesn't specify what / how big the custom header is.
 // This way it is easy to make the injection part generic for future changes
@@ -99,7 +100,6 @@ namespace RawTransmitterHelper {
     }
 }
 
-
 // Pcap Transmitter injects packets into the wifi adapter using pcap
 // It does not specify what the payload is and therefore is just a really small wrapper around the pcap interface
 // that properly opens / closes the interface on construction/destruction
@@ -112,21 +112,15 @@ public:
         pcap_close(ppcap);
     }
     // inject packet by prefixing wifibroadcast packet with the IEE and Radiotap header
-    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket){
-        pcapInjectionTime.start();
+    // return: time it took to inject the packet.If the injection time is absurdly high, you might want to do something about it
+    std::chrono::steady_clock::duration injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket){
         const auto packet = RawTransmitterHelper::createPcapPacket(radiotapHeader, ieee80211Header, abstractWbPacket);
+        const auto before=std::chrono::steady_clock::now();
         RawTransmitterHelper::injectPacket(ppcap, packet);
-        pcapInjectionTime.stop();
-#ifdef ENABLE_ADVANCED_DEBUGGING
-        if(pcapInjectionTime.getMax()>std::chrono::milliseconds (1)){
-            std::cerr<<"Injecting PCAP packet took really long:"<<pcapInjectionTime.getAvgReadable()<<"\n";
-            pcapInjectionTime.reset();
-        }
-#endif
+        return std::chrono::steady_clock::now()-before;
     }
 private:
     pcap_t* ppcap;
-    Chronometer pcapInjectionTime{"PcapInjectionTime"};
 };
 
 // Doesn't use pcap but somehow directly talks to the OS via socket
@@ -138,11 +132,15 @@ public:
     ~RawSocketTransmitter(){
         close(sockFd);
     }
-    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket)const{
+    // inject packet by prefixing wifibroadcast packet with the IEE and Radiotap header
+    // return: time it took to inject the packet.If the injection time is absurdly high, you might want to do something about it
+    std::chrono::steady_clock::duration injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket)const{
         const auto packet = RawTransmitterHelper::createPcapPacket(radiotapHeader, ieee80211Header, abstractWbPacket);
+        const auto before=std::chrono::steady_clock::now();
         if (write(sockFd,packet.data(),packet.size()) !=packet.size()) {
             throw std::runtime_error(StringFormat::convert("Unable to inject packet (raw sock) %s",strerror(errno)));
         }
+        return std::chrono::steady_clock::now()-before;
     }
 private:
     int sockFd;

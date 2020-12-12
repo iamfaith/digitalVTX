@@ -63,8 +63,15 @@ void WBTransmitter::sendPacket(const AbstractWBPacket& abstractWbPacket) {
     //std::cout << "WBTransmitter::sendPacket\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
-    mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,abstractWbPacket);
+    const auto injectionTime=mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,abstractWbPacket);
     nInjectedPackets++;
+#ifdef ENABLE_ADVANCED_DEBUGGING
+    pcapInjectionTime.add(injectionTime);
+    if(pcapInjectionTime.getMax()>std::chrono::milliseconds (1)){
+        std::cerr<<"Injecting PCAP packet took really long:"<<pcapInjectionTime.getAvgReadable()<<"\n";
+        pcapInjectionTime.reset();
+    }
+#endif
 }
 
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
