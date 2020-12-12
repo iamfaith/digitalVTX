@@ -136,15 +136,21 @@ static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 // NOTE: This cannot be casted from / to a memory location (unlike the classes above)
 class WBDataPacket{
 public:
-    // construct in c-style (light)
+    // construct in c-style (light),used on TX
     WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
             wbDataHeader(nonce1), payload(payload1), payloadSize(payloadSize1){};
-    // construct in c++-style (just as light,too)
+    // construct in c++-style (just as light,too),used on TX
     WBDataPacket(const uint64_t nonce1,const std::shared_ptr<std::vector<uint8_t>>& payload1):
             wbDataHeader(nonce1), payload(payload1->data()), payloadSize(payload1->size()), optionalPayloadDataReference(payload1){};
+    // to re-interpret on the RX
+    static WBDataPacket createFromRawMemory(const uint8_t* data,std::size_t dataSize){
+        assert(data[0]==WFB_PACKET_DATA);
+        const WBDataHeader* wbDataHeader=(WBDataHeader*)data;
+        return {wbDataHeader->nonce,&data[sizeof(WBDataHeader)],dataSize-sizeof(WBDataHeader)};
+    }
     // don't allow copying or moving, since creating a new one is light enough
-    WBDataPacket(const WBDataPacket&)=delete;
-    WBDataPacket(const WBDataPacket&&)=delete;
+    //WBDataPacket(const WBDataPacket&)=delete;
+    //WBDataPacket(const WBDataPacket&&)=delete;
 public:
     // each data packet has the WBDataHeader
     const WBDataHeader wbDataHeader;

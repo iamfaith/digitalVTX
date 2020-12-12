@@ -54,7 +54,7 @@ public:
     // and return a new WBDataPacket where payload now points to the encrypted payload and payloadSize=originalPayloadSize+crypto_aead_chacha20poly1305_ABYTES
     WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
         // we need to allocate a new buffer to also hold the encrypted bytes
-        std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_unique<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
+        std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_shared<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
         return {wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize};
 #else
@@ -154,6 +154,9 @@ public:
         assert(decrypted.size()==decrypted_len);
         return decrypted;
 #endif
+    }
+    std::optional<std::vector<uint8_t>> decryptPacket(const WBDataPacket& wbDataPacket){
+        return decryptPacket(wbDataPacket.wbDataHeader,wbDataPacket.payload,wbDataPacket.payloadSize);
     }
 };
 
