@@ -37,6 +37,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <optional>
 
 extern "C"{
 #include "ExternalCSources/radiotap.h"
@@ -136,15 +137,25 @@ static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 // NOTE: This cannot be casted from / to a memory location (unlike the classes above)
 class WBDataPacket{
 public:
-    // constructor that also stores a reference to the created data (so it doesn't get deleted)
-    explicit WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
-    header(nonce1),payload(payload1),payloadSize(payloadSize1){};
+    // construct in c-style (light)
+    WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
+            wbDataHeader(nonce1), payload(payload1), payloadSize(payloadSize1){};
+    // construct in c++-style (just as light,too)
+    WBDataPacket(const uint64_t nonce1,const std::shared_ptr<std::vector<uint8_t>>& payload1):
+            wbDataHeader(nonce1), payload(payload1->data()), payloadSize(payload1->size()), optionalPayloadDataReference(payload1){};
+    // don't allow copying or moving, since creating a new one is light enough
+    WBDataPacket(const WBDataPacket&)=delete;
+    WBDataPacket(const WBDataPacket&&)=delete;
 public:
-    const WBDataHeader header;
+    // each data packet has the WBDataHeader
+    const WBDataHeader wbDataHeader;
     // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
     // If this is an FEC correction packet, that's not the case
+    // Use the "Encryptor" class to encrypt the payload
     const uint8_t* payload;
     const std::size_t payloadSize;
+    // this one is for the c++-constructor only
+    const std::shared_ptr<std::vector<uint8_t>> optionalPayloadDataReference=nullptr;
 };
 
 

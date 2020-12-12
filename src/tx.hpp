@@ -41,7 +41,7 @@ class PcapTransmitter{
 public:
     explicit PcapTransmitter(const std::string &wlan);
     ~PcapTransmitter();
-    // inject packet by prefixing payload with the IEE and Radiotap header
+    // inject packet by prefixing payload with the IEE and Radiotap wbDataHeader
     void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* payload, std::size_t payloadSize);
     // same as above, but create final payload by prefixing it with a custom customHeader
     // this is usefully if the custom customHeader and payload for the packet is stored at 2 different locations
@@ -76,11 +76,11 @@ private:
     void sendSessionKey();
     // for the FEC encoder
     void sendFecBlock(const WBDataPacket &wbDataPacket);
-    // send packet by prefixing data with the current IEE and Radiotap header
-    void sendPacket(const uint8_t *buf, size_t size);
+    // send packet by prefixing data with the current IEE and Radiotap wbDataHeader
+    void sendPacket(const uint8_t* customHeader, std::size_t customHeaderSize, const uint8_t* payload= nullptr, std::size_t payloadSize=0);
     // this one is used for injecting packets
-    //PcapTransmitter mPcapTransmitter;
-    RawSocketTransmitter mPcapTransmitter;
+    PcapTransmitter mPcapTransmitter;
+    //RawSocketTransmitter mPcapTransmitter;
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;

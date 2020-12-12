@@ -84,7 +84,27 @@ public:
 #endif
     }
     std::vector<uint8_t> makeEncryptedPacketIncludingHeader(const WBDataPacket& xBlock) {
-        return makeEncryptedPacketIncludingHeader(xBlock.header, xBlock.payload, xBlock.payloadSize);
+        return makeEncryptedPacketIncludingHeader(xBlock.wbDataHeader, xBlock.payload, xBlock.payloadSize);
+    }
+    // encrypt the payload of the WBDataPacket
+    WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
+        // we need to allocate a new buffer to also hold the crypto_aead_chacha20poly1305_ABYTES
+        std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_unique<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
+#ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+        return {wbDataPacket.wbDataHeader.nonce,wb};
+#else
+        // encryption method is c-style
+        long long unsigned int ciphertext_len;
+        crypto_aead_chacha20poly1305_encrypt(encryptedData->data(), &ciphertext_len,
+                                             wbDataPacket.payload, wbDataPacket.payloadSize,
+                                             (uint8_t *) &wbDataPacket.wbDataHeader, sizeof(WBDataHeader),
+                                             nullptr,
+                                             (uint8_t *) (&(wbDataPacket.wbDataHeader.nonce)), session_key.data());
+        // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
+        // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
+        assert(encryptedData->size()==ciphertext_len);
+        return {wbDataPacket.wbDataHeader.nonce, encryptedData};
+#endif
     }
 private:
     // tx->rx keypair

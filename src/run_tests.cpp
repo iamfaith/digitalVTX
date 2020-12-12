@@ -43,7 +43,7 @@ namespace TestFEC{
         std::vector<std::vector<uint8_t>> testOut;
 
         const auto cb1=[&decoder](const WBDataPacket &xBlock)mutable {
-            decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload,xBlock.payload+xBlock.payloadSize));
+            decoder.processPacket(xBlock.wbDataHeader, std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
         };
         const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
             testOut.emplace_back(payload,payload+payloadSize);
@@ -91,8 +91,8 @@ namespace TestFEC{
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
         const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const WBDataPacket &xBlock)mutable {
-            const auto blockIdx=xBlock.header.getBlockIdx();
-            const auto fragmentIdx=xBlock.header.getFragmentIdx();
+            const auto blockIdx=xBlock.wbDataHeader.getBlockIdx();
+            const auto fragmentIdx=xBlock.wbDataHeader.getFragmentIdx();
             if(DROP_MODE==0){
                 // drop all FEC correction packets but no data packets (everything should be still recoverable
                 if(fragmentIdx>=k){
@@ -119,10 +119,10 @@ namespace TestFEC{
                 // emulate not more than N multiple wifi cards as rx
                 const auto duplicates=std::rand() % 8;
                 for(int i=0;i<duplicates+1;i++){
-                    decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+                    decoder.processPacket(xBlock.wbDataHeader, std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
                 }
             }else{
-                decoder.processPacket(xBlock.header,std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+                decoder.processPacket(xBlock.wbDataHeader, std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
             }
         };
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
@@ -175,7 +175,7 @@ namespace TestEncryption{
 
         const auto encrypted= encryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
 
-        const auto decrypted=decryptor.decryptPacket(wbDataPacket.header,&encrypted[sizeof(WBDataHeader)],encrypted.size()-sizeof(WBDataHeader));
+        const auto decrypted=decryptor.decryptPacket(wbDataPacket.wbDataHeader, &encrypted[sizeof(WBDataHeader)], encrypted.size() - sizeof(WBDataHeader));
 
         assert(decrypted!=std::nullopt);
         assert(GenericHelper::compareVectors(data,*decrypted) == true);

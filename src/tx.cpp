@@ -52,10 +52,10 @@ namespace Helper {
         std::vector<uint8_t> ret;
         ret.resize(radiotapHeader.getSize() + ieee80211Header.getSize() + customHeaderAndPayloadSize);
         uint8_t *p = ret.data();
-        // radiotap header
+        // radiotap wbDataHeader
         memcpy(p, radiotapHeader.getData(), radiotapHeader.getSize());
         p += radiotapHeader.getSize();
-        // ieee80211 header
+        // ieee80211 wbDataHeader
         memcpy(p, ieee80211Header.getData(), ieee80211Header.getSize());
         p += ieee80211Header.getSize();
         if(customHeaderSize>0){
@@ -70,7 +70,7 @@ namespace Helper {
         return ret;
     }
     // same as above, but only works if customHeader and payload are stored at the same memory location or
-    // the implementation doesn't need a custom header
+    // the implementation doesn't need a custom wbDataHeader
     static std::vector<uint8_t>
     createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
                      const uint8_t *buf, size_t size) {
@@ -178,18 +178,20 @@ WBTransmitter::~WBTransmitter() {
 }
 
 
-void WBTransmitter::sendPacket(const uint8_t *buf, size_t size) {
+void WBTransmitter::sendPacket(const uint8_t* customHeader, std::size_t customHeaderSize, const uint8_t* payload, std::size_t payloadSize) {
     //std::cout << "WBTransmitter::inject_packet\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
-    mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,buf,size);
+    mPcapTransmitter.injectPacket2(mRadiotapHeader,mIeee80211Header,customHeader,customHeaderSize,payload,payloadSize);
     nInjectedPackets++;
 }
 
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
-    const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
-    sendPacket(data.data(), data.size());
+    //const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
+    //sendPacket(data.data(), data.size());
+    const auto encryptedWBDataPacket=mEncryptor.encryptWBDataPacket(wbDataPacket);
+    sendPacket((uint8_t*)&encryptedWBDataPacket.wbDataHeader,sizeof(WBDataHeader),encryptedWBDataPacket.payload,encryptedWBDataPacket.payloadSize);
 #ifdef ENABLE_ADVANCED_DEBUGGING
     //LatencyTestingPacket latencyTestingPacket;
     //sendPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
