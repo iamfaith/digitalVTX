@@ -34,11 +34,12 @@ public:
     // unfortunately I do not know what these 'default bytes' mean
     // more info https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L175
     std::array<uint8_t,SIZE_BYTES> data={
-            0x08, 0x01, 0x00, 0x00,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0x13, 0x22, 0x33, 0x44, 0x55, 0x66,
-            0x13, 0x22, 0x33, 0x44, 0x55, 0x66,
-            0x00, 0x00,  // seq num << 4 + fragment num
+            0x08, 0x01, // first 2 bytes controll fiels
+            0x00, 0x00, // 2 bytes duration (has this even an effect ?!)
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // something MAC ( 6 bytes)
+            0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // something MAC ( 6 bytes)
+            0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // something MAC ( 6 bytes)
+            0x00, 0x00,  // iee80211 sequence number ( 2 bytes )
     };
     // default constructor
     Ieee80211Header()=default;

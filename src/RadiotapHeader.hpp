@@ -162,48 +162,8 @@ namespace RadiotapFlagsToString{
     }
 }
 
-// hmmmmmmmmmmmmmmm https://github.com/vanhoefm/modwifi-tools/blob/master/ieee80211header.h#L16
-struct ieee80211_radiotap_ath9k_htc {
-        uint8_t        it_version;     /* set to 0 */
-        uint8_t        it_pad;
-        uint16_t       it_len;         /* entire length */
-        uint32_t       it_present;     /* fields present */
-        uint64_t       tsf;
-        uint8_t        flags;
-        uint8_t        rate;
-        uint16_t       frequency;
-        uint16_t       channelflags;
-        int8_t         dbsignal;
-        uint8_t        antenna;
-        uint16_t       rxflags;
-        uint8_t        padding[8];
-}__attribute__ ((packed));
-static_assert(sizeof(ieee80211_radiotap_ath9k_htc)==34,"ALWAYS_TRUE");
-
-// this is what's used in
-//https://github.com/OpenHD/Open.HD/blob/master/wifibroadcast-rc-Ath9k/rctx.cpp
-std::array<uint8_t,RadiotapHeader::SIZE_BYTES> radiotap_rc_ath9k={
-           0, // <-- radiotap version      (0x00)
-           0, // <-- radiotap version      (0x00)
-
-          13, // <- radiotap header length (0x0d)
-           0, // <- radiotap header length (0x00)
-
-           0, // <-- radiotap present flags(0x00)
-           128, // <-- RADIOTAP_TX_FLAGS +   (0x80)
-           8, // <-- RADIOTAP_MCS          (0x08)
-           0, //                           (0x00)
-
-          8, // <-- RADIOTAP_F_TX_NOACK   (0x08)
-          0, //                           (0x00)
-          55, // <-- bitmap                (0x37)
-          48, // <-- flags                 (0x30)
-           0, // <-- mcs_index             (0x00)
-};
-
-
-// https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L123
 namespace LULATSCH{
+    // https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L123
     static uint8_t u8aRadiotapHeader[] = {
             0x00, 0x00,             // <-- radiotap version
             0x0c, 0x00,             // <- radiotap header length
@@ -220,6 +180,44 @@ namespace LULATSCH{
             0x37,                   // mcs have: bw, gi, stbc ,fec
             0x30,                   // mcs: 20MHz bw, long guard interval, stbc, ldpc
             0x00,                   // mcs index 0 (speed level, will be overwritten later)
+    };
+    // hmmmmmmmmmmmmmmm https://github.com/vanhoefm/modwifi-tools/blob/master/ieee80211header.h#L16
+    struct ieee80211_radiotap_ath9k_htc {
+        uint8_t        it_version;     /* set to 0 */
+        uint8_t        it_pad;
+        uint16_t       it_len;         /* entire length */
+        uint32_t       it_present;     /* fields present */
+        uint64_t       tsf;
+        uint8_t        flags;
+        uint8_t        rate;
+        uint16_t       frequency;
+        uint16_t       channelflags;
+        int8_t         dbsignal;
+        uint8_t        antenna;
+        uint16_t       rxflags;
+        uint8_t        padding[8];
+    }__attribute__ ((packed));
+    static_assert(sizeof(ieee80211_radiotap_ath9k_htc)==34,"ALWAYS_TRUE");
+
+// this is what's used in
+//https://github.com/OpenHD/Open.HD/blob/master/wifibroadcast-rc-Ath9k/rctx.cpp
+    std::array<uint8_t,RadiotapHeader::SIZE_BYTES> radiotap_rc_ath9k={
+            0, // <-- radiotap version      (0x00)
+            0, // <-- radiotap version      (0x00)
+
+            13, // <- radiotap header length (0x0d)
+            0, // <- radiotap header length (0x00)
+
+            0, // <-- radiotap present flags(0x00)
+            128, // <-- RADIOTAP_TX_FLAGS +   (0x80)
+            8, // <-- RADIOTAP_MCS          (0x08)
+            0, //                           (0x00)
+
+            8, // <-- RADIOTAP_F_TX_NOACK   (0x08)
+            0, //                           (0x00)
+            55, // <-- bitmap                (0x37)
+            48, // <-- flags                 (0x30)
+            0, // <-- mcs_index             (0x00)
     };
 }
 
