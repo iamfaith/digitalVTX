@@ -41,11 +41,8 @@ class PcapTransmitter{
 public:
     explicit PcapTransmitter(const std::string &wlan);
     ~PcapTransmitter();
-    // inject packet by prefixing payload with the IEE and Radiotap header
-    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* payload, std::size_t payloadSize);
-    // same as above, but create final payload by prefixing it with a custom customHeader
-    // this is usefully if the custom customHeader and payload for the packet is stored at 2 different locations
-    void injectPacket2(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* customHeader, std::size_t customHeaderSize, const uint8_t* payload, std::size_t payloadSize);
+    // inject packet by prefixing wifibroadcast packet with the IEE and Radiotap header
+    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket);
 private:
     pcap_t* ppcap;
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
@@ -56,7 +53,7 @@ class RawSocketTransmitter{
 public:
     explicit RawSocketTransmitter(const std::string &wlan);
     ~RawSocketTransmitter();
-    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header, const uint8_t* payload, std::size_t payloadSize);
+    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket)const;
 private:
     int sockFd;
 };
@@ -71,13 +68,13 @@ public:
     ~WBTransmitter();
 private:
     // process the input data stream
-    void processPacket(const uint8_t *buf, size_t size);
+    void processInputPacket(const uint8_t *buf, size_t size);
     // send the current session key via WIFI (located in mEncryptor)
     void sendSessionKey();
     // for the FEC encoder
     void sendFecBlock(const WBDataPacket &wbDataPacket);
     // send packet by prefixing data with the current IEE and Radiotap header
-    void sendPacket(const uint8_t *buf, size_t size);
+    void sendPacket(const AbstractWBPacket& abstractWbPacket);
     // this one is used for injecting packets
     //PcapTransmitter mPcapTransmitter;
     RawSocketTransmitter mPcapTransmitter;

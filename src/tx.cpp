@@ -45,12 +45,10 @@ namespace Helper {
     // RadiotapHeader | Ieee80211Header | customHeader | payload
     // both customHeader and payload can have size 0, in this case there is nothing written for customHeader or payload
     static std::vector<uint8_t>
-    createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                      const uint8_t *customHeader, std::size_t customHeaderSize, const uint8_t *payload, std::size_t payloadSize) {
-        const auto customHeaderAndPayloadSize=customHeaderSize + payloadSize;
+    createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,const AbstractWBPacket& abstractWbPacket) {
+        const auto customHeaderAndPayloadSize=abstractWbPacket.customHeaderSize + abstractWbPacket.payloadSize;
         assert((customHeaderAndPayloadSize) <= MAX_FORWARDER_PACKET_SIZE);
-        std::vector<uint8_t> ret;
-        ret.resize(radiotapHeader.getSize() + ieee80211Header.getSize() + customHeaderAndPayloadSize);
+        std::vector<uint8_t> ret(radiotapHeader.getSize() + ieee80211Header.getSize() + customHeaderAndPayloadSize);
         uint8_t *p = ret.data();
         // radiotap wbDataHeader
         memcpy(p, radiotapHeader.getData(), radiotapHeader.getSize());
@@ -58,23 +56,16 @@ namespace Helper {
         // ieee80211 wbDataHeader
         memcpy(p, ieee80211Header.getData(), ieee80211Header.getSize());
         p += ieee80211Header.getSize();
-        if(customHeaderSize>0){
+        if(abstractWbPacket.customHeaderSize>0){
             // customHeader
-            memcpy(p, customHeader, customHeaderSize);
-            p+=customHeaderSize;
+            memcpy(p, abstractWbPacket.customHeader,abstractWbPacket.customHeaderSize);
+            p+=abstractWbPacket.customHeaderSize;
         }
-        if(payloadSize>0){
+        if(abstractWbPacket.payloadSize>0){
             // payload
-            memcpy(p, payload, payloadSize);
+            memcpy(p,abstractWbPacket.payload,abstractWbPacket.payloadSize);
         }
         return ret;
-    }
-    // same as above, but only works if customHeader and payload are stored at the same memory location or
-    // the implementation doesn't need a custom wbDataHeader
-    static std::vector<uint8_t>
-    createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                     const uint8_t *buf, size_t size) {
-        return createPcapPacket(radiotapHeader,ieee80211Header,buf,size, nullptr,0);
     }
     // throw runtime exception if injecting pcap packet goes wrong (should never happen)
     static void injectPacket(pcap_t *pcap, const std::vector<uint8_t> &packetData) {
@@ -119,10 +110,9 @@ PcapTransmitter::PcapTransmitter(const std::string &wlan) {
     ppcap=Helper::openTxWithPcap(wlan);
 }
 
-void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                                   const uint8_t *payload, std::size_t payloadSize) {
+void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,const AbstractWBPacket& abstractWbPacket) {
     pcapInjectionTime.start();
-    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
+    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header,abstractWbPacket);
     Helper::injectPacket(ppcap, packet);
     pcapInjectionTime.stop();
 #ifdef ENABLE_ADVANCED_DEBUGGING
@@ -131,13 +121,6 @@ void PcapTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const I
         pcapInjectionTime.reset();
     }
 #endif
-}
-
-void PcapTransmitter::injectPacket2(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                                    const uint8_t *customHeader, std::size_t customHeaderSize, const uint8_t *payload,
-                                    std::size_t payloadSize) {
-    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, customHeader, customHeaderSize, payload, payloadSize);
-    Helper::injectPacket(ppcap, packet);
 }
 
 PcapTransmitter::~PcapTransmitter() {
@@ -152,9 +135,8 @@ RawSocketTransmitter::~RawSocketTransmitter() {
     close(sockFd);
 }
 
-void RawSocketTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,
-                                        const uint8_t *payload, std::size_t payloadSize) {
-    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header, payload, payloadSize);
+void RawSocketTransmitter::injectPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,const AbstractWBPacket& abstractWbPacket)const {
+    const auto packet = Helper::createPcapPacket(radiotapHeader, ieee80211Header,abstractWbPacket);
     if (write(sockFd,packet.data(),packet.size()) !=packet.size()) {
         throw std::runtime_error(StringFormat::convert("Unable to inject packet (raw sock) %s",strerror(errno)));
     }
@@ -178,19 +160,18 @@ WBTransmitter::~WBTransmitter() {
 }
 
 
-void WBTransmitter::sendPacket(const uint8_t *buf, size_t size) {
-    //std::cout << "WBTransmitter::inject_packet\n";
+void WBTransmitter::sendPacket(const AbstractWBPacket& abstractWbPacket) {
+    //std::cout << "WBTransmitter::sendPacket\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
-    //mPcapTransmitter.injectPacket2(mRadiotapHeader,mIeee80211Header,customHeader,customHeaderSize,payload,payloadSize);
-    mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,buf,size);
+    mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,abstractWbPacket);
     nInjectedPackets++;
 }
 
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
-    sendPacket(data.data(), data.size());
+    sendPacket({data.data(), data.size()});
     //const auto encryptedWBDataPacket=mEncryptor.encryptWBDataPacket(wbDataPacket);
     //sendPacket((uint8_t*)&encryptedWBDataPacket.wbDataHeader,sizeof(WBDataHeader),encryptedWBDataPacket.payload,encryptedWBDataPacket.payloadSize);
 #ifdef ENABLE_ADVANCED_DEBUGGING
@@ -201,10 +182,10 @@ void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
 
 void WBTransmitter::sendSessionKey() {
     std::cout << "sendSessionKey()\n";
-    sendPacket((uint8_t *) &mEncryptor.sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES);
+    sendPacket({(uint8_t *)&mEncryptor.sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES});
 }
 
-void WBTransmitter::processPacket(const uint8_t *buf, size_t size) {
+void WBTransmitter::processInputPacket(const uint8_t *buf, size_t size) {
     //std::cout << "WBTransmitter::send_packet\n";
     // this calls a callback internally
     FECEncoder::encodePacket(buf,size);
@@ -235,7 +216,7 @@ void WBTransmitter::loop() {
                 sendSessionKey();
                 session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;
             }
-            processPacket(buf.data(),message_length);
+            processInputPacket(buf.data(), message_length);
         }else{
             if(errno==EAGAIN || errno==EWOULDBLOCK){
                 // timeout
