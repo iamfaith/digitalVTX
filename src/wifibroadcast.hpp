@@ -56,32 +56,6 @@ extern "C"{
  * **** encrypted payload data (dynamic size)
  */
 
-// Doesn't specify what / how big the custom header is.
-// This way it is easy to make the injection part generic for future changes
-// by using a pointer / size tuple the data for the customHeader and payload can reside at different memory locations
-// When injecting the packet we have to always copy the data anyways since Radiotap and IEE80211 header
-// are stored at different locations, too
-class AbstractWBPacket{
-public:
-    // constructor for packet without header (or the header is already merged into payload)
-    AbstractWBPacket(const uint8_t *payload,const std::size_t payloadSize):
-            customHeader(nullptr),customHeaderSize(0),payload(payload),payloadSize(payloadSize){};
-    // constructor for packet with header and payload at different memory locations
-    AbstractWBPacket(const uint8_t *customHeader,const std::size_t customHeaderSize,const uint8_t *payload,const std::size_t payloadSize):
-            customHeader(customHeader),customHeaderSize(customHeaderSize),payload(payload),payloadSize(payloadSize){};
-    AbstractWBPacket(AbstractWBPacket&)=delete;
-    AbstractWBPacket(AbstractWBPacket&&)=delete;
-public:
-    // can be nullptr if size 0
-    const uint8_t *customHeader;
-    // can be 0 for special use cases
-    const std::size_t customHeaderSize;
-    // can be nullptr if size 0
-    const uint8_t *payload;
-    // can be 0 for special use cases
-    const std::size_t payloadSize;
-};
-
 static constexpr const uint8_t WFB_PACKET_DATA=0x1;
 static constexpr const uint8_t WFB_PACKET_KEY=0x2;
 // for testing, do not use in production (just don't send it on the tx)

@@ -32,31 +32,9 @@
 #include "Encryption.hpp"
 #include "FEC.hpp"
 #include "Helper.hpp"
+#include "RawTransmitter.hpp"
 #include "HelperSources/TimeHelper.hpp"
 
-// Pcap Transmitter injects packets into the wifi adapter using pcap
-// It does not specify what the payload is and therefore is just a really small wrapper around the pcap interface
-// that properly opens / closes the interface on construction/destruction
-class PcapTransmitter{
-public:
-    explicit PcapTransmitter(const std::string &wlan);
-    ~PcapTransmitter();
-    // inject packet by prefixing wifibroadcast packet with the IEE and Radiotap header
-    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket);
-private:
-    pcap_t* ppcap;
-    Chronometer pcapInjectionTime{"PcapInjectionTime"};
-};
-
-// Doesn't use pcap but somehow directly talks to the OS via socket
-class RawSocketTransmitter{
-public:
-    explicit RawSocketTransmitter(const std::string &wlan);
-    ~RawSocketTransmitter();
-    void injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket)const;
-private:
-    int sockFd;
-};
 
 // WBTransmitter uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX

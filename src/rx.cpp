@@ -46,7 +46,7 @@ extern "C"{
 #include "ExternalCSources/radiotap_iter.h"
 }
 
-namespace Helper{
+namespace RawTransmitterHelper{
     // call before pcap_activate
     static void iteratePcapTimestamps(pcap_t* ppcap){
         int* availableTimestamps;
@@ -266,7 +266,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 #endif
     count_p_all++;
     // The radio capture header precedes the 802.11 header.
-    const auto parsedPacket=Helper::processReceivedPcapPacket(hdr,pkt);
+    const auto parsedPacket=RawTransmitterHelper::processReceivedPcapPacket(hdr, pkt);
     if(parsedPacket==std::nullopt){
         std::cerr<< "Discarding packet due to pcap parsing error (or wrong checksum)!\n";
         count_p_bad++;
@@ -283,7 +283,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
-    Helper::writeAntennaStats(antenna_stat,WLAN_IDX,parsedPacket->antenna,parsedPacket->rssi);
+    RawTransmitterHelper::writeAntennaStats(antenna_stat, WLAN_IDX, parsedPacket->antenna, parsedPacket->rssi);
     const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
     //std::cout<<"RADIO_PORT"<<(int)tmpHeader->getRadioPort()<<" IEEE_SEQ_NR "<<(int)tmpHeader->getSequenceNumber()<<"\n";
     //std::cout<<"FrameControl:"<<(int)tmpHeader->getFrameControl()<<"\n";
@@ -352,7 +352,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 //#define USE_PCAP_LOOP_INSTEAD_OF_NEXT
 
 PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
-    ppcap=Helper::openRxWithPcap(wlan,RADIO_PORT);
+    ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
 #ifndef USE_PCAP_LOOP_INSTEAD_OF_NEXT
     fd = pcap_get_selectable_fd(ppcap);
 #endif
