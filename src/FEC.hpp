@@ -63,8 +63,8 @@ private:
 // use FEC_K==0 to completely skip FEC for the lowest latency possible
 class FECEncoder : private FEC{
 public:
-    typedef std::function<void(const WBDataPacket &wbDataPacket)> SEND_BLOCK_FRAGMENT;
-    SEND_BLOCK_FRAGMENT callback;
+    typedef std::function<void(const WBDataPacket &wbDataPacket)> OUTPUT_DATA_CALLBACK;
+    OUTPUT_DATA_CALLBACK outputDataCallback;
 
     explicit FECEncoder(int k, int n) : FEC(k,n) {
         block = new uint8_t *[FEC_N];
@@ -92,7 +92,7 @@ public:
         if(FEC_K == 0) {
             const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
             WBDataPacket wbDataPacket{nonce, buf, size};
-            callback(wbDataPacket);
+            outputDataCallback(wbDataPacket);
             block_idx++;
             return;
         }
@@ -149,7 +149,7 @@ private:
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
         const uint8_t *dataP = block[fragment_idx];
         WBDataPacket packet{nonce, dataP, packet_size};
-        callback(packet);
+        outputDataCallback(packet);
     }
 };
 

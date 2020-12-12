@@ -133,7 +133,8 @@ static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
 // This one does not specify if it is an FEC data or FEC correction packet (see WBDataHeader / FECDataHeader)
 // but it is always of type WFB_PACKET_DATA
-// NOTE: This cannot be casted from / to a memory location (unlike the classes above)
+// NOTE: This cannot be casted directly from / to a memory location (unlike the classes above)
+// Use the constructor(s) or use the createFromRawMemory() method
 class WBDataPacket{
 public:
     // construct in c-style (light),used on TX
@@ -149,8 +150,8 @@ public:
         return {wbDataHeader->nonce,&data[sizeof(WBDataHeader)],dataSize-sizeof(WBDataHeader)};
     }
     // don't allow copying or moving, since creating a new one is light enough
-    //WBDataPacket(const WBDataPacket&)=delete;
-    //WBDataPacket(const WBDataPacket&&)=delete;
+    WBDataPacket(const WBDataPacket&)=delete;
+    WBDataPacket(const WBDataPacket&&)=delete;
 public:
     // each data packet has the WBDataHeader
     const WBDataHeader wbDataHeader;

@@ -48,7 +48,7 @@ namespace TestFEC{
         const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
             testOut.emplace_back(payload,payload+payloadSize);
         };
-        encoder.callback=cb1;
+        encoder.outputDataCallback=cb1;
         decoder.callback=cb2;
         // If there is no data loss the packets should arrive immediately
         for(std::size_t i=0;i<testIn.size();i++){
@@ -128,7 +128,7 @@ namespace TestFEC{
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
             testOut.emplace_back(payload, payload + payloadSize);
         };
-        encoder.callback = cb1;
+        encoder.outputDataCallback = cb1;
         decoder.callback = cb2;
         for (std::size_t i = 0; i < testIn.size(); i++) {
             const auto &in = testIn[i];
