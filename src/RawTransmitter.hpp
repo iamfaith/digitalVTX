@@ -56,8 +56,7 @@ public:
 
 namespace RawTransmitterHelper {
     // construct a pcap packet with the following data layout:
-    // RadiotapHeader | Ieee80211Header | customHeader | payload
-    // both customHeader and payload can have size 0, in this case there is nothing written for customHeader or payload
+    // [RadiotapHeader | Ieee80211Header | customHeader (if not size 0) | payload (if not size 0)]
     static std::vector<uint8_t>
     createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,const AbstractWBPacket& abstractWbPacket) {
         const auto customHeaderAndPayloadSize=abstractWbPacket.customHeaderSize + abstractWbPacket.payloadSize;
