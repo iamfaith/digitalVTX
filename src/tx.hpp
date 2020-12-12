@@ -77,10 +77,10 @@ private:
     // for the FEC encoder
     void sendFecBlock(const WBDataPacket &wbDataPacket);
     // send packet by prefixing data with the current IEE and Radiotap wbDataHeader
-    void sendPacket(const uint8_t* customHeader, std::size_t customHeaderSize, const uint8_t* payload= nullptr, std::size_t payloadSize=0);
+    void sendPacket(const uint8_t *buf, size_t size);
     // this one is used for injecting packets
-    PcapTransmitter mPcapTransmitter;
-    //RawSocketTransmitter mPcapTransmitter;
+    //PcapTransmitter mPcapTransmitter;
+    RawSocketTransmitter mPcapTransmitter;
     // the radio port is what is used as an index to multiplex multiple streams (telemetry,video,...)
     // into the one wfb stream
     const uint8_t RADIO_PORT;

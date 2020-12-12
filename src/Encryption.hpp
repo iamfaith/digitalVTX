@@ -87,7 +87,7 @@ public:
         return makeEncryptedPacketIncludingHeader(xBlock.wbDataHeader, xBlock.payload, xBlock.payloadSize);
     }
     // encrypt the payload of the WBDataPacket
-    WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
+    /*WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
         // we need to allocate a new buffer to also hold the crypto_aead_chacha20poly1305_ABYTES
         std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_unique<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
@@ -105,7 +105,7 @@ public:
         assert(encryptedData->size()==ciphertext_len);
         return {wbDataPacket.wbDataHeader.nonce, encryptedData};
 #endif
-    }
+    }*/
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey{};

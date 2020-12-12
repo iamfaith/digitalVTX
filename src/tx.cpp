@@ -178,20 +178,21 @@ WBTransmitter::~WBTransmitter() {
 }
 
 
-void WBTransmitter::sendPacket(const uint8_t* customHeader, std::size_t customHeaderSize, const uint8_t* payload, std::size_t payloadSize) {
+void WBTransmitter::sendPacket(const uint8_t *buf, size_t size) {
     //std::cout << "WBTransmitter::inject_packet\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
-    mPcapTransmitter.injectPacket2(mRadiotapHeader,mIeee80211Header,customHeader,customHeaderSize,payload,payloadSize);
+    //mPcapTransmitter.injectPacket2(mRadiotapHeader,mIeee80211Header,customHeader,customHeaderSize,payload,payloadSize);
+    mPcapTransmitter.injectPacket(mRadiotapHeader,mIeee80211Header,buf,size);
     nInjectedPackets++;
 }
 
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
-    //const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
-    //sendPacket(data.data(), data.size());
-    const auto encryptedWBDataPacket=mEncryptor.encryptWBDataPacket(wbDataPacket);
-    sendPacket((uint8_t*)&encryptedWBDataPacket.wbDataHeader,sizeof(WBDataHeader),encryptedWBDataPacket.payload,encryptedWBDataPacket.payloadSize);
+    const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
+    sendPacket(data.data(), data.size());
+    //const auto encryptedWBDataPacket=mEncryptor.encryptWBDataPacket(wbDataPacket);
+    //sendPacket((uint8_t*)&encryptedWBDataPacket.wbDataHeader,sizeof(WBDataHeader),encryptedWBDataPacket.payload,encryptedWBDataPacket.payloadSize);
 #ifdef ENABLE_ADVANCED_DEBUGGING
     //LatencyTestingPacket latencyTestingPacket;
     //sendPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
