@@ -115,7 +115,7 @@ static_assert(sizeof(WBDataHeader)==8+1,"ALWAYS_TRUE");
 
 
 // this header is written before the data of each primary FEC fragment
-// ONLY for primary FEC fragment though ! (up to n bytes workaround)
+// ONLY for primary FEC fragments though ! (up to n bytes workaround)
 class FECDataHeader {
 private:
     // private member to make sure it has always the right endian
