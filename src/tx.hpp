@@ -76,8 +76,8 @@ private:
     void sendSessionKey();
     // for the FEC encoder
     void sendFecBlock(const WBDataPacket &wbDataPacket);
-    // inject packet by prefixing data with the current IEE and Radiotap header
-    void injectPacket(const uint8_t *buf, size_t size);
+    // send packet by prefixing data with the current IEE and Radiotap header
+    void sendPacket(const uint8_t *buf, size_t size);
     // this one is used for injecting packets
     //PcapTransmitter mPcapTransmitter;
     RawSocketTransmitter mPcapTransmitter;

@@ -178,7 +178,7 @@ WBTransmitter::~WBTransmitter() {
 }
 
 
-void WBTransmitter::injectPacket(const uint8_t *buf, size_t size) {
+void WBTransmitter::sendPacket(const uint8_t *buf, size_t size) {
     //std::cout << "WBTransmitter::inject_packet\n";
     mIeee80211Header.writeParams(RADIO_PORT, ieee80211_seq);
     ieee80211_seq += 16;
@@ -189,16 +189,16 @@ void WBTransmitter::injectPacket(const uint8_t *buf, size_t size) {
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
     const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
-    injectPacket(data.data(), data.size());
+    sendPacket(data.data(), data.size());
 #ifdef ENABLE_ADVANCED_DEBUGGING
     //LatencyTestingPacket latencyTestingPacket;
-    //injectPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
+    //sendPacket((uint8_t*)&latencyTestingPacket,sizeof(latencyTestingPacket));
 #endif
 }
 
 void WBTransmitter::sendSessionKey() {
     std::cout << "sendSessionKey()\n";
-    injectPacket((uint8_t *) &mEncryptor.sessionKeyPacket,WBSessionKeyPacket::SIZE_BYTES);
+    sendPacket((uint8_t *) &mEncryptor.sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES);
 }
 
 void WBTransmitter::processPacket(const uint8_t *buf, size_t size) {

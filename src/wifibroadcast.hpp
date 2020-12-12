@@ -133,9 +133,10 @@ static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
 // This one does not specify if it is an FEC data or FEC correction packet (see WBDataHeader / FECDataHeader)
 // but it is always of type WFB_PACKET_DATA
+// NOTE: This cannot be casted from / to a memory location (unlike the classes above)
 class WBDataPacket{
 public:
-    // constructor that
+    // constructor that also stores a reference to the created data (so it doesn't get deleted)
     explicit WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
     header(nonce1),payload(payload1),payloadSize(payloadSize1){};
 public:
@@ -144,7 +145,7 @@ public:
     // If this is an FEC correction packet, that's not the case
     const uint8_t* payload;
     const std::size_t payloadSize;
-}__attribute__ ((packed));
+};
 
 
 struct LatencyTestingPacket{
