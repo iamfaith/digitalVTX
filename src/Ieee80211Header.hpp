@@ -77,5 +77,27 @@ public:
 }__attribute__ ((packed));
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
 
+// hmmmm ....
+// https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L144
+namespace Lulatsch{
+    static uint8_t u8aIeeeHeader_data[] = {
+            0x08, 0x02, 0x00, 0x00,             // frame control field (2 bytes), duration (2 bytes)
+            0xff, 0x00, 0x00, 0x00, 0x00, 0x00, // 1st byte of MAC will be overwritten with encoded port
+            0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // mac
+            0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // mac
+            0x00, 0x00                          // IEEE802.11 seqnum, (will be overwritten later by Atheros firmware/wifi chip)
+    };
 
+
+    static uint8_t u8aIeeeHeader_data_short[] = {
+            0x08, 0x01, 0x00, 0x00, // frame control field (2 bytes), duration (2 bytes)
+            0xff                    // 1st byte of MAC will be overwritten with encoded port
+    };
+
+
+    static uint8_t u8aIeeeHeader_rts[] = {
+            0xb4, 0x01, 0x00, 0x00, // frame control field (2 bytes), duration (2 bytes)
+            0xff                    // 1st byte of MAC will be overwritten with encoded port
+    };
+}
 #endif

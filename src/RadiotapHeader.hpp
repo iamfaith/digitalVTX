@@ -177,5 +177,27 @@ struct ieee80211_radiotap_ath9k_htc {
 }__attribute__ ((packed));
 static_assert(sizeof(ieee80211_radiotap_ath9k_htc)==34,"ALWAYS_TRUE");
 
+// this is what's used in
+//https://github.com/OpenHD/Open.HD/blob/master/wifibroadcast-rc-Ath9k/rctx.cpp
+std::array<uint8_t,RadiotapHeader::SIZE_BYTES> radiotap_rc_ath9k={
+           0, // <-- radiotap version      (0x00)
+           0, // <-- radiotap version      (0x00)
+
+          13, // <- radiotap header length (0x0d)
+           0, // <- radiotap header length (0x00)
+
+           0, // <-- radiotap present flags(0x00)
+           128, // <-- RADIOTAP_TX_FLAGS +   (0x80)
+           8, // <-- RADIOTAP_MCS          (0x08)
+           0, //                           (0x00)
+
+          8, // <-- RADIOTAP_F_TX_NOACK   (0x08)
+          0, //                           (0x00)
+          55, // <-- bitmap                (0x37)
+          48, // <-- flags                 (0x30)
+           0, // <-- mcs_index             (0x00)
+};
+
+
 
 #endif //__WIFIBROADCAST_RADIOTAP_HEADER_HPP__
