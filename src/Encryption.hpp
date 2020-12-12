@@ -14,7 +14,7 @@
 // create deterministic rx and tx keys
 static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
 // use this one if you are worried about CPU usage when using encryption
-//#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+#define DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
 
 class Encryptor {
 public:
@@ -87,11 +87,11 @@ public:
         return makeEncryptedPacketIncludingHeader(wbDataPacket.wbDataHeader, wbDataPacket.payload, wbDataPacket.payloadSize);
     }
     // encrypt the payload of the WBDataPacket
-    /*WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
-        // we need to allocate a new buffer to also hold the crypto_aead_chacha20poly1305_ABYTES
+    WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
+        // we need to allocate a new buffer to also hold the encrypted bytes
         std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_unique<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
-        return {wbDataPacket.wbDataHeader.nonce,wb};
+        return {wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize};
 #else
         // encryption method is c-style
         long long unsigned int ciphertext_len;
@@ -105,7 +105,7 @@ public:
         assert(encryptedData->size()==ciphertext_len);
         return {wbDataPacket.wbDataHeader.nonce, encryptedData};
 #endif
-    }*/
+    }
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey{};
@@ -171,7 +171,7 @@ public:
     // returns decrypted data on success
     std::optional<std::vector<uint8_t>> decryptPacket(const WBDataHeader& wblockHdr,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
-        return std::vector<uint8_t>(encryptedPayload,encryptedPayload+(encryptedPayloadSize-crypto_aead_chacha20poly1305_ABYTES));
+        return std::vector<uint8_t>(encryptedPayload,encryptedPayload+encryptedPayloadSize);
 #else
         std::vector<uint8_t> decrypted;
         decrypted.resize(encryptedPayloadSize-crypto_aead_chacha20poly1305_ABYTES);

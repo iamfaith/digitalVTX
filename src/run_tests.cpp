@@ -173,9 +173,9 @@ namespace TestEncryption{
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
         const WBDataPacket wbDataPacket{nonce,data.data(),data.size()};
 
-        const auto encrypted= encryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
+        const auto encrypted= encryptor.encryptWBDataPacket(wbDataPacket);
 
-        const auto decrypted=decryptor.decryptPacket(wbDataPacket.wbDataHeader, &encrypted[sizeof(WBDataHeader)], encrypted.size() - sizeof(WBDataHeader));
+        const auto decrypted=decryptor.decryptPacket(encrypted.wbDataHeader,encrypted.payload, encrypted.payloadSize);
 
         assert(decrypted!=std::nullopt);
         assert(GenericHelper::compareVectors(data,*decrypted) == true);
