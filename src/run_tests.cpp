@@ -42,8 +42,8 @@ namespace TestFEC{
         FECDecoder decoder(k,n);
         std::vector<std::vector<uint8_t>> testOut;
 
-        const auto cb1=[&decoder](const WBDataPacket &xBlock)mutable {
-            decoder.processPacket(xBlock.wbDataHeader, std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+        const auto cb1=[&decoder](const WBDataPacket &wbDataPacket)mutable {
+            decoder.processPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload + wbDataPacket.payloadSize));
         };
         const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
             testOut.emplace_back(payload,payload+payloadSize);

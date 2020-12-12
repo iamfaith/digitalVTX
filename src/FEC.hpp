@@ -91,8 +91,8 @@ public:
         // Use FEC_K==0 to completely disable FEC
         if(FEC_K == 0) {
             const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
-            WBDataPacket xBlock{nonce,buf,size};
-            callback(xBlock);
+            WBDataPacket wbDataPacket{nonce, buf, size};
+            callback(wbDataPacket);
             block_idx++;
             return;
         }

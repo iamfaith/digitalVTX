@@ -83,8 +83,8 @@ public:
         return ret;
 #endif
     }
-    std::vector<uint8_t> makeEncryptedPacketIncludingHeader(const WBDataPacket& xBlock) {
-        return makeEncryptedPacketIncludingHeader(xBlock.wbDataHeader, xBlock.payload, xBlock.payloadSize);
+    std::vector<uint8_t> makeEncryptedPacketIncludingHeader(const WBDataPacket& wbDataPacket) {
+        return makeEncryptedPacketIncludingHeader(wbDataPacket.wbDataHeader, wbDataPacket.payload, wbDataPacket.payloadSize);
     }
     // encrypt the payload of the WBDataPacket
     /*WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
