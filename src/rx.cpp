@@ -365,13 +365,18 @@ PcapReceiver::~PcapReceiver() {
 
 void PcapReceiver::loop_iter() {
     // loop while incoming queue is not empty
+    int nPacketsPolledUntilQueueWasEmpty=0;
     for (;;){
         struct pcap_pkthdr hdr{};
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
         if (pkt == nullptr) {
+#ifdef ENABLE_ADVANCED_DEBUGGING
+            std::cout<<"N of packets polled from pcap queue until empty: "<<nPacketsPolledUntilQueueWasEmpty<<"\n";
+#endif
             break;
         }
         agg->processPacket(WLAN_IDX,hdr,pkt);
+        nPacketsPolledUntilQueueWasEmpty++;
     }
 }
 
