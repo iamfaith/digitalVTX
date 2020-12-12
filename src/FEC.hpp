@@ -146,7 +146,6 @@ private:
     // construct WB FEC data, either DATA blocks or FEC blocks
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
-        //packet.wbDataHeader.packet_type = WFB_PACKET_DATA;
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
         const uint8_t *dataP = block[fragment_idx];
         WBDataPacket packet{nonce, dataP, packet_size};
