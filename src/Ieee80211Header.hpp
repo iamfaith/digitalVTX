@@ -31,8 +31,6 @@ public:
     static constexpr const auto FRAME_SEQ_LB=22;
     static constexpr const auto FRAME_SEQ_HB=23;
     // raw data buffer
-    // unfortunately I do not know what these 'default bytes' mean
-    // more info https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L175
     std::array<uint8_t,SIZE_BYTES> data={
             0x08, 0x01, // first 2 bytes controll fiels
             0x00, 0x00, // 2 bytes duration (has this even an effect ?!)
@@ -45,7 +43,7 @@ public:
     Ieee80211Header()=default;
     // write the port re-using the MAC address (which is unused for broadcast)
     // write sequence number (not used on rx right now)
-    void writeParams(uint8_t radioPort,uint16_t seqenceNumber){
+    void writeParams(const uint8_t radioPort,const uint16_t seqenceNumber){
         data[SRC_MAC_LASTBYTE] = radioPort;
         data[DST_MAC_LASTBYTE] = radioPort;
         data[FRAME_SEQ_LB] = seqenceNumber & 0xff;
@@ -79,6 +77,7 @@ public:
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
 
 // hmmmm ....
+// https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L175
 // https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L144
 namespace Lulatsch{
     static uint8_t u8aIeeeHeader_data[] = {
