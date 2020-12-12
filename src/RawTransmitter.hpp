@@ -41,7 +41,6 @@ namespace RawTransmitterHelper {
     static std::vector<uint8_t>
     createPcapPacket(const RadiotapHeader &radiotapHeader, const Ieee80211Header &ieee80211Header,const AbstractWBPacket& abstractWbPacket) {
         const auto customHeaderAndPayloadSize=abstractWbPacket.customHeaderSize + abstractWbPacket.payloadSize;
-        assert((customHeaderAndPayloadSize) <= MAX_FORWARDER_PACKET_SIZE);
         std::vector<uint8_t> packet(radiotapHeader.getSize() + ieee80211Header.getSize() + customHeaderAndPayloadSize);
         uint8_t *p = packet.data();
         // radiotap wbDataHeader
