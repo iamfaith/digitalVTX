@@ -90,9 +90,9 @@ namespace TestFEC{
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
-        const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const WBDataPacket &xBlock)mutable {
-            const auto blockIdx=xBlock.wbDataHeader.getBlockIdx();
-            const auto fragmentIdx=xBlock.wbDataHeader.getFragmentIdx();
+        const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const WBDataPacket &wbDataPacket)mutable {
+            const auto blockIdx=wbDataPacket.wbDataHeader.getBlockIdx();
+            const auto fragmentIdx=wbDataPacket.wbDataHeader.getFragmentIdx();
             if(DROP_MODE==0){
                 // drop all FEC correction packets but no data packets (everything should be still recoverable
                 if(fragmentIdx>=k){
@@ -119,10 +119,10 @@ namespace TestFEC{
                 // emulate not more than N multiple wifi cards as rx
                 const auto duplicates=std::rand() % 8;
                 for(int i=0;i<duplicates+1;i++){
-                    decoder.processPacket(xBlock.wbDataHeader, std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+                    decoder.processPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload + wbDataPacket.payloadSize));
                 }
             }else{
-                decoder.processPacket(xBlock.wbDataHeader, std::vector<uint8_t>(xBlock.payload, xBlock.payload + xBlock.payloadSize));
+                decoder.processPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload + wbDataPacket.payloadSize));
             }
         };
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
