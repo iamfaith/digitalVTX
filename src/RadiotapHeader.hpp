@@ -173,34 +173,36 @@ namespace RadiotapHelper{
         return ss.str();
     }
 
-    std::string flagsIEEE80211_RADIOTAP_RX_FLAGS(const uint8_t flags){
+    std::string toStringRadiotapRXFlags(uint16_t rxFlags){
         std::stringstream ss;
         ss<<"All IEEE80211_RADIOTAP_RX_FLAGS values: [";
-        if(flags &  IEEE80211_RADIOTAP_F_RX_BADPLCP) {
+        if(rxFlags &  IEEE80211_RADIOTAP_F_RX_BADPLCP) {
             ss<<"RX_BADPLCP,";
         }
         ss<<"]";
         return ss.str();
     }
-    std::string flagsIEEE80211_RADIOTAP_TX_FLAGS(const uint8_t flags){
+
+    // http://www.radiotap.org/fields/TX%20flags.html
+    static std::string toStringRadiotapTXFlags(const uint16_t txFlags){
         std::stringstream ss;
-        ss<<"All IEEE80211_RADIOTAP_TX_FLAGS: [";
-        if(flags &  IEEE80211_RADIOTAP_F_TX_FAIL) {
+        ss<<"All TX FLAGS: [";
+        if(txFlags &  IEEE80211_RADIOTAP_F_TX_FAIL) {
             ss<<"TX_FAIL,";
         }
-        if(flags &  IEEE80211_RADIOTAP_F_TX_CTS) {
+        if(txFlags &  IEEE80211_RADIOTAP_F_TX_CTS) {
             ss<<"TX_CTS,";
         }
-        if(flags &  IEEE80211_RADIOTAP_F_TX_RTS) {
+        if(txFlags &  IEEE80211_RADIOTAP_F_TX_RTS) {
             ss<<"TX_RTS,";
         }
-        if(flags &  IEEE80211_RADIOTAP_F_TX_NOACK) {
+        if(txFlags &  IEEE80211_RADIOTAP_F_TX_NOACK) {
             ss<<"TX_NOACK,";
         }
         ss<<"]";
         return ss.str();
     }
-
+    // http://www.radiotap.org/fields/MCS.html
     static std::string toStringRadiotapMCS(uint8_t known,uint8_t flags,uint8_t mcs){
         std::stringstream ss;
         ss<<"MCS Stuff: [";
@@ -289,12 +291,11 @@ namespace RadiotapHelper{
                     break;
                 case IEEE80211_RADIOTAP_RX_FLAGS:
                     //std::cout<<"IEEE80211_RADIOTAP_RX_FLAGS\n";
-                    std::cout<< flagsIEEE80211_RADIOTAP_RX_FLAGS(*iterator.this_arg)<<"\n";
+                    std::cout<<toStringRadiotapRXFlags(*iterator.this_arg)<<"\n";
                     break;
                 case IEEE80211_RADIOTAP_TX_FLAGS:
-                    // https://www.radiotap.org/fields/TX%20flags.html
                     //std::cout<<"IEEE80211_RADIOTAP_TX_FLAGS\n";
-                    std::cout<<flagsIEEE80211_RADIOTAP_TX_FLAGS(*iterator.this_arg)<<"\n";
+                    std::cout<<toStringRadiotapTXFlags(*iterator.this_arg)<<"\n";
                     break;
                 case IEEE80211_RADIOTAP_AMPDU_STATUS:
                     std::cout<<"EEE80211_RADIOTAP_AMPDU_STATUS\n";
