@@ -20,7 +20,7 @@ src/%.o: src/%.cpp src/*.hpp
 wfb_rx: src/rx.o src/ExternalCSources/radiotap.o src/ExternalCSources/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
-wfb_tx: src/tx.o src/ExternalCSources/fec.o
+wfb_tx: src/tx.o src/ExternalCSources/radiotap.o src/ExternalCSources/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
 run_tests: src/run_tests.o src/ExternalCSources/fec.o

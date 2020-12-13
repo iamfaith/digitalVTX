@@ -21,6 +21,7 @@
 #include <chrono>
 #include <sstream>
 #include <iostream>
+#include "ExternalCSources/radiotap_iter.h"
 
 extern "C"{
 #include "ExternalCSources/radiotap.h"
@@ -112,34 +113,10 @@ public:
 }__attribute__ ((packed));
 static_assert(sizeof(RadiotapHeader) == RadiotapHeader::SIZE_BYTES, "ALWAYS TRUE");
 
-namespace RadiotapFlagsToString{
-    std::string flagsIEEE80211_RADIOTAP_MCS(const uint8_t flags) {
-        std::stringstream ss;
-        ss<<"All IEEE80211_RADIOTAP_MCS flags: ";
-        if(flags &  IEEE80211_RADIOTAP_MCS_HAVE_BW) {
-            auto bw=flags & IEEE80211_RADIOTAP_MCS_BW_MASK;
-            ss<<"HAVE_BW["<<(int)bw<<"],";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
-            ss<<"HAVE_MCS,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_GI) {
-            ss<<"HAVE_GI,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FMT) {
-            ss<<"HAVE_FMT,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FEC) {
-            ss<<"HAVE_FEC,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_STBC ) {
-            ss<<"HAVE_STBC,";
-        }
-        return ss.str();
-    }
+namespace RadiotapHelper{
     std::string flagsIEEE80211_RADIOTAP_FLAGS(uint8_t flags){
         std::stringstream ss;
-        ss<<"All IEEE80211_RADIOTAP flags: ";
+        ss<<"All IEEE80211_RADIOTAP flags: [";
         if(flags & IEEE80211_RADIOTAP_F_CFP){
             ss<<"CFP,";
         }
@@ -158,7 +135,171 @@ namespace RadiotapFlagsToString{
         if(flags & IEEE80211_RADIOTAP_F_DATAPAD){
             ss<<"DATAPAD,";
         }
+        if(flags & IEEE80211_RADIOTAP_F_BADFCS){
+            ss<<"BADFCS";
+        }
+        ss<<"]";
         return ss.str();
+    }
+    std::string flagsIEEE80211_RADIOTAP_MCS(const uint8_t flags) {
+        std::stringstream ss;
+        ss<<"All IEEE80211_RADIOTAP_MCS flags: [";
+        if(flags &  IEEE80211_RADIOTAP_MCS_HAVE_BW) {
+            ss<<"HAVE_BW[";
+            uint8_t bandwidth= flags & IEEE80211_RADIOTAP_MCS_BW_MASK;
+            switch (bandwidth) {
+                case IEEE80211_RADIOTAP_MCS_BW_20:ss<<"BW_20";break;
+                case IEEE80211_RADIOTAP_MCS_BW_40:ss<<"BW_40";break;
+                case IEEE80211_RADIOTAP_MCS_BW_20L:ss<<"BW_20L";break;
+                case IEEE80211_RADIOTAP_MCS_BW_20U:ss<<"BW_20U";break;
+                default:ss<<"Unknown";
+            }
+            ss<<"],";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
+            ss<<"HAVE_MCS,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_GI) {
+            ss<<"HAVE_GI,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FMT) {
+            ss<<"HAVE_FMT,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FEC) {
+            ss<<"HAVE_FEC,";
+        }
+        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_STBC ) {
+            ss<<"HAVE_STBC[";
+            uint8_t stbc=flags & IEEE80211_RADIOTAP_MCS_STBC_MASK;
+            switch (stbc) {
+                case IEEE80211_RADIOTAP_MCS_STBC_1:ss<<"STBC_1";break;
+                case IEEE80211_RADIOTAP_MCS_STBC_2:ss<<"STBC_2";break;
+                case IEEE80211_RADIOTAP_MCS_STBC_3:ss<<"STBC_3";break;
+                case IEEE80211_RADIOTAP_MCS_STBC_SHIFT:ss<<"STBC_SHIFT";break;
+                default:ss<<"Unknown";
+            }
+            ss<<"],";
+        }
+        ss<<"]";
+        return ss.str();
+    }
+    std::string flagsIEEE80211_RADIOTAP_CHANNEL(const uint8_t flags){
+        std::stringstream ss;
+        ss<<"All IEEE80211_RADIOTAP_CHANNEL values: [";
+        if(flags &  IEEE80211_CHAN_CCK) {
+            ss<<"CHAN_CCK,";
+        }
+        if(flags &  IEEE80211_CHAN_OFDM) {
+            ss<<"CHAN_OFDM,";
+        }
+        if(flags &  IEEE80211_CHAN_2GHZ) {
+            ss<<"CHAN_2GHZ,";
+        }
+        if(flags &  IEEE80211_CHAN_5GHZ) {
+            ss<<"CHAN_5GHZ,";
+        }
+        if(flags &  IEEE80211_CHAN_DYN) {
+            ss<<"CHAN_DYN,";
+        }
+        if(flags &  IEEE80211_CHAN_HALF) {
+            ss<<"CHAN_HALF,";
+        }
+        if(flags &  IEEE80211_CHAN_QUARTER) {
+            ss<<"CHAN_QUARTER,";
+        }
+        ss<<"]";
+        return ss.str();
+    }
+
+    std::string flagsIEEE80211_RADIOTAP_RX_FLAGS(const uint8_t flags){
+        std::stringstream ss;
+        ss<<"All IEEE80211_RADIOTAP_RX_FLAGS values: [";
+        if(flags &  IEEE80211_RADIOTAP_F_RX_BADPLCP) {
+            ss<<"RX_BADPLCP,";
+        }
+        ss<<"]";
+        return ss.str();
+    }
+    std::string flagsIEEE80211_RADIOTAP_TX_FLAGS(const uint8_t flags){
+        std::stringstream ss;
+        ss<<"All IEEE80211_RADIOTAP_TX_FLAGS: [";
+        if(flags &  IEEE80211_RADIOTAP_F_TX_FAIL) {
+            ss<<"TX_FAIL,";
+        }
+        if(flags &  IEEE80211_RADIOTAP_F_TX_CTS) {
+            ss<<"TX_CTS,";
+        }
+        if(flags &  IEEE80211_RADIOTAP_F_TX_RTS) {
+            ss<<"TX_RTS,";
+        }
+        if(flags &  IEEE80211_RADIOTAP_F_TX_NOACK) {
+            ss<<"TX_NOACK,";
+        }
+        ss<<"]";
+        return ss.str();
+    }
+
+    static void debugRadiotapHeader(const uint8_t *pkt,int pktlen){
+        struct ieee80211_radiotap_iterator iterator{};
+        int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
+        if (ret) {
+            std::cout<<"malformed radiotap header (init returns %d)"<<ret;
+            return;
+        }
+        std::cout<<"Debuging Radiotap Header \n";
+        while (ret == 0 ) {
+            ret = ieee80211_radiotap_iterator_next(&iterator);
+            if (ret){
+                continue;
+            }
+            /* see if this argument is something we can use */
+            switch (iterator.this_arg_index) {
+                case IEEE80211_RADIOTAP_TSFT:
+                    std::cout<<"IEEE80211_RADIOTAP_TSFT\n";
+                    break;
+                case IEEE80211_RADIOTAP_FLAGS:
+                    //std::cout<<"IEEE80211_RADIOTAP_FLAGS\n";
+                    std::cout<<flagsIEEE80211_RADIOTAP_FLAGS(*iterator.this_arg)<<"\n";
+                    break;
+                case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
+                    std::cout<<"IEEE80211_RADIOTAP_DBM_ANTSIGNAL\n";
+                    break;
+                case IEEE80211_RADIOTAP_ANTENNA:
+                    std::cout<<"IEEE80211_RADIOTAP_ANTENNA\n";
+                    break;
+                case IEEE80211_RADIOTAP_CHANNEL:
+                    //std::cout<<"IEEE80211_RADIOTAP_CHANNEL\n";
+                    std::cout<<flagsIEEE80211_RADIOTAP_CHANNEL(*iterator.this_arg)<<" \n";
+                    break;
+                case IEEE80211_RADIOTAP_MCS:
+                    //std::cout<<"IEEE80211_RADIOTAP_MCS\n";
+                    std::cout<<flagsIEEE80211_RADIOTAP_MCS(*iterator.this_arg)<<"\n";
+                    break;
+                case IEEE80211_RADIOTAP_RX_FLAGS:
+                    //std::cout<<"IEEE80211_RADIOTAP_RX_FLAGS\n";
+                    std::cout<< flagsIEEE80211_RADIOTAP_RX_FLAGS(*iterator.this_arg)<<"\n";
+                    break;
+                case IEEE80211_RADIOTAP_TX_FLAGS:
+                    //std::cout<<"IEEE80211_RADIOTAP_TX_FLAGS\n";
+                    std::cout<<flagsIEEE80211_RADIOTAP_TX_FLAGS(*iterator.this_arg)<<"\n";
+                    break;
+                case IEEE80211_RADIOTAP_AMPDU_STATUS:
+                    std::cout<<"EEE80211_RADIOTAP_AMPDU_STATUS\n";
+                    break;
+                case IEEE80211_RADIOTAP_VHT:
+                    std::cout<<"IEEE80211_RADIOTAP_VHT\n";
+                    break;
+                case IEEE80211_RADIOTAP_TIMESTAMP:
+                    std::cout<<"IEEE80211_RADIOTAP_TIMESTAMP\n";
+                    break;
+                case IEEE80211_RADIOTAP_LOCK_QUALITY:
+                    std::cout<<"IEEE80211_RADIOTAP_LOCK_QUALITY\n";
+                    break;
+                default:
+                    std::cout<<"Unknown radiotap argument:"<<(int)iterator.this_arg_index<<"\n";
+                    break;
+            }
+        }  /* while more rt headers */
     }
 }
 

@@ -208,6 +208,7 @@ int main(int argc, char *const *argv) {
     const auto wlan=argv[optind];
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
+    RadiotapHelper::debugRadiotapHeader((uint8_t*)&radiotapHeader,sizeof(RadiotapHeader));
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(
                 radiotapHeader, k, n, keypair, radio_port,udp_port, wlan);

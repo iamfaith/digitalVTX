@@ -137,6 +137,8 @@ namespace RawTransmitterHelper{
         rssi.fill(SCHAR_MIN);
         uint8_t mIEEE80211_RADIOTAP_FLAGS = 0;
         uint8_t mIEEE80211_RADIOTAP_MCS=0;
+        uint8_t mIEEE80211_RADIOTAP_CHANNEL=0;
+        RadiotapHelper::debugRadiotapHeader(pkt, pktlen);
         struct ieee80211_radiotap_iterator iterator{};
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
 
@@ -173,6 +175,8 @@ namespace RawTransmitterHelper{
                     break;
                 case IEEE80211_RADIOTAP_MCS:
                     mIEEE80211_RADIOTAP_MCS = *(uint8_t *) (iterator.this_arg);
+                case IEEE80211_RADIOTAP_CHANNEL:
+                    mIEEE80211_RADIOTAP_CHANNEL=*(uint8_t *) (iterator.this_arg);
                 default:
                     break;
             }
@@ -190,8 +194,8 @@ namespace RawTransmitterHelper{
             pktlen -= 4;
         }
 #ifdef ENABLE_ADVANCED_DEBUGGING
-        std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_MCS(mIEEE80211_RADIOTAP_MCS)<<"\n";
-        std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
+        //std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_MCS(mIEEE80211_RADIOTAP_MCS)<<"\n";
+        //std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
         // With AR9271 I get 39 as max_length of the radio-tap header
         // With my internal laptop wifi chip I get 36 as max_length of the radio-tap header
         //
