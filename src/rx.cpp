@@ -198,7 +198,6 @@ namespace RawTransmitterHelper{
         //std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
         // With AR9271 I get 39 as max_length of the radio-tap header
         // With my internal laptop wifi chip I get 36 as max_length of the radio-tap header
-        //
         std::cout<<"iterator._max_length was "<<iterator._max_length<<"\n";
 #endif
         /* discard the radiotap header part */
