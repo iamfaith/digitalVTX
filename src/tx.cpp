@@ -107,7 +107,16 @@ void WBTransmitter::loop() {
     std::array<uint8_t,MAX_PAYLOAD_SIZE> buf{};
     std::chrono::steady_clock::time_point session_key_announce_ts{};
     std::chrono::steady_clock::time_point log_ts{};
+    // send the key a couple of times on startup to increase the likeliness it is received
+    bool firstTime=true;
     for(;;){
+        if(firstTime){
+            for(int i=0;i<5;i++){
+                sendSessionKey();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            firstTime=false;
+        }
         const ssize_t message_length = recvfrom(mInputSocket, buf.data(), MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
         if(std::chrono::steady_clock::now()>=log_ts){
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
@@ -118,7 +127,8 @@ void WBTransmitter::loop() {
         if(message_length>0){
             nPacketsFromUdpPort++;
             const auto cur_ts=std::chrono::steady_clock::now();
-            if (cur_ts >= session_key_announce_ts) {
+            // send session key in SESSION_KEY_ANNOUNCE_DELTA intervals
+            if ((cur_ts >= session_key_announce_ts) ) {
                 // Announce session key
                 sendSessionKey();
                 session_key_announce_ts = cur_ts + SESSION_KEY_ANNOUNCE_DELTA;

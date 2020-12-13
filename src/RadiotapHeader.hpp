@@ -21,16 +21,16 @@
 #include <chrono>
 #include <sstream>
 #include <iostream>
-#include "ExternalCSources/radiotap_iter.h"
+#include "Helper.hpp"
 
 extern "C"{
+#include "ExternalCSources/radiotap_iter.h"
 #include "ExternalCSources/radiotap.h"
 };
 
 // Default is MCS#1 -- QPSK 1/2 40MHz SGI -- 30 Mbit/s
 // MCS_FLAGS = (IEEE80211_RADIOTAP_MCS_BW_40 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
 
-//#define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC)
 
 // Wrapper around the radiotap header (declared as raw array initially)
 // Used for injecting packets with the right parameters
@@ -64,6 +64,9 @@ public:
     };
     // write the user-selected parameters
     void writeParams(const RadiotapHeaderParams& params){
+        if(params.mcs_index<0){
+            throw std::runtime_error(StringFormat::convert("Unsupported MCS index %d",params.mcs_index));
+        }
         uint8_t flags = 0;
         switch(params.bandwidth) {
             case 20:
@@ -73,8 +76,7 @@ public:
                 flags |= IEEE80211_RADIOTAP_MCS_BW_40;
                 break;
             default:
-                std::cerr<<"Unsupported bandwidth: "<<params.bandwidth;
-                exit(1);
+                throw std::runtime_error(StringFormat::convert("Unsupported bandwidth: %d",params.bandwidth));
         }
         if(params.short_gi){
             flags |= IEEE80211_RADIOTAP_MCS_SGI;
@@ -157,7 +159,10 @@ namespace RadiotapHelper{
             ss<<"],";
         }
         if(flags & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
-            ss<<"HAVE_MCS,";
+            ss<<"HAVE_MCS[";
+            uint8_t mcs= flags & IEEE80211_RADIOTAP_MCS_STBC_MASK;
+            ss<<(int)mcs;
+            ss<<"],";
         }
         if(flags & IEEE80211_RADIOTAP_MCS_HAVE_GI) {
             ss<<"HAVE_GI,";
@@ -171,6 +176,7 @@ namespace RadiotapHelper{
         if(flags & IEEE80211_RADIOTAP_MCS_HAVE_STBC ) {
             ss<<"HAVE_STBC[";
             uint8_t stbc=flags & IEEE80211_RADIOTAP_MCS_STBC_MASK;
+            stbc<<IEEE80211_RADIOTAP_MCS_STBC_SHIFT;
             switch (stbc) {
                 case IEEE80211_RADIOTAP_MCS_STBC_1:ss<<"STBC_1";break;
                 case IEEE80211_RADIOTAP_MCS_STBC_2:ss<<"STBC_2";break;
@@ -280,6 +286,10 @@ namespace RadiotapHelper{
                 case IEEE80211_RADIOTAP_MCS:
                     //std::cout<<"IEEE80211_RADIOTAP_MCS\n";
                     std::cout<<flagsIEEE80211_RADIOTAP_MCS(*iterator.this_arg)<<"\n";
+                    {
+                        uint8_t lol=iterator.this_arg[0];
+                        std::cout<<"LOL "<<(int)lol<<"\n";
+                    }
                     break;
                 case IEEE80211_RADIOTAP_RX_FLAGS:
                     //std::cout<<"IEEE80211_RADIOTAP_RX_FLAGS\n";
