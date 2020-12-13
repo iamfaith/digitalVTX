@@ -209,8 +209,8 @@ int main(int argc, char *const *argv) {
     RadiotapHeader radiotapHeader;
     radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&radiotapHeader,sizeof(RadiotapHeader));
-    RadiotapHelper::debugRadiotapHeader((uint8_t*)&LULATSCH::u8aRadiotapHeader80211n,sizeof(LULATSCH::u8aRadiotapHeader80211n));
-    RadiotapHelper::debugRadiotapHeader((uint8_t*)&LULATSCH::u8aRadiotapHeader,sizeof(LULATSCH::u8aRadiotapHeader));
+    RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader80211n, sizeof(OldRadiotapHeaders::u8aRadiotapHeader80211n));
+    RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader, sizeof(OldRadiotapHeaders::u8aRadiotapHeader));
 
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(

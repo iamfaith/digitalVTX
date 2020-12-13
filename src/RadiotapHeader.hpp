@@ -249,6 +249,9 @@ namespace RadiotapHelper{
         std::cout<<"Debuging Radiotap Header \n";
         while (ret == 0 ) {
             ret = ieee80211_radiotap_iterator_next(&iterator);
+            if(iterator.is_radiotap_ns){
+                //std::cout<<"Is in namespace\n";
+            }
             if (ret){
                 continue;
             }
@@ -306,7 +309,8 @@ namespace RadiotapHelper{
     }
 }
 
-namespace LULATSCH{
+// what people used for whatever reason once on OpenHD / EZ-Wifibroadcast
+namespace OldRadiotapHeaders{
     // https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L123
     static uint8_t u8aRadiotapHeader[] = {
             0x00, 0x00,             // <-- radiotap version
