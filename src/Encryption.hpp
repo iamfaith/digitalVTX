@@ -66,7 +66,7 @@ public:
                                              nullptr,
                                              (uint8_t *) (&(wbDataPacket.wbDataHeader.nonce)), session_key.data());
         // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
-        // (the documentation says 'write up to n bytes' but they probably mean (write n bytes if everything goes well)
+        // (the documentation says 'write up to n bytes' but they probably mean (write exactly n bytes unless an error occurs)
         assert(encryptedData->size()==ciphertext_len);
         return {wbDataPacket.wbDataHeader.nonce, encryptedData};
 #endif
