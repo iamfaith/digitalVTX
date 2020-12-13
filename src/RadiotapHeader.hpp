@@ -286,6 +286,7 @@ namespace RadiotapHelper{
                     std::cout<< flagsIEEE80211_RADIOTAP_RX_FLAGS(*iterator.this_arg)<<"\n";
                     break;
                 case IEEE80211_RADIOTAP_TX_FLAGS:
+                    // https://www.radiotap.org/fields/TX%20flags.html
                     //std::cout<<"IEEE80211_RADIOTAP_TX_FLAGS\n";
                     std::cout<<flagsIEEE80211_RADIOTAP_TX_FLAGS(*iterator.this_arg)<<"\n";
                     break;
