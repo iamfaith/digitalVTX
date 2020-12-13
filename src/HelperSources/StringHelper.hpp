@@ -83,7 +83,7 @@ public:
     static std::string vectorAsString(const std::vector<T>& v){
         std::stringstream ss;
         for (const auto i:v) {
-            ss << i << ",";
+            ss << (int)i << ",";
         }
         return ss.str();
     }

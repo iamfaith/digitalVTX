@@ -222,6 +222,13 @@ int main(int argc, char *const *argv) {
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader80211n, sizeof(OldRadiotapHeaders::u8aRadiotapHeader80211n));
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader, sizeof(OldRadiotapHeaders::u8aRadiotapHeader));
 
+    RadiotapHelper::debugRadiotapHeader((uint8_t*)&mRadiotapHeader, sizeof(mRadiotapHeader));
+
+    const uint8_t* begin=(uint8_t*)&mRadiotapHeader;
+    RadiotapHeader radiotapHeader2;
+    std::cout << StringHelper::vectorAsString(std::vector<uint8_t>(begin,begin+sizeof(RadiotapHeaderWithTxFlagsAndMCS))) << "\n";
+    std::cout<<StringHelper::vectorAsString(std::vector<uint8_t>(radiotapHeader2.data.begin(),radiotapHeader2.data.end()))<<"\n";
+
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(
                 radiotapHeader, k, n, keypair, radio_port,udp_port, wlan);
