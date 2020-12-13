@@ -43,6 +43,7 @@ public:
     static constexpr const auto MCS_IDX_OFF=12;
     // raw data buffer
     // unfortunately I do not know what these 'default bytes' mean
+    // As far as I can tell this is in the 80211.n format ?!
     std::array<uint8_t,SIZE_BYTES> data={
             0x00, 0x00, // <-- radiotap version
             0x0d, 0x00, // <- radiotap header length
