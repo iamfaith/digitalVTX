@@ -261,11 +261,14 @@ namespace RadiotapHelper{
                     //std::cout<<"IEEE80211_RADIOTAP_FLAGS\n";
                     std::cout<<flagsIEEE80211_RADIOTAP_FLAGS(*iterator.this_arg)<<"\n";
                     break;
+                case IEEE80211_RADIOTAP_RATE:
+                    std::cout<<"IEEE80211_RADIOTAP_RATE:"<<(int)(*iterator.this_arg)<<"\n";
+                    break;
                 case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
-                    std::cout<<"IEEE80211_RADIOTAP_DBM_ANTSIGNAL\n";
+                    std::cout<<"IEEE80211_RADIOTAP_DBM_ANTSIGNAL:"<<(int)(*iterator.this_arg)<<"\n";
                     break;
                 case IEEE80211_RADIOTAP_ANTENNA:
-                    std::cout<<"IEEE80211_RADIOTAP_ANTENNA\n";
+                    std::cout<<"IEEE80211_RADIOTAP_ANTENNA:"<<(int)(*iterator.this_arg)<<"\n";
                     break;
                 case IEEE80211_RADIOTAP_CHANNEL:
                     //std::cout<<"IEEE80211_RADIOTAP_CHANNEL\n";
@@ -322,23 +325,6 @@ namespace LULATSCH{
             0x30,                   // mcs: 20MHz bw, long guard interval, stbc, ldpc
             0x00,                   // mcs index 0 (speed level, will be overwritten later)
     };
-    // hmmmmmmmmmmmmmmm https://github.com/vanhoefm/modwifi-tools/blob/master/ieee80211header.h#L16
-    struct ieee80211_radiotap_ath9k_htc {
-        uint8_t        it_version;     /* set to 0 */
-        uint8_t        it_pad;
-        uint16_t       it_len;         /* entire length */
-        uint32_t       it_present;     /* fields present */
-        uint64_t       tsf;
-        uint8_t        flags;
-        uint8_t        rate;
-        uint16_t       frequency;
-        uint16_t       channelflags;
-        int8_t         dbsignal;
-        uint8_t        antenna;
-        uint16_t       rxflags;
-        uint8_t        padding[8];
-    }__attribute__ ((packed));
-    static_assert(sizeof(ieee80211_radiotap_ath9k_htc)==34,"ALWAYS_TRUE");
 
 // this is what's used in
 //https://github.com/OpenHD/Open.HD/blob/master/wifibroadcast-rc-Ath9k/rctx.cpp
