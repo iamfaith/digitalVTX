@@ -19,6 +19,7 @@
 #include <functional>
 #include <map>
 #include "HelperSources/TimeHelper.hpp"
+#include "HelperSources/FixedSizeVector.h"
 
 extern "C"{
 #include "ExternalCSources/fec.h"
@@ -42,8 +43,9 @@ public:
         fec_encode(fec_p,src,fecs,sz);
     }
     // c++ - style declaration
-    //void fecEncode2(const std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& inpkts,std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& outpkts,std::size_t size){
-    //}
+    void fecEncode2(const std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& inpkts,std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& outpkts,std::size_t size){
+        // create the right pointers for in and out
+    }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         fec_decode(fec_p,inpkts,outpkts,index,sz);
     }
@@ -85,6 +87,7 @@ private:
     uint8_t **block;
     //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> block; nah leave it in c style since fec is also c
     size_t max_packet_size = 0;
+    //
 public:
     void encodePacket(const uint8_t *buf, size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);

@@ -144,52 +144,7 @@ namespace RadiotapHelper{
         ss<<"]";
         return ss.str();
     }
-    std::string flagsIEEE80211_RADIOTAP_MCS(const uint8_t flags) {
-        std::stringstream ss;
-        ss<<"All IEEE80211_RADIOTAP_MCS flags: [";
-        if(flags &  IEEE80211_RADIOTAP_MCS_HAVE_BW) {
-            ss<<"HAVE_BW[";
-            uint8_t bandwidth= flags & IEEE80211_RADIOTAP_MCS_BW_MASK;
-            switch (bandwidth) {
-                case IEEE80211_RADIOTAP_MCS_BW_20:ss<<"BW_20";break;
-                case IEEE80211_RADIOTAP_MCS_BW_40:ss<<"BW_40";break;
-                case IEEE80211_RADIOTAP_MCS_BW_20L:ss<<"BW_20L";break;
-                case IEEE80211_RADIOTAP_MCS_BW_20U:ss<<"BW_20U";break;
-                default:ss<<"Unknown";
-            }
-            ss<<"],";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
-            ss<<"HAVE_MCS[";
-            uint8_t mcs= flags & IEEE80211_RADIOTAP_MCS_STBC_MASK;
-            ss<<(int)mcs;
-            ss<<"],";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_GI) {
-            ss<<"HAVE_GI,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FMT) {
-            ss<<"HAVE_FMT,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_FEC) {
-            ss<<"HAVE_FEC,";
-        }
-        if(flags & IEEE80211_RADIOTAP_MCS_HAVE_STBC ) {
-            ss<<"HAVE_STBC[";
-            uint8_t stbc=flags & IEEE80211_RADIOTAP_MCS_STBC_MASK;
-            stbc<<IEEE80211_RADIOTAP_MCS_STBC_SHIFT;
-            switch (stbc) {
-                case IEEE80211_RADIOTAP_MCS_STBC_1:ss<<"STBC_1";break;
-                case IEEE80211_RADIOTAP_MCS_STBC_2:ss<<"STBC_2";break;
-                case IEEE80211_RADIOTAP_MCS_STBC_3:ss<<"STBC_3";break;
-                case IEEE80211_RADIOTAP_MCS_STBC_SHIFT:ss<<"STBC_SHIFT";break;
-                default:ss<<"Unknown";
-            }
-            ss<<"],";
-        }
-        ss<<"]";
-        return ss.str();
-    }
+
     std::string flagsIEEE80211_RADIOTAP_CHANNEL(const uint8_t flags){
         std::stringstream ss;
         ss<<"All IEEE80211_RADIOTAP_CHANNEL values: [";
@@ -246,6 +201,45 @@ namespace RadiotapHelper{
         return ss.str();
     }
 
+    static std::string toStringRadiotapMCS(uint8_t known,uint8_t flags,uint8_t mcs){
+        std::stringstream ss;
+        ss<<"MCS Stuff: [";
+        if(known &  IEEE80211_RADIOTAP_MCS_HAVE_BW) {
+            ss<<"HAVE_BW[";
+            uint8_t bandwidth= flags & IEEE80211_RADIOTAP_MCS_BW_MASK;
+            switch (bandwidth) {
+                case IEEE80211_RADIOTAP_MCS_BW_20:ss<<"BW_20";break;
+                case IEEE80211_RADIOTAP_MCS_BW_40:ss<<"BW_40";break;
+                case IEEE80211_RADIOTAP_MCS_BW_20L:ss<<"BW_20L";break;
+                case IEEE80211_RADIOTAP_MCS_BW_20U:ss<<"BW_20U";break;
+                default:ss<<"Unknown";
+            }
+            ss<<"],";
+        }
+        if(known & IEEE80211_RADIOTAP_MCS_HAVE_MCS) {
+            ss<<"HAVE_MCS["<<(int)mcs<<"],";
+        }
+        if(known & IEEE80211_RADIOTAP_MCS_HAVE_GI) {
+            uint8_t gi= flags & IEEE80211_RADIOTAP_MCS_SGI;
+            ss<<"HAVE_GI["<<(gi==0 ? "long":"short")<<"],";
+        }
+        if(known & IEEE80211_RADIOTAP_MCS_HAVE_FMT) {
+            uint8_t fmt=flags & IEEE80211_RADIOTAP_MCS_FMT_GF;
+            ss<<"HAVE_FMT["<<(fmt==0 ? "mixed":"greenfield")<<"],";
+        }
+        if(known & IEEE80211_RADIOTAP_MCS_HAVE_FEC) {
+            uint8_t fec_type=flags & IEEE80211_RADIOTAP_MCS_FEC_LDPC;
+            ss<<"HAVE_FEC["<<(fec_type==0 ? "BBC":"LDPC")<<"]";
+        }
+        if(known & IEEE80211_RADIOTAP_MCS_HAVE_STBC ) {
+            uint8_t stbc=flags<<IEEE80211_RADIOTAP_MCS_STBC_SHIFT;
+            ss<<"HAVE_STBC["<<(int)stbc<<"],";
+        }
+        ss<<"]";
+        return ss.str();
+    }
+
+
     static void debugRadiotapHeader(const uint8_t *pkt,int pktlen){
         struct ieee80211_radiotap_iterator iterator{};
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
@@ -286,11 +280,12 @@ namespace RadiotapHelper{
                     break;
                 case IEEE80211_RADIOTAP_MCS:
                     //std::cout<<"IEEE80211_RADIOTAP_MCS\n";
-                    std::cout<<flagsIEEE80211_RADIOTAP_MCS(*iterator.this_arg)<<"\n";
-                    {
-                        uint8_t lol=iterator.this_arg[0];
-                        std::cout<<"LOL "<<(int)lol<<"\n";
-                    }
+                {
+                    uint8_t known=iterator.this_arg[0];
+                    uint8_t flags=iterator.this_arg[1];
+                    uint8_t mcs=iterator.this_arg[2];
+                    std::cout<<toStringRadiotapMCS(known,flags,mcs)<<"\n";
+                }
                     break;
                 case IEEE80211_RADIOTAP_RX_FLAGS:
                     //std::cout<<"IEEE80211_RADIOTAP_RX_FLAGS\n";
