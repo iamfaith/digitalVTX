@@ -158,6 +158,10 @@ public:
     std::optional<std::vector<uint8_t>> decryptPacket(const WBDataPacket& wbDataPacket){
         return decryptPacket(wbDataPacket.wbDataHeader,wbDataPacket.payload,wbDataPacket.payloadSize);
     }
+
+    std::optional<WBDataPacket> lol(const WBDataPacket& wbDataPacket){
+        return WBDataPacket{wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize};
+    }
 };
 
 #endif //ENCRYPTION_HPP

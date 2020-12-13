@@ -133,7 +133,7 @@ static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
 // This one does not specify if it is an FEC data or FEC correction packet (see WBDataHeader / FECDataHeader)
 // but it is always of type WFB_PACKET_DATA
-// NOTE: This cannot be casted directly from / to a memory location (unlike the classes above)
+// NOTE: This cannot be casted directly from / to a memory location (unlike the classes above) since the payload size is dynamic
 // Use the constructor(s) or use the createFromRawMemory() method
 class WBDataPacket{
 public:
@@ -150,14 +150,14 @@ public:
         return {wbDataHeader->nonce,&data[sizeof(WBDataHeader)],dataSize-sizeof(WBDataHeader)};
     }
     // don't allow copying or moving, since creating a new one is light enough
-    WBDataPacket(const WBDataPacket&)=delete;
-    WBDataPacket(const WBDataPacket&&)=delete;
+    //WBDataPacket(const WBDataPacket&)=delete;
+    //WBDataPacket(const WBDataPacket&&)=delete;
 public:
     // each data packet has the WBDataHeader
     const WBDataHeader wbDataHeader;
     // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
     // If this is an FEC correction packet, that's not the case
-    // Use the "Encryptor" class to encrypt the payload
+    // Use the "Encryptor" class to encrypt / decrypt the payload
     const uint8_t* payload;
     const std::size_t payloadSize;
     // this one is for the c++-constructor only
