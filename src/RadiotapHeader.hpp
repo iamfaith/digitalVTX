@@ -68,7 +68,7 @@ struct RadiotapHeaderWithTxFlagsAndMCS{
     uint16_t txFlags=0;
     //http://www.radiotap.org/fields/MCS.html
     // mcs is more than just the mcs index. Be carefully !
-    Radiotap::MCS mcs{0,0,0};
+    Radiotap::MCS mcs{};
 }__attribute__ ((packed));
 
 
@@ -82,9 +82,9 @@ public:
     // these are the params in use by OpenHD right now
     struct UserSelectableParams{
         int bandwidth;
-        int short_gi;
+        bool short_gi;
         int stbc;
-        int ldpc;
+        bool ldpc;
         int mcs_index;
     };
     // Make sure that this is the only constructor

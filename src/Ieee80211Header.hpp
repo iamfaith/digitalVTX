@@ -79,7 +79,7 @@ static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TR
 // hmmmm ....
 // https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L175
 // https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_telemetry.c#L144
-namespace Lulatsch{
+namespace OldWifibroadcastIeee8021Header{
     static uint8_t u8aIeeeHeader_data[] = {
             0x08, 0x02, 0x00, 0x00,             // frame control field (2 bytes), duration (2 bytes)
             0xff, 0x00, 0x00, 0x00, 0x00, 0x00, // 1st byte of MAC will be overwritten with encoded port

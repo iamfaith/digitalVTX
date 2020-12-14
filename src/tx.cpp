@@ -181,7 +181,7 @@ int main(int argc, char *const *argv) {
                 params.bandwidth = atoi(optarg);
                 break;
             case 'G':
-                params.short_gi = (optarg[0] == 's' || optarg[0] == 'S') ? 1 : 0;
+                params.short_gi = (optarg[0] == 's' || optarg[0] == 'S');
                 break;
             case 'S':
                 params.stbc = atoi(optarg);
