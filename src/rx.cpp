@@ -362,10 +362,11 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 //#define USE_PCAP_LOOP_INSTEAD_OF_NEXT
 
 PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
-    ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
+    //ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
 #ifndef USE_PCAP_LOOP_INSTEAD_OF_NEXT
-    fd = pcap_get_selectable_fd(ppcap);
+    //fd = pcap_get_selectable_fd(ppcap);
 #endif
+    fd=SocketHelper::openWifiInterfaceAsRx(wlan);
 }
 
 PcapReceiver::~PcapReceiver() {
@@ -375,7 +376,7 @@ PcapReceiver::~PcapReceiver() {
 
 void PcapReceiver::loop_iter() {
     // loop while incoming queue is not empty
-    int nPacketsPolledUntilQueueWasEmpty=0;
+    /*int nPacketsPolledUntilQueueWasEmpty=0;
     for (;;){
         struct pcap_pkthdr hdr{};
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
@@ -394,6 +395,17 @@ void PcapReceiver::loop_iter() {
         timeForParsingPackets.printInIntervalls(std::chrono::seconds(1));
 #endif
         nPacketsPolledUntilQueueWasEmpty++;
+    }*/
+    while(1) {
+        std::cout<<"StartX\n";
+        // recvfrom is used to read data from a socket
+        std::array<uint8_t, 1024 * 4> buffer;
+        auto packet_size = recvfrom(fd, buffer.data(), buffer.size(), 0, NULL, NULL);
+        if (packet_size == -1) {
+            std::cout << "Failed to get packets\n";
+        } else {
+            std::cout << "Got packet" << packet_size << "\n";
+        }
     }
 }
 
@@ -434,6 +446,8 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 #ifdef USE_PCAP_LOOP_INSTEAD_OF_NEXT
     rx[0]->xLoop();
 #else
+    rx[0]->loop_iter();
+
     std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();

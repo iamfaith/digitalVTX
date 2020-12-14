@@ -103,6 +103,7 @@ public:
 // Processing of data is done by the Aggregator
 class PcapReceiver {
 public:
+    //typedef std::function<void(const WBDataPacket &wbDataPacket)> PROCESS_PACKET_CALLBACK;
     PcapReceiver(const std::string& wlan, int wlan_idx, int radio_port, Aggregator *agg);
 
     ~PcapReceiver();
@@ -128,4 +129,3 @@ public:
     Chronometer timeForParsingPackets{"PP"};
 #endif
 };
-
