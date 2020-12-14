@@ -109,18 +109,10 @@ namespace RawTransmitterHelper{
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
-    static void writeAntennaStats(antenna_stat_t& antenna_stat,const uint8_t WLAN_IDX,const std::array<uint8_t,RX_ANT_MAX>& ant, const std::array<int8_t ,RX_ANT_MAX>& rssi){
-        for (int i = 0; i < RX_ANT_MAX && ant[i] != 0xff; i++) {
-            // key: addr + port + WLAN_IDX + ant
-            uint64_t key = 0;
-            key |= ((uint64_t) WLAN_IDX << 8 | (uint64_t) ant[i]);
 
-            antenna_stat[key].addRSSI(rssi[i]);
-        }
-    }
     struct ParsedRxPcapPacket{
-        // Could be any of size=1 or size== N of antennas of this adapter.
-        std::vector<DBMSignalForAntenna> allAntennaValues;
+        // Could be any of size=1 to size== N where N is the number of Antennas of this adapter
+        std::vector<RssiForAntenna> allAntennaValues;
         const Ieee80211Header* ieee80211Header;
         const uint8_t* payload;
         const std::size_t payloadSize;
@@ -139,7 +131,7 @@ namespace RawTransmitterHelper{
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
         uint8_t currentAntenna=0;
         // not confirmed yet, but one pcap packet might include stats for multiple antennas
-        std::vector<DBMSignalForAntenna> allAntennaValues;
+        std::vector<RssiForAntenna> allAntennaValues;
         while (ret == 0 ) {
             ret = ieee80211_radiotap_iterator_next(&iterator);
             if (ret){
@@ -215,15 +207,17 @@ Aggregator::~Aggregator() {
 }
 
 void Aggregator::dump_stats(FILE *fp) {
+    // first forward to OpenHD
+    openHdStatisticsWriter.writeStats({
+        count_p_all,count_p_dec_err,count_p_dec_ok,count_p_fec_recovered,count_p_lost,count_p_bad,rssiForWifiCard
+    });
     //timestamp in ms
     const uint64_t runTime=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
-
-    for (auto & it : antenna_stat) {
-        fprintf(fp, "%" PRIu64 "\tANT\t%" PRIx64 "\t%d:%d:%d:%d\n", runTime, it.first, it.second.count_all,
-                it.second.rssi_min, it.second.rssi_sum / it.second.count_all, it.second.rssi_max);
+    for(auto& wifiCard : rssiForWifiCard){
+        if(wifiCard.count_all==0)continue;
+        std::cout<<"RSSI Count|Min|Max|Avg: "<<(int)wifiCard.count_all<<":"<<(int)wifiCard.rssi_min<<":"<<(int)wifiCard.rssi_max<<":"<<(int)wifiCard.getAverage()<<"\n";
+        //wifiCard.reset();
     }
-    antenna_stat.clear();
-
     fprintf(fp, "%" PRIu64 "\tPKT\t%u:%u:%u:%u:%u:%u\n", runTime, count_p_all, count_p_dec_err, count_p_dec_ok,
             count_p_fec_recovered, count_p_lost, count_p_bad);
     fflush(fp);
@@ -269,7 +263,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
     if(parsedPacket->ieee80211Header->getRadioPort()!=RADIO_PORT) {
         // If we have the proper filter on pcap only packets with the right radiotap port should pass through
-        //std::cout<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
+        std::cerr<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
         //RadiotapHelper::debugRadiotapHeader(pkt,hdr.caplen);
         return;
     }
@@ -284,6 +278,15 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
+    if(parsedPacket->allAntennaValues.size()>MAX_N_ANTENNAS_PER_WIFI_CARD){
+        std::cerr<<"Wifi card with "<<parsedPacket->allAntennaValues.size()<<" antennas\n";
+    }
+    auto& thisWifiCard=rssiForWifiCard[WLAN_IDX];
+    for(const auto& value : parsedPacket->allAntennaValues){
+        // don't care from which antenna the value came
+        thisWifiCard.addRSSI(value.rssi);
+    }
+
     //RawTransmitterHelper::writeAntennaStats(antenna_stat, WLAN_IDX, parsedPacket->antenna, parsedPacket->rssi);
     const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
     //std::cout<<"RADIO_PORT"<<(int)tmpHeader->getRadioPort()<<" IEEE_SEQ_NR "<<(int)tmpHeader->getSequenceNumber()<<"\n";

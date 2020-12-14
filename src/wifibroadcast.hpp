@@ -173,6 +173,7 @@ struct LatencyTestingPacket{
 // The final packet size ( radiotap header + iee80211 header + payload ) is never bigger than that
 // the reasoning behind this value: https://github.com/svpcom/wifibroadcast/issues/69
 static constexpr const auto MAX_PCAP_PACKET_SIZE=1510;
+// Max n of wifi cards connected as an RX array
 static constexpr const auto MAX_RX_INTERFACES=8;
 
 // 1510-(13+24+9+16+2)

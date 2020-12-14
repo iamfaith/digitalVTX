@@ -28,6 +28,7 @@
 #include <string.h>
 #include "wifibroadcast.hpp"
 #include <stdexcept>
+#include <utility>
 #include "Encryption.hpp"
 #include "FEC.hpp"
 #include "Helper.hpp"
@@ -35,36 +36,16 @@
 #include "HelperSources/TimeHelper.hpp"
 
 static constexpr const auto RX_ANT_MAX=4;
+// A wifi card with more than 4 antennas still has to be found :)
+static constexpr const auto MAX_N_ANTENNAS_PER_WIFI_CARD=4;
+//
 
-// Stores the min, max and average of the rssi values reported for one antenna
-class RSSIForAntenna {
-public:
-    RSSIForAntenna()=default;
-    void addRSSI(int8_t rssi) {
-        if (count_all == 0) {
-            rssi_min = rssi;
-            rssi_max = rssi;
-        } else {
-            rssi_min = std::min(rssi, rssi_min);
-            rssi_max = std::max(rssi, rssi_max);
-        }
-        rssi_sum += rssi;
-        count_all += 1;
-    }
-    int32_t count_all=0;
-    int32_t rssi_sum=0;
-    int8_t rssi_min=0;
-    int8_t rssi_max=0;
-};
-
-struct Entry{
-    const uint8_t wifiCardIdx;
+struct RssiForAntenna{
+    // which antenna the value refers to
     const uint8_t antennaIdx;
+    // https://www.radiotap.org/fields/Antenna%20signal.html
+    const int8_t rssi;
 };
-// For each WIFI card
-// For each antenna(s) of this wifi card
-// store the min,max and average RSSI of the last N packets
-typedef std::unordered_map<Entry, RSSIForAntenna> antenna_stat_t;
 
 // This class processes the received wifi data (decryption and FEC)
 // and forwards it via UDP.
@@ -89,7 +70,7 @@ private:
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
     Decryptor mDecryptor;
     int sockfd;
-    antenna_stat_t antenna_stat;
+    std::array<RSSIForWifiCard,MAX_RX_INTERFACES> rssiForWifiCard;
     uint32_t count_p_all=0;
     uint32_t count_p_bad=0;
     uint32_t count_p_dec_err=0;
