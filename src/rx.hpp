@@ -94,6 +94,8 @@ private:
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
     AvgCalculator avgPcapToApplicationLatency;
     AvgCalculator2 avgLatencyBeaconPacketLatency;
+public:
+    BaseAvgCalculator<int> nOfPacketsPolledFromPcapQueuePerIteration;
 #endif
 };
 
@@ -122,5 +124,8 @@ public:
     // this fd is created by pcap
     int fd;
     pcap_t *ppcap;
+#ifdef ENABLE_ADVANCED_DEBUGGING
+    Chronometer timeForParsingPackets{"PP"};
+#endif
 };
 

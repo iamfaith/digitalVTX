@@ -94,16 +94,15 @@ namespace RawTransmitterHelper{
                 std::cout<<wlan<<" has DLT_IEEE802_11_RADIO Encap\n";
                 program = StringFormat::convert("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
                 break;
-
             default:
                 throw std::runtime_error(StringFormat::convert("unknown encapsulation on %s", wlan.c_str()));
         }
         if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
             throw std::runtime_error(StringFormat::convert("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
         }
-        //if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
-        //    throw std::runtime_error(StringFormat::convert("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
-        //}
+        if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
+            throw std::runtime_error(StringFormat::convert("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
+        }
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
@@ -254,7 +253,9 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_lost = 0;
     count_p_bad = 0;*/
 #ifdef ENABLE_ADVANCED_DEBUGGING
-    //std::cout<<"avgPcapToApplicationLatency:"<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
+    std::cout<<"avgPcapToApplicationLatency: "<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
+    std::cout<<"nOfPacketsPolledFromPcapQueuePerIteration: "<<nOfPacketsPolledFromPcapQueuePerIteration.getAvgReadable()<<"\n";
+    nOfPacketsPolledFromPcapQueuePerIteration.reset();
     //std::cout<<"avgLatencyBeaconPacketLatency"<<avgLatencyBeaconPacketLatency.getAvgReadable()<<"\n";
     //std::cout<<"avgLatencyBeaconPacketLatencyX:"<<avgLatencyBeaconPacketLatency.getNValuesLowHigh(20)<<"\n";
     //std::cout<<"avgLatencyPacketInQueue"<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
@@ -277,8 +278,8 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
     if(parsedPacket->ieee80211Header->getRadioPort()!=RADIO_PORT) {
         // If we have the proper filter on pcap only packets with the right radiotap port should pass through
-        std::cout<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
-        RadiotapHelper::debugRadiotapHeader(pkt,hdr.caplen);
+        //std::cout<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
+        //RadiotapHelper::debugRadiotapHeader(pkt,hdr.caplen);
         return;
     }
     // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
@@ -381,10 +382,17 @@ void PcapReceiver::loop_iter() {
         if (pkt == nullptr) {
 #ifdef ENABLE_ADVANCED_DEBUGGING
             //std::cout<<"N of packets polled from pcap queue until empty: "<<nPacketsPolledUntilQueueWasEmpty<<"\n";
+            agg->nOfPacketsPolledFromPcapQueuePerIteration.add(nPacketsPolledUntilQueueWasEmpty);
 #endif
             break;
         }
+        timeForParsingPackets.start();
         agg->processPacket(WLAN_IDX,hdr,pkt);
+        timeForParsingPackets.stop();
+#ifdef ENABLE_ADVANCED_DEBUGGING
+        // how long the cpu spends on agg.processPacket
+        timeForParsingPackets.printInIntervalls(std::chrono::seconds(1));
+#endif
         nPacketsPolledUntilQueueWasEmpty++;
     }
 }
