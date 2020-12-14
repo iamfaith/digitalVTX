@@ -154,11 +154,7 @@ int main(int argc, char *const *argv) {
     uint8_t k = 8, n = 12, radio_port = 1;
     int udp_port = 5600;
 
-    int bandwidth = 20;
-    int short_gi = 0;
-    int stbc = 0;
-    int ldpc = 0;
-    int mcs_index = 1;
+    RadiotapHeader::UserSelectableParams params{20, 0, 0, 0, 1};
 
     std::string keypair = "drone.key";
 
@@ -182,19 +178,19 @@ int main(int argc, char *const *argv) {
                 radio_port = atoi(optarg);
                 break;
             case 'B':
-                bandwidth = atoi(optarg);
+                params.bandwidth = atoi(optarg);
                 break;
             case 'G':
-                short_gi = (optarg[0] == 's' || optarg[0] == 'S') ? 1 : 0;
+                params.short_gi = (optarg[0] == 's' || optarg[0] == 'S') ? 1 : 0;
                 break;
             case 'S':
-                stbc = atoi(optarg);
+                params.stbc = atoi(optarg);
                 break;
             case 'L':
-                ldpc = atoi(optarg);
+                params.ldpc = atoi(optarg);
                 break;
             case 'M':
-                mcs_index = atoi(optarg);
+                params.mcs_index = atoi(optarg);
                 break;
             default: /* '?' */
             show_usage:
@@ -203,8 +199,8 @@ int main(int argc, char *const *argv) {
                         argv[0]);
                 fprintf(stderr,
                         "Default: K='%s', k=%d, n=%d, udp_port=%d, radio_port=%d bandwidth=%d guard_interval=%s stbc=%d ldpc=%d mcs_index=%d\n",
-                        keypair.c_str(), k, n, udp_port, radio_port, bandwidth, short_gi ? "short" : "long", stbc, ldpc,
-                        mcs_index);
+                        keypair.c_str(), k, n, udp_port, radio_port,params.bandwidth,params.short_gi ? "short" : "long",params.stbc,params.ldpc,
+                        params.mcs_index);
                 fprintf(stderr, "Radio MTU: %lu\n", (unsigned long) MAX_PAYLOAD_SIZE);
                 fprintf(stderr, "WFB version "
                 WFB_VERSION
@@ -216,18 +212,11 @@ int main(int argc, char *const *argv) {
         goto show_usage;
     }
     const auto wlan=argv[optind];
-    RadiotapHeader radiotapHeader;
-    radiotapHeader.writeParams(bandwidth, short_gi, stbc, ldpc, mcs_index);
+    RadiotapHeader radiotapHeader{params};
+
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&radiotapHeader,sizeof(RadiotapHeader));
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader80211n, sizeof(OldRadiotapHeaders::u8aRadiotapHeader80211n));
-    RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader, sizeof(OldRadiotapHeaders::u8aRadiotapHeader));
-
-    RadiotapHelper::debugRadiotapHeader((uint8_t*)&mRadiotapHeader, sizeof(mRadiotapHeader));
-
-    const uint8_t* begin=(uint8_t*)&mRadiotapHeader;
-    RadiotapHeader radiotapHeader2;
-    std::cout << StringHelper::vectorAsString(std::vector<uint8_t>(begin,begin+sizeof(RadiotapHeaderWithTxFlagsAndMCS))) << "\n";
-    std::cout<<StringHelper::vectorAsString(std::vector<uint8_t>(radiotapHeader2.data.begin(),radiotapHeader2.data.end()))<<"\n";
+    //RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader, sizeof(OldRadiotapHeaders::u8aRadiotapHeader));
 
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(

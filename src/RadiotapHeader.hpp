@@ -30,6 +30,7 @@ extern "C"{
 #include "ExternalCSources/radiotap.h"
 };
 
+// everything must be in little endian byte order http://www.radiotap.org/
 static_assert(__BYTE_ORDER == __LITTLE_ENDIAN,"This code is written for little endian only !");
 
 
@@ -51,12 +52,10 @@ namespace Radiotap{
     struct MCS{
         uint8_t known=0;
         uint8_t flags=0;
-        uint8_t mcs=0;
+        uint8_t modulationIndex=0;
     }__attribute__ ((packed));
 }
 
-// This is what we use to inject packets into the tx
-// everything must be in little endian byte order http://www.radiotap.org/
 
 // To inject packets we need 2 radiotap fields: "TX flags"  and the "MCS field"
 struct RadiotapHeaderWithTxFlagsAndMCS{
@@ -64,100 +63,101 @@ struct RadiotapHeaderWithTxFlagsAndMCS{
     uint8_t padding=0;
     uint16_t length=13;
     // http://www.radiotap.org/
-    uint32_t presence= Radiotap::writePresenceBitfield({IEEE80211_RADIOTAP_TX_FLAGS, IEEE80211_RADIOTAP_MCS});
+    uint32_t presence=0;
     // http://www.radiotap.org/fields/TX%20flags.html
-    uint16_t txFlags=IEEE80211_RADIOTAP_F_TX_NOACK;
+    uint16_t txFlags=0;
     //http://www.radiotap.org/fields/MCS.html
     // mcs is more than just the mcs index. Be carefully !
-    Radiotap::MCS mcs{};
+    Radiotap::MCS mcs{0,0,0};
 }__attribute__ ((packed));
 
-RadiotapHeaderWithTxFlagsAndMCS mRadiotapHeader;
 
-// Wrapper around the radiotap header (declared as raw array initially)
-// Used for injecting packets with the right parameters
+// To inject packets we need 2 a proper radiotap header. The fields of importance for use are:
+// 1) "TX flags"
+// 2) "MCS field"
+// This class holds the bytes for a proper radiotap header after constructing it with the user-selectable Params
 class RadiotapHeader{
 public:
-    static constexpr uint8_t MY_RADIOTAP_FLAG_MCS_KNOWN=(IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC);
     static constexpr auto SIZE_BYTES=13;
-    // offset of MCS_FLAGS and MCS index
-    static constexpr const auto MCS_FLAGS_OFF=11;
-    static constexpr const auto MCS_IDX_OFF=12;
-    // raw data buffer
-    // unfortunately I do not know what these 'default bytes' mean
-    // As far as I can tell this is in the 80211.n format ?!
-    std::array<uint8_t,SIZE_BYTES> data={
-            0x00, 0x00, // <-- radiotap version
-            0x0d, 0x00, // <- radiotap header length
-            0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
-            0x08, 0x00,  // RADIOTAP_F_TX_NOACK
-            MY_RADIOTAP_FLAG_MCS_KNOWN ,    // for everything in ieee80211_radiotap_mcs_have
-            0x00,              // for everything in ieee80211_radiotap_mcs_flags
-            0x00               //mcs_index, doesn't work with Atheros properly
-    };
     // these are the params in use by OpenHD right now
-    struct OpenHDParams{
+    struct UserSelectableParams{
         int bandwidth;
         int short_gi;
         int stbc;
         int ldpc;
         int mcs_index;
     };
-    // default constructor
-    RadiotapHeader()=default;
-    // write the user-selected parameters
-    void writeParams(const OpenHDParams& params){
-        if(params.mcs_index<0){
+    // Make sure that this is the only constructor
+    explicit RadiotapHeader(const UserSelectableParams& params){
+        if(params.mcs_index<0 || params.mcs_index>7){
             throw std::runtime_error(StringFormat::convert("Unsupported MCS index %d",params.mcs_index));
         }
-        uint8_t flags = 0;
-        switch(params.bandwidth) {
+        if(!(params.bandwidth==20 || params.bandwidth==40)){
+            throw std::runtime_error(StringFormat::convert("Unsupported bandwidth: %d",params.bandwidth));
+        }
+        if(!(params.stbc==0 || params.stbc==1 || params.stbc==2)){
+            throw std::runtime_error(StringFormat::convert("Unsupported STBC: %d",params.stbc));
+        }
+        // size is fixed here
+        radiotapHeaderData.length=13;
+        // we use 2 radiotap fields, tx flags and mcs field
+        radiotapHeaderData.presence= Radiotap::writePresenceBitfield({IEEE80211_RADIOTAP_TX_FLAGS, IEEE80211_RADIOTAP_MCS});
+
+        // in wifibroadcast we never want ack from the receiver
+        radiotapHeaderData.txFlags=IEEE80211_RADIOTAP_F_TX_NOACK;
+
+        // now onto the "MCS field"
+        radiotapHeaderData.mcs.known=(IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC);
+        // write the mcs index
+        radiotapHeaderData.mcs.modulationIndex=params.mcs_index;
+
+        switch (params.bandwidth) {
             case 20:
-                flags |= IEEE80211_RADIOTAP_MCS_BW_20;
+                radiotapHeaderData.mcs.flags |=IEEE80211_RADIOTAP_MCS_BW_20;
                 break;
             case 40:
-                flags |= IEEE80211_RADIOTAP_MCS_BW_40;
+                radiotapHeaderData.mcs.flags |=IEEE80211_RADIOTAP_MCS_BW_40;
                 break;
             default:
-                throw std::runtime_error(StringFormat::convert("Unsupported bandwidth: %d",params.bandwidth));
+                assert(true);
         }
+
         if(params.short_gi){
-            flags |= IEEE80211_RADIOTAP_MCS_SGI;
+            radiotapHeaderData.mcs.flags |=IEEE80211_RADIOTAP_MCS_SGI;
         }
+
+        if(params.ldpc){
+            radiotapHeaderData.mcs.flags |= IEEE80211_RADIOTAP_MCS_FEC_LDPC;
+        }
+
         switch(params.stbc) {
             case 0:
                 break;
             case 1:
-                flags |= (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
+                radiotapHeaderData.mcs.flags |= (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
                 break;
             case 2:
-                flags |= (IEEE80211_RADIOTAP_MCS_STBC_2 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
+                radiotapHeaderData.mcs.flags |= (IEEE80211_RADIOTAP_MCS_STBC_2 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
                 break;
             case 3:
-                flags |= (IEEE80211_RADIOTAP_MCS_STBC_3 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
+                radiotapHeaderData.mcs.flags |= (IEEE80211_RADIOTAP_MCS_STBC_3 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT);
                 break;
             default:
-                std::cerr<<"Unsupported STBC type: "<<params.stbc;
-                exit(1);
+               assert(true);
         }
-        if(params.ldpc){
-            flags |= IEEE80211_RADIOTAP_MCS_FEC_LDPC;
-        }
-        data[MCS_FLAGS_OFF]=flags;
-        data[MCS_IDX_OFF]=params.mcs_index;
-    }
-    void writeParams(int bandwidth,int short_gi,int stbc,int ldpc,int mcs_index){
-        writeParams({bandwidth,short_gi,stbc,ldpc,mcs_index});
-    }
+    };
     const uint8_t* getData()const{
-        return data.data();
+        return (const uint8_t*)&radiotapHeaderData;
     }
     constexpr std::size_t getSize()const{
-        return data.size();
+        return 13;
     }
+private:
+    RadiotapHeaderWithTxFlagsAndMCS radiotapHeaderData;
 }__attribute__ ((packed));
 static_assert(sizeof(RadiotapHeader) == RadiotapHeader::SIZE_BYTES, "ALWAYS TRUE");
 static_assert(sizeof(RadiotapHeaderWithTxFlagsAndMCS) == RadiotapHeader::SIZE_BYTES, "ALWAYS TRUE");
+
 
 namespace RadiotapHelper{
     std::string toStringRadiotapFlags(uint8_t flags){
