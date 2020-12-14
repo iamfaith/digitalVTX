@@ -154,7 +154,7 @@ int main(int argc, char *const *argv) {
     uint8_t k = 8, n = 12, radio_port = 1;
     int udp_port = 5600;
 
-    RadiotapHeader::UserSelectableParams params{20, 0, 0, 0, 1};
+    RadiotapHeader::UserSelectableParams params{20, false, 0, false, 1};
 
     std::string keypair = "drone.key";
 
