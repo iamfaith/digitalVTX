@@ -33,10 +33,6 @@ extern "C"{
 // everything must be in little endian byte order http://www.radiotap.org/
 static_assert(__BYTE_ORDER == __LITTLE_ENDIAN,"This code is written for little endian only !");
 
-
-// Default is MCS#1 -- QPSK 1/2 40MHz SGI -- 30 Mbit/s
-// MCS_FLAGS = (IEEE80211_RADIOTAP_MCS_BW_40 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
-
 namespace Radiotap{
     // https://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit
     static uint32_t writePresenceBitfield(const std::vector<ieee80211_radiotap_presence>& valuesToBePresent){
