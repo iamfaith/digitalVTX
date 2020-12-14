@@ -362,22 +362,14 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
 }
 
-//#define USE_RAW_INSTEAD_OF_PCAP
-
 PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
-#ifdef USE_RAW_INSTEAD_OF_PCAP
-    fd=SocketHelper::openWifiInterfaceAsRx(wlan);
-#else
     ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
     fd = pcap_get_selectable_fd(ppcap);
-#endif
 }
 
 PcapReceiver::~PcapReceiver() {
     close(fd);
-#ifndef USE_RAW_INSTEAD_OF_PCAP
     pcap_close(ppcap);
-#endif
 }
 
 void PcapReceiver::loop_iter() {
@@ -405,24 +397,6 @@ void PcapReceiver::loop_iter() {
 }
 
 
-#ifdef USE_RAW_INSTEAD_OF_PCAP
-
-void PcapReceiver::xLoop() {
-    while(1) {
-        std::cout<<"StartX\n";
-        // recvfrom is used to read data from a socket
-        std::array<uint8_t, 1024 * 4> buffer;
-        auto packet_size = recvfrom(fd, buffer.data(), buffer.size(), 0, NULL, NULL);
-        if (packet_size == -1) {
-            std::cout << "Failed to get packets\n";
-        } else {
-            std::cout << "Got packet" << packet_size << "\n";
-        }
-    }
-}
-#endif
-
-
 void
 radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval) {
     const int N_RECEIVERS = rxInterfaces.size();
@@ -440,9 +414,6 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
         ss<<rxInterfaces[i]<<" ";
     }
     std::cout<<ss.str()<<"\n";
-#ifdef USE_RAW_INSTEAD_OF_PCAP
-    rx[0]->xLoop();
-#else
     std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
@@ -473,7 +444,6 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
             }
         }
     }
-#endif
 }
 
 
