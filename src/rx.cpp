@@ -78,6 +78,9 @@ namespace RawTransmitterHelper{
         //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
         if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
+        // Important: Without enabling this mode pcap might buffer quite a lot of packets !
+        // https://www.tcpdump.org/manpages/pcap_set_immediate_mode.3pcap.html
+        if(pcap_set_immediate_mode(ppcap,true)!=0)throw std::runtime_error(StringFormat::convert("pcap_set_immediate_mode failed: %s", errbuf));
         if (pcap_activate(ppcap) != 0) throw std::runtime_error(StringFormat::convert("pcap_activate failed: %s", pcap_geterr(ppcap)));
         if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(StringFormat::convert("set_nonblock failed: %s", errbuf));
 
