@@ -359,24 +359,27 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
 }
 
-//#define USE_PCAP_LOOP_INSTEAD_OF_NEXT
+//#define USE_RAW_INSTEAD_OF_PCAP
 
 PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
-    //ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
-#ifndef USE_PCAP_LOOP_INSTEAD_OF_NEXT
-    //fd = pcap_get_selectable_fd(ppcap);
-#endif
+#ifdef USE_RAW_INSTEAD_OF_PCAP
     fd=SocketHelper::openWifiInterfaceAsRx(wlan);
+#else
+    ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
+    fd = pcap_get_selectable_fd(ppcap);
+#endif
 }
 
 PcapReceiver::~PcapReceiver() {
     close(fd);
+#ifndef USE_RAW_INSTEAD_OF_PCAP
     pcap_close(ppcap);
+#endif
 }
 
 void PcapReceiver::loop_iter() {
     // loop while incoming queue is not empty
-    /*int nPacketsPolledUntilQueueWasEmpty=0;
+    int nPacketsPolledUntilQueueWasEmpty=0;
     for (;;){
         struct pcap_pkthdr hdr{};
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
@@ -395,7 +398,13 @@ void PcapReceiver::loop_iter() {
         timeForParsingPackets.printInIntervalls(std::chrono::seconds(1));
 #endif
         nPacketsPolledUntilQueueWasEmpty++;
-    }*/
+    }
+}
+
+
+#ifdef USE_RAW_INSTEAD_OF_PCAP
+
+void PcapReceiver::xLoop() {
     while(1) {
         std::cout<<"StartX\n";
         // recvfrom is used to read data from a socket
@@ -407,21 +416,6 @@ void PcapReceiver::loop_iter() {
             std::cout << "Got packet" << packet_size << "\n";
         }
     }
-}
-
-
-#ifdef USE_PCAP_LOOP_INSTEAD_OF_NEXT
-static void handler(u_char *user, const struct pcap_pkthdr *hdr,
-                    const u_char * bytes){
-    //const PcapReceiver* self2=(PcapReceiver*)self;
-    //Aggregator* agg=(Aggregator*)user;
-    PcapReceiver* self=(PcapReceiver*)user;
-    //agg->processPacket(0,*hdr,bytes);
-    self->agg->processPacket(self->WLAN_IDX,*hdr,bytes);
-}
-
-void PcapReceiver::xLoop() {
-    pcap_loop(ppcap,0,handler, (u_char*) this);
 }
 #endif
 
@@ -443,11 +437,9 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
         ss<<rxInterfaces[i]<<" ";
     }
     std::cout<<ss.str()<<"\n";
-#ifdef USE_PCAP_LOOP_INSTEAD_OF_NEXT
+#ifdef USE_RAW_INSTEAD_OF_PCAP
     rx[0]->xLoop();
 #else
-    rx[0]->loop_iter();
-
     std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
