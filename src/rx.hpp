@@ -110,8 +110,6 @@ public:
 
     void loop_iter();
 
-    void xLoop();
-
     int getfd() const { return fd; }
 
 public:
