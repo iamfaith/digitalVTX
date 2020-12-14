@@ -35,6 +35,7 @@ static_assert(__BYTE_ORDER == __LITTLE_ENDIAN,"This code is written for little e
 
 namespace Radiotap{
     // https://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit
+    // http://www.radiotap.org/
     static uint32_t writePresenceBitfield(const std::vector<ieee80211_radiotap_presence>& valuesToBePresent){
         uint32_t present=0;
         for(const auto & valueToBePresent:valuesToBePresent){
@@ -42,7 +43,6 @@ namespace Radiotap{
         }
         return present;
     }
-    // return present & (1<<valueToCheck);
 
     // http://www.radiotap.org/fields/MCS.html
     struct MCS{
@@ -68,7 +68,7 @@ struct RadiotapHeaderWithTxFlagsAndMCS{
 }__attribute__ ((packed));
 
 
-// To inject packets we need 2 a proper radiotap header. The fields of importance for use are:
+// To inject packets we need a proper radiotap header. The fields of importance for use are:
 // 1) "TX flags"
 // 2) "MCS field"
 // This class holds the bytes for a proper radiotap header after constructing it with the user-selectable Params
@@ -95,7 +95,7 @@ public:
             throw std::runtime_error(StringFormat::convert("Unsupported STBC: %d",params.stbc));
         }
         // size is fixed here
-        radiotapHeaderData.length=13;
+        radiotapHeaderData.length=SIZE_BYTES;
         // we use 2 radiotap fields, tx flags and mcs field
         radiotapHeaderData.presence= Radiotap::writePresenceBitfield({IEEE80211_RADIOTAP_TX_FLAGS, IEEE80211_RADIOTAP_MCS});
 
