@@ -35,10 +35,11 @@
 #include "HelperSources/TimeHelper.hpp"
 
 static constexpr const auto RX_ANT_MAX=4;
-class antennaItem {
-public:
-    antennaItem()=default;
 
+// Stores the min, max and average of the rssi values reported for one antenna
+class RSSIForAntenna {
+public:
+    RSSIForAntenna()=default;
     void addRSSI(int8_t rssi) {
         if (count_all == 0) {
             rssi_min = rssi;
@@ -50,14 +51,20 @@ public:
         rssi_sum += rssi;
         count_all += 1;
     }
-
     int32_t count_all=0;
     int32_t rssi_sum=0;
     int8_t rssi_min=0;
     int8_t rssi_max=0;
 };
 
-typedef std::unordered_map<uint64_t, antennaItem> antenna_stat_t;
+struct Entry{
+    const uint8_t wifiCardIdx;
+    const uint8_t antennaIdx;
+};
+// For each WIFI card
+// For each antenna(s) of this wifi card
+// store the min,max and average RSSI of the last N packets
+typedef std::unordered_map<Entry, RSSIForAntenna> antenna_stat_t;
 
 // This class processes the received wifi data (decryption and FEC)
 // and forwards it via UDP.

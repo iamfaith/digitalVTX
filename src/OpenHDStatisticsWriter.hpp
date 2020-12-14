@@ -10,6 +10,13 @@
 // TODO what happens here has to be decided yet
 // write the fec decoding stats (and optionally RSSI ) for each rx stream
 
+struct DBMSignalForAntenna{
+    // which antenna the value refers to
+    uint8_t antennaIdx;
+    // https://www.radiotap.org/fields/Antenna%20signal.html
+    int8_t value;
+};
+
 class OpenHDStatisticsWriter{
 public:
     // the unique stream ID this processes statistics for

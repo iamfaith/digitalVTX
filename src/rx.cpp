@@ -78,7 +78,7 @@ namespace RawTransmitterHelper{
         //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
         if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        // Important: Without enabling this mode pcap might buffer quite a lot of packets !
+        // Important: Without enabling this mode pcap buffers quite a lot of packets starting with version 1.5.0 !
         // https://www.tcpdump.org/manpages/pcap_set_immediate_mode.3pcap.html
         if(pcap_set_immediate_mode(ppcap,true)!=0)throw std::runtime_error(StringFormat::convert("pcap_set_immediate_mode failed: %s", errbuf));
         if (pcap_activate(ppcap) != 0) throw std::runtime_error(StringFormat::convert("pcap_activate failed: %s", pcap_geterr(ppcap)));
@@ -119,8 +119,8 @@ namespace RawTransmitterHelper{
         }
     }
     struct ParsedRxPcapPacket{
-        std::array<uint8_t,RX_ANT_MAX> antenna;
-        std::array<int8_t ,RX_ANT_MAX> rssi;
+        // Could be any of size=1 or size== N of antennas of this adapter.
+        std::vector<DBMSignalForAntenna> allAntennaValues;
         const Ieee80211Header* ieee80211Header;
         const uint8_t* payload;
         const std::size_t payloadSize;
@@ -130,21 +130,17 @@ namespace RawTransmitterHelper{
     // To avoid confusion it might help to treat this method as a big black Box :)
     static std::optional<ParsedRxPcapPacket> processReceivedPcapPacket(const pcap_pkthdr& hdr, const uint8_t *pkt){
         int pktlen = hdr.caplen;
-        int ant_idx = 0;
-        std::array<uint8_t,RX_ANT_MAX> antenna{};
-        // Fill all antenna slots with 0xff (unused)
-        antenna.fill(0xff);
-        std::array<int8_t ,RX_ANT_MAX> rssi{};
-        // Fill all rssi slots with minimum value
-        rssi.fill(SCHAR_MIN);
-        uint8_t mIEEE80211_RADIOTAP_FLAGS = 0;
-        uint8_t mIEEE80211_RADIOTAP_MCS=0;
-        uint8_t mIEEE80211_RADIOTAP_CHANNEL=0;
+        // Copy the value of this flag once present and process it after the loop is done
+        uint8_t tmpCopyOfIEEE80211_RADIOTAP_FLAGS = 0;
         //RadiotapHelper::debugRadiotapHeader(pkt, pktlen);
         struct ieee80211_radiotap_iterator iterator{};
+        // With AR9271 I get 39 as length of the radio-tap header
+        // With my internal laptop wifi chip I get 36 as length of the radio-tap header.
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
-
-        while (ret == 0 && ant_idx < RX_ANT_MAX) {
+        uint8_t currentAntenna=0;
+        // not confirmed yet, but one pcap packet might include stats for multiple antennas
+        std::vector<DBMSignalForAntenna> allAntennaValues;
+        while (ret == 0 ) {
             ret = ieee80211_radiotap_iterator_next(&iterator);
             if (ret){
                 continue;
@@ -161,37 +157,28 @@ namespace RawTransmitterHelper{
                  }
                      break;*/
                 case IEEE80211_RADIOTAP_ANTENNA:
-                    // FIXME
-                    // In case of multiple antenna stats in one packet this index will be irrelivant
-                    antenna[ant_idx] = *(uint8_t *) (iterator.this_arg);
-                    ant_idx += 1;
+                    // RADIOTAP_DBM_ANTSIGNAL should come directly afterwards
+                    currentAntenna=iterator.this_arg[0];
                     break;
-
                 case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
-                    // Some cards can provide rssi for multiple antennas in one packet, so we should select maximum value
-                    rssi[ant_idx] = *(int8_t *) (iterator.this_arg);
+                    allAntennaValues.push_back({currentAntenna,*((int8_t*)iterator.this_arg)});
                     break;
-
                 case IEEE80211_RADIOTAP_FLAGS:
-                    mIEEE80211_RADIOTAP_FLAGS = *(uint8_t *) (iterator.this_arg);
+                    tmpCopyOfIEEE80211_RADIOTAP_FLAGS = *(uint8_t *) (iterator.this_arg);
                     break;
-                case IEEE80211_RADIOTAP_MCS:
-                    mIEEE80211_RADIOTAP_MCS = *(uint8_t *) (iterator.this_arg);
-                case IEEE80211_RADIOTAP_CHANNEL:
-                    mIEEE80211_RADIOTAP_CHANNEL=*(uint8_t *) (iterator.this_arg);
                 default:
                     break;
             }
         }  /* while more rt headers */
-        if (ret != -ENOENT && ant_idx < RX_ANT_MAX) {
+        if (ret != -ENOENT) {
             std::cerr<<"Error parsing radiotap header!\n";
             return std::nullopt;
         }
-        if (mIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_BADFCS) {
+        if (tmpCopyOfIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_BADFCS) {
             std::cerr<<"Got packet with bad fsc\n";
             return std::nullopt;
         }
-        if (mIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_FCS) {
+        if (tmpCopyOfIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_FCS) {
             //std::cout<<"Packet has IEEE80211_RADIOTAP_F_FCS";
             pktlen -= 4;
         }
@@ -202,6 +189,7 @@ namespace RawTransmitterHelper{
         // With my internal laptop wifi chip I get 36 as length of the radio-tap header
         //std::cout<<"iterator._max_length was "<<iterator._max_length<<"\n";
 #endif
+        //assert(iterator._max_length==hdr.caplen);
         /* discard the radiotap header part */
         pkt += iterator._max_length;
         pktlen -= iterator._max_length;
@@ -209,7 +197,7 @@ namespace RawTransmitterHelper{
         const Ieee80211Header* ieee80211Header=(Ieee80211Header*)pkt;
         const uint8_t* payload=pkt+Ieee80211Header::SIZE_BYTES;
         const std::size_t payloadSize=(std::size_t)pktlen-Ieee80211Header::SIZE_BYTES;
-        return ParsedRxPcapPacket{antenna,rssi,ieee80211Header,payload,payloadSize};
+        return ParsedRxPcapPacket{allAntennaValues,ieee80211Header,payload,payloadSize};
     }
 }
 
@@ -296,7 +284,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
-    RawTransmitterHelper::writeAntennaStats(antenna_stat, WLAN_IDX, parsedPacket->antenna, parsedPacket->rssi);
+    //RawTransmitterHelper::writeAntennaStats(antenna_stat, WLAN_IDX, parsedPacket->antenna, parsedPacket->rssi);
     const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
     //std::cout<<"RADIO_PORT"<<(int)tmpHeader->getRadioPort()<<" IEEE_SEQ_NR "<<(int)tmpHeader->getSequenceNumber()<<"\n";
     //std::cout<<"FrameControl:"<<(int)tmpHeader->getFrameControl()<<"\n";
