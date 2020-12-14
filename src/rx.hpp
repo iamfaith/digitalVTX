@@ -113,7 +113,7 @@ public:
     int getfd() const { return fd; }
 
 public:
-    // the wifi interface this receiver listens on
+    // the wifi interface this receiver listens on (not the radio port)
     const int WLAN_IDX;
     // the radio port it filters pacp packets for
     const int RADIO_PORT;
