@@ -1,3 +1,5 @@
+TL-WN722N and ALFA AWUS036NH
+(AR9xxx and RTxxx )
 Test 1 : transmit only in one direction
 ./test -i 6100 -o 6000 -s 1446 -p 1000 -t 20
 Result :

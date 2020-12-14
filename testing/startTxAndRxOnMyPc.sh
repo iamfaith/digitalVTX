@@ -23,6 +23,7 @@ sudo iw dev $MY_TX set monitor otherbss fcsfail
 sudo ifconfig $MY_TX up
 sudo iwconfig $MY_TX channel 10
 #sudo iw dev $MY_TX set channel "6" HT40+
+#sudo iwconfig $MY_TX rts off
 
 sudo ifconfig $MY_RX down
 sudo iw dev $MY_RX set monitor otherbss fcsfail

@@ -86,12 +86,12 @@ namespace RawTransmitterHelper{
         std::string program;
         switch (link_encap) {
             case DLT_PRISM_HEADER:
-                std::cerr<<wlan<<" has DLT_PRISM_HEADER Encap\n";
+                std::cout<<wlan<<" has DLT_PRISM_HEADER Encap\n";
                 program = StringFormat::convert("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
                 break;
 
             case DLT_IEEE802_11_RADIO:
-                std::cerr<<wlan<<" has DLT_IEEE802_11_RADIO Encap\n";
+                std::cout<<wlan<<" has DLT_IEEE802_11_RADIO Encap\n";
                 program = StringFormat::convert("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
                 break;
 
@@ -101,9 +101,9 @@ namespace RawTransmitterHelper{
         if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
             throw std::runtime_error(StringFormat::convert("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
         }
-        if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
-            throw std::runtime_error(StringFormat::convert("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
-        }
+        //if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
+        //    throw std::runtime_error(StringFormat::convert("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
+        //}
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
@@ -138,7 +138,7 @@ namespace RawTransmitterHelper{
         uint8_t mIEEE80211_RADIOTAP_FLAGS = 0;
         uint8_t mIEEE80211_RADIOTAP_MCS=0;
         uint8_t mIEEE80211_RADIOTAP_CHANNEL=0;
-        RadiotapHelper::debugRadiotapHeader(pkt, pktlen);
+        //RadiotapHelper::debugRadiotapHeader(pkt, pktlen);
         struct ieee80211_radiotap_iterator iterator{};
         int ret = ieee80211_radiotap_iterator_init(&iterator, (ieee80211_radiotap_header *) pkt, pktlen, NULL);
 
@@ -198,7 +198,7 @@ namespace RawTransmitterHelper{
         //std::cout<<RadiotapFlagsToString::flagsIEEE80211_RADIOTAP_FLAGS(mIEEE80211_RADIOTAP_FLAGS)<<"\n";
         // With AR9271 I get 39 as length of the radio-tap header
         // With my internal laptop wifi chip I get 36 as length of the radio-tap header
-        std::cout<<"iterator._max_length was "<<iterator._max_length<<"\n";
+        //std::cout<<"iterator._max_length was "<<iterator._max_length<<"\n";
 #endif
         /* discard the radiotap header part */
         pkt += iterator._max_length;
@@ -254,10 +254,10 @@ void Aggregator::dump_stats(FILE *fp) {
     count_p_lost = 0;
     count_p_bad = 0;*/
 #ifdef ENABLE_ADVANCED_DEBUGGING
-    std::cout<<"avgPcapToApplicationLatency:"<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
-    std::cout<<"avgLatencyBeaconPacketLatency"<<avgLatencyBeaconPacketLatency.getAvgReadable()<<"\n";
+    //std::cout<<"avgPcapToApplicationLatency:"<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
+    //std::cout<<"avgLatencyBeaconPacketLatency"<<avgLatencyBeaconPacketLatency.getAvgReadable()<<"\n";
     //std::cout<<"avgLatencyBeaconPacketLatencyX:"<<avgLatencyBeaconPacketLatency.getNValuesLowHigh(20)<<"\n";
-    std::cout<<"avgLatencyPacketInQueue"<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
+    //std::cout<<"avgLatencyPacketInQueue"<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
 #endif
 }
 
@@ -275,6 +275,13 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
+    if(parsedPacket->ieee80211Header->getRadioPort()!=RADIO_PORT) {
+        std::cout<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
+        RadiotapHelper::debugRadiotapHeader(pkt,hdr.caplen);
+        return;
+    }
+    //std::cout<<"Radio port is "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
+
     // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
     if(parsedPacket->payloadSize<=0){
         std::cerr<<"Discarding packet due to no actual payload !\n";
@@ -374,7 +381,7 @@ void PcapReceiver::loop_iter() {
         const uint8_t *pkt = pcap_next(ppcap, &hdr);
         if (pkt == nullptr) {
 #ifdef ENABLE_ADVANCED_DEBUGGING
-            std::cout<<"N of packets polled from pcap queue until empty: "<<nPacketsPolledUntilQueueWasEmpty<<"\n";
+            //std::cout<<"N of packets polled from pcap queue until empty: "<<nPacketsPolledUntilQueueWasEmpty<<"\n";
 #endif
             break;
         }
