@@ -100,7 +100,7 @@ public:
         radiotapHeaderData.presence= Radiotap::writePresenceBitfield({IEEE80211_RADIOTAP_TX_FLAGS, IEEE80211_RADIOTAP_MCS});
 
         // in wifibroadcast we never want ack from the receiver
-        radiotapHeaderData.txFlags=IEEE80211_RADIOTAP_F_TX_NOACK;
+        radiotapHeaderData.txFlags=IEEE80211_RADIOTAP_F_TX_NOACK ; //| IEEE80211_RADIOTAP_F_TX_CTS | IEEE80211_RADIOTAP_F_TX_RTS
 
         // now onto the "MCS field"
         radiotapHeaderData.mcs.known=(IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC | IEEE80211_RADIOTAP_MCS_HAVE_FEC);
