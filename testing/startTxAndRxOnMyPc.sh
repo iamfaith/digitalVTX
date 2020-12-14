@@ -4,9 +4,9 @@
 
 #MY_TX="wlp3s0"
 #MY_TX="wlxc4e984126183"
-#MY_TX="wlx000f00460445" # ALFA card
+MY_TX="wlx000f00460445" # ALFA card
 #MY_TX="wlx6cfdb9b2a156" #PW-DN421
-MY_TX="wlx0018e7bd24db"
+#MY_TX="wlx0018e7bd24db"
 
 MY_RX="wlxc4e9840e3cbe"
 #MY_RX_SECONDARY="wlxc4e984126183"
