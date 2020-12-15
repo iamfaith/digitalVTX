@@ -1,5 +1,4 @@
 VERSION ?= $(shell ./version.py)
-ARCH ?= $(shell uname -i)
 COMMIT ?= $(shell git rev-parse HEAD)
 
 export VERSION COMMIT
