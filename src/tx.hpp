@@ -20,11 +20,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdint.h>
-#include <errno.h>
+#include <cstdint>
+#include <cerrno>
 #include <string>
 #include <vector>
-#include <string.h>
+#include <cstring>
 #include "wifibroadcast.hpp"
 #include <stdexcept>
 #include <iostream>

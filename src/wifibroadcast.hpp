@@ -19,18 +19,18 @@
 #ifndef __WIFIBROADCAST_HPP__
 #define __WIFIBROADCAST_HPP__
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cerrno>
 #include <resolv.h>
-#include <string.h>
+#include <cstring>
 #include <utime.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <pcap.h>
 #include <endian.h>
 #include <fcntl.h>
-#include <time.h>
+#include <ctime>
 #include <sys/mman.h>
 #include <sodium.h>
 #include <endian.h>

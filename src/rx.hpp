@@ -18,14 +18,14 @@
  */
 
 #include <unordered_map>
-#include <stdint.h>
+#include <cstdint>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdio.h>
-#include <errno.h>
+#include <cstdio>
+#include <cerrno>
 #include <string>
-#include <string.h>
+#include <cstring>
 #include "wifibroadcast.hpp"
 #include <stdexcept>
 #include <utility>

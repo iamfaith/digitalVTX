@@ -17,16 +17,16 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdio.h>
+#include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <poll.h>
-#include <time.h>
+#include <ctime>
 #include <sys/resource.h>
 #include <pcap/pcap.h>
-#include <assert.h>
+#include <cassert>
 #include <chrono>
 #include <memory>
 #include <string>
