@@ -1,5 +1,4 @@
-// -*- C++ -*-
-//
+
 // Copyright (C) 2017, 2018, 2019 Vasily Evseenko <svpcom@p2ptech.org>
 
 /*
