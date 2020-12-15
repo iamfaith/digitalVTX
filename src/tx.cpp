@@ -31,6 +31,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <thread>
 
 #include "wifibroadcast.hpp"
 #include "tx.hpp"
