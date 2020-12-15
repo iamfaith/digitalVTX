@@ -216,20 +216,11 @@ void Aggregator::dump_stats(FILE *fp) {
     for(auto& wifiCard : rssiForWifiCard){
         if(wifiCard.count_all==0)continue;
         std::cout<<"RSSI Count|Min|Max|Avg: "<<(int)wifiCard.count_all<<":"<<(int)wifiCard.rssi_min<<":"<<(int)wifiCard.rssi_max<<":"<<(int)wifiCard.getAverage()<<"\n";
-        //wifiCard.reset();
+        wifiCard.reset();
     }
     fprintf(fp, "%" PRIu64 "\tPKT\t%u:%u:%u:%u:%u:%u\n", runTime, count_p_all, count_p_dec_err, count_p_dec_ok,
             count_p_fec_recovered, count_p_lost, count_p_bad);
     fflush(fp);
-    // the logger of svpcom prints what changed over time,
-    // OpenHD wants absolute values
-    statistics.count_p_all+=count_p_all;
-    statistics.count_p_dec_err +=count_p_dec_err;
-    statistics.count_p_dec_ok +=count_p_dec_ok;
-    statistics.count_p_fec_recovered+=count_p_fec_recovered;
-    statistics.count_p_lost+=statistics.count_p_lost;
-    statistics.count_p_bad+=count_p_bad;
-    openHdStatisticsWriter.writeStats(statistics);
     // it is actually much more understandable when I use the absolute values for the logging
     /*count_p_all = 0;
     count_p_dec_err = 0;
