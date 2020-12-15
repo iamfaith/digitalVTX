@@ -1,6 +1,10 @@
 
 # bring in the helper from the parent / src / HelperSources File
-HELPER_FILES := $(wildcard ../../src/HelperSources/*.hpp)
+# kinda dirty (fixme but how)
+HELPER_DIR := ../../src/HelperSources/
 
 test : test.cpp $(HELPER_FILES)
-	g++ -std=c++17 test.cpp UDPReceiver.cpp UDPSender.cpp -o test -lpthread -I Helper/
+	g++ -std=c++17 test.cpp UDPReceiver.cpp UDPSender.cpp -o test -lpthread -I $(HELPER_DIR)
+
+clean:
+	rm -rf test

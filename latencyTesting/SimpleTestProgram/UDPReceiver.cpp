@@ -10,7 +10,7 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>
-
+#include <iostream>
 
 UDPReceiver::UDPReceiver(int port,std::string name,DATA_CALLBACK  onDataReceivedCallback,
 size_t WANTED_RCVBUF_SIZE,const bool ENABLE_NONBLOCKING):
@@ -44,17 +44,17 @@ void UDPReceiver::stopReceiving() {
 void UDPReceiver::receiveFromUDPLoop() {
     mSocket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (mSocket == -1) {
-        std::cout<<<<"Error creating socket\n";
+        std::cout<<"Error creating socket\n";
         return;
     }
     int enable = 1;
     if (setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0){
-        std::cout<<<"Error setting reuse\n";
+        std::cout<<"Error setting reuse\n";
     }
     int recvBufferSize=0;
     socklen_t len=sizeof(recvBufferSize);
     getsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, &recvBufferSize, &len);
-    std::cout<<<<"Default socket recv buffer is "<<StringHelper::memorySizeReadable(recvBufferSize)<<"\n";
+    std::cout<<"Default socket recv buffer is "<<StringHelper::memorySizeReadable(recvBufferSize)<<"\n";
 
     if(WANTED_RCVBUF_SIZE>recvBufferSize){
         recvBufferSize=WANTED_RCVBUF_SIZE;
@@ -62,7 +62,7 @@ void UDPReceiver::receiveFromUDPLoop() {
             std::cout<<"Cannot increase buffer size to "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE)<<"\n";
         }
         getsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, &recvBufferSize, &len);
-        std::cout<<<<"Wanted "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE)<<" Set "<<StringHelper::memorySizeReadable(recvBufferSize)<<"\n";
+        std::cout<<"Wanted "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE)<<" Set "<<StringHelper::memorySizeReadable(recvBufferSize)<<"\n";
     }
     struct sockaddr_in myaddr;
     memset((uint8_t *) &myaddr, 0, sizeof(myaddr));
@@ -107,9 +107,6 @@ void UDPReceiver::receiveFromUDPLoop() {
             std::string s1=std::string(p);
             if(senderIP!=s1){
                 senderIP=s1;
-            }
-            if(onSourceIP!=nullptr){
-                onSourceIP(p);
             }
         }else{
             if(errno != EWOULDBLOCK) {

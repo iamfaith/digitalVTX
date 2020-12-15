@@ -12,6 +12,7 @@
 #include <functional>
 #include <chrono>
 #include "TimeHelper.hpp"
+#include <functional>
 //
 
 //Starts a new thread that continuously checks for new data on UDP port
@@ -46,7 +47,6 @@ public:
 private:
     void receiveFromUDPLoop();
     const DATA_CALLBACK onDataReceivedCallback=nullptr;
-    SOURCE_IP_CALLBACK onSourceIP= nullptr;
     const int mPort;
     const size_t WANTED_RCVBUF_SIZE;
     const std::string mName;

@@ -1,19 +1,20 @@
 #include <iostream>
-#include "AndroidLogger.hpp"
 #include "TimeHelper.hpp"
 #include "UDPSender.h"
 #include "UDPReceiver.h"
+#include "StringHelper.hpp"
 #include <cstring>
 #include <atomic>
 #include <mutex>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <assert.h>
 
 static void printCurrentThreadPriority(const std::string name){
 	int which = PRIO_PROCESS;
     id_t pid = (id_t)getpid();
     int priority= getpriority(which, pid);
-	MLOGD<<name<<" has priority "<<priority<<"\n";
+	std::cout<<name<<" has priority "<<priority<<"\n";
 }
 	
 static void fillBufferWithRandomData(std::vector<uint8_t>& data){
@@ -101,7 +102,7 @@ static void validateReceivedData(const uint8_t* dataP,size_t data_length){
 	if(latency>std::chrono::milliseconds(1)){
         std::cout<<"XGot data"<<data_length<<" "<<info.seqNr<<" "<<MyTimeHelper::R(latency)<<"\n";
 	}
-    //MLOGD<<"XGot data"<<data_length<<" "<<info.seqNr<<" "<<MyTimeHelper::R(latency)<<"\n";
+    //std::cout<<"XGot data"<<data_length<<" "<<info.seqNr<<" "<<MyTimeHelper::R(latency)<<"\n";
     // do not use the first couple of packets, system needs to ramp up first
     //if(info.seqNr>10){
         avgUDPProcessingTime.add(latency);
@@ -128,7 +129,7 @@ static void validateReceivedData(const uint8_t* dataP,size_t data_length){
            //originalPacketData.at(info.seqNr)->reset();
        }else{
             // Should never happen
-            MLOGE<<"Got probably invalid seqNr "<<info.seqNr<<" "<<sentDataSave.sentPackets.size()<<"\n";
+           std::cerr<<"Got probably invalid seqNr "<<info.seqNr<<" "<<sentDataSave.sentPackets.size()<<"\n";
        }
        sentDataSave.mMutex.unlock();
     }
@@ -140,7 +141,7 @@ static void test_latency(const Options& o){
 	const std::chrono::nanoseconds TIME_BETWEEN_PACKETS=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1))/o.WANTED_PACKETS_PER_SECOND;
     // start the receiver in its own thread
 	// Listening always happens on localhost
-    UDPReceiver udpReceiver{nullptr,o.INPUT_PORT,"LTUdpRec",0,validateReceivedData,0,false};
+    UDPReceiver udpReceiver{o.INPUT_PORT,"LTUdpRec",validateReceivedData,0,false};
     udpReceiver.startReceiving();
     // Wait a bit such that the OS can start the receiver before we start sending data
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
