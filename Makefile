@@ -15,7 +15,7 @@ src/ExternalCSources/%.o: src/ExternalCSources/%.c src/ExternalCSources/*.h
 	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
 
 src/%.o: src/%.cpp src/*.hpp
-	$(CXX) $(_CFLAGS) -std=gnu++17 -c -o $@ $<
+	$(CXX) $(_CFLAGS) -std=c++17 -c -o $@ $<
 
 wfb_rx: src/rx.o src/ExternalCSources/radiotap.o src/ExternalCSources/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
