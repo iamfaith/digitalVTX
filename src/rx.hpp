@@ -35,7 +35,6 @@
 #include "OpenHDStatisticsWriter.hpp"
 #include "HelperSources/TimeHelper.hpp"
 
-static constexpr const auto RX_ANT_MAX=4;
 // A wifi card with more than 4 antennas still has to be found :)
 static constexpr const auto MAX_N_ANTENNAS_PER_WIFI_CARD=4;
 //
