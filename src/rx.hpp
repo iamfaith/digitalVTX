@@ -15,6 +15,12 @@
  *   with this program; if not, write to the Free Software Foundation, Inc.,
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include "wifibroadcast.hpp"
+#include "Encryption.hpp"
+#include "FEC.hpp"
+#include "Helper.hpp"
+#include "OpenHDStatisticsWriter.hpp"
+#include "HelperSources/TimeHelper.hpp"
 
 #include <unordered_map>
 #include <cstdint>
@@ -25,14 +31,8 @@
 #include <cerrno>
 #include <string>
 #include <cstring>
-#include "wifibroadcast.hpp"
 #include <stdexcept>
 #include <utility>
-#include "Encryption.hpp"
-#include "FEC.hpp"
-#include "Helper.hpp"
-#include "OpenHDStatisticsWriter.hpp"
-#include "HelperSources/TimeHelper.hpp"
 
 // A wifi card with more than 4 antennas still has to be found :)
 static constexpr const auto MAX_N_ANTENNAS_PER_WIFI_CARD=4;

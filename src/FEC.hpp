@@ -5,6 +5,10 @@
 #ifndef WIFIBROADCAST_FEC_HPP
 #define WIFIBROADCAST_FEC_HPP
 
+#include "wifibroadcast.hpp"
+extern "C"{
+#include "ExternalCSources/fec.h"
+}
 #include <cstdint>
 #include <cerrno>
 #include <string>
@@ -14,11 +18,6 @@
 #include <iostream>
 #include <functional>
 #include <map>
-#include "HelperSources/TimeHelper.hpp"
-#include "wifibroadcast.hpp"
-extern "C"{
-#include "ExternalCSources/fec.h"
-}
 
 // c++ wrapper for the FEC library
 // If K and N were known at compile time we could make this much cleaner !
@@ -267,7 +266,6 @@ public:
         }
     }
     ~FECDecoder() = default;
-    AvgCalculator avgLatencyPacketInQueue;
 private:
     std::map<uint64_t,std::chrono::steady_clock::time_point> timePointPacketEnteredRxRing;
     uint64_t seq = 0;
@@ -342,7 +340,7 @@ private:
             // found time point for this fragment
             const auto latency=std::chrono::steady_clock::now()-search->second;
             timePointPacketEnteredRxRing.erase(search);
-            avgLatencyPacketInQueue.add(latency);
+            //avgLatencyPacketInQueue.add(latency);
             //std::cout<<"avgLatencyPacketInQueue "<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
         }else{
             //std::cout<<"Cannot calc latency (fec corrected packet)\n";

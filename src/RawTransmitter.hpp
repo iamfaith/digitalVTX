@@ -5,6 +5,9 @@
 #ifndef WIFIBROADCAST_RAWTRANSMITTER_HPP
 #define WIFIBROADCAST_RAWTRANSMITTER_HPP
 
+#include "Ieee80211Header.hpp"
+#include "RadiotapHeader.hpp"
+
 #include <cstdlib>
 #include <endian.h>
 #include <fcntl.h>
@@ -14,8 +17,6 @@
 #include <vector>
 #include <chrono>
 #include <optional>
-#include "Ieee80211Header.hpp"
-#include "RadiotapHeader.hpp"
 
 // Doesn't specify what / how big the custom header is.
 // This way it is easy to make the injection part generic for future changes

@@ -16,6 +16,7 @@
 #include <endian.h>
 #include <string>
 #include <vector>
+#include <array>
 
 // Wrapper around the Ieee80211 header (declared as raw array initially)
 // info https://witestlab.poly.edu/blog/802-11-wireless-lan-2/

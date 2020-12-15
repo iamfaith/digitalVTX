@@ -17,6 +17,12 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "Encryption.hpp"
+#include "FEC.hpp"
+#include "Helper.hpp"
+#include "RawTransmitter.hpp"
+#include "HelperSources/TimeHelper.hpp"
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -28,13 +34,6 @@
 #include "wifibroadcast.hpp"
 #include <stdexcept>
 #include <iostream>
-
-#include "Encryption.hpp"
-#include "FEC.hpp"
-#include "Helper.hpp"
-#include "RawTransmitter.hpp"
-#include "HelperSources/TimeHelper.hpp"
-
 
 // WBTransmitter uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX

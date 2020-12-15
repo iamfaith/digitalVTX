@@ -16,34 +16,18 @@
  *   with this program; if not, write to the Free Software Foundation, Inc.,
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-
+#include "rx.hpp"
+#include "wifibroadcast.hpp"
 #include <cassert>
 #include <cstdio>
 #include <cinttypes>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <ctime>
-#include <sys/resource.h>
 #include <pcap/pcap.h>
 #include <poll.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <climits>
-
 #include <memory>
 #include <string>
 #include <chrono>
 #include <sstream>
-
-#include "wifibroadcast.hpp"
-#include "rx.hpp"
-extern "C"{
-#include "ExternalCSources/fec.h"
-#include "ExternalCSources/radiotap_iter.h"
-}
 
 namespace RawTransmitterHelper{
     // call before pcap_activate

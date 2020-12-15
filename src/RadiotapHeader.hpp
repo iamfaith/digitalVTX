@@ -1,6 +1,12 @@
 #ifndef __WIFIBROADCAST_RADIOTAP_HEADER_HPP__
 #define __WIFIBROADCAST_RADIOTAP_HEADER_HPP__
 
+#include "Helper.hpp"
+extern "C"{
+#include "ExternalCSources/radiotap_iter.h"
+#include "ExternalCSources/radiotap.h"
+};
+
 #include <cstdio>
 #include <cstdlib>
 #include <cerrno>
@@ -21,12 +27,7 @@
 #include <chrono>
 #include <sstream>
 #include <iostream>
-#include "Helper.hpp"
-
-extern "C"{
-#include "ExternalCSources/radiotap_iter.h"
-#include "ExternalCSources/radiotap.h"
-};
+#include <cassert>
 
 // everything must be in little endian byte order http://www.radiotap.org/
 static_assert(__BYTE_ORDER == __LITTLE_ENDIAN,"This code is written for little endian only !");

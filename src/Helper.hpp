@@ -33,6 +33,8 @@
 #include <termio.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <iostream>
+#include <memory>
 
 // For all the stuff that was once in wifibroadcast.hpp
 
