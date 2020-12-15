@@ -68,6 +68,9 @@ public:
     void writeStats(const Data& data){
         // Perhaps RADIO_PORT==0 means video and so on
         // TODO write to udp port or shared memory or ...
+        if(RADIO_PORT==0){
+            // open video shm and write data there or something similar
+        }
     }
 };
 
