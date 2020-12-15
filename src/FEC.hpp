@@ -5,21 +5,17 @@
 #ifndef WIFIBROADCAST_FEC_HPP
 #define WIFIBROADCAST_FEC_HPP
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdint.h>
-#include <errno.h>
+#include <cstdint>
+#include <cerrno>
 #include <string>
 #include <vector>
-#include <string.h>
-#include "wifibroadcast.hpp"
+#include <cstring>
 #include <stdexcept>
 #include <iostream>
 #include <functional>
 #include <map>
 #include "HelperSources/TimeHelper.hpp"
-
+#include "wifibroadcast.hpp"
 extern "C"{
 #include "ExternalCSources/fec.h"
 }
