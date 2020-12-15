@@ -8,29 +8,13 @@
 #include "StringHelper.hpp"
 #include <cstring>
 
-#ifdef __ANDROID__
-#include <AndroidThreadPrioValues.hpp>
-#include <NDKThreadHelper.hpp>
-#endif
-
 #include <sys/time.h>
 #include <sys/resource.h>
 
-static void printCurrentThreadPriority(const std::string name){
-	int which = PRIO_PROCESS;
-    id_t pid = (id_t)getpid();
-    int priority= getpriority(which, pid);
-	MLOGD<<name<<" has priority "<<priority<<"\n";
-}
 
-UDPReceiver::UDPReceiver(JavaVM* javaVm,int port,std::string name,int CPUPriority,DATA_CALLBACK  onDataReceivedCallback,
+UDPReceiver::UDPReceiver(int port,std::string name,DATA_CALLBACK  onDataReceivedCallback,
 size_t WANTED_RCVBUF_SIZE,const bool ENABLE_NONBLOCKING):
-        mPort(port),mName(std::move(name)),WANTED_RCVBUF_SIZE(WANTED_RCVBUF_SIZE),mCPUPriority(CPUPriority),onDataReceivedCallback(std::move(onDataReceivedCallback))
-		,javaVm(javaVm),ENABLE_NONBLOCKING(ENABLE_NONBLOCKING){
-}
-
-void UDPReceiver::registerOnSourceIPFound(SOURCE_IP_CALLBACK onSourceIP1) {
-    this->onSourceIP=std::move(onSourceIP1);
+        mPort(port),mName(std::move(name)),WANTED_RCVBUF_SIZE(WANTED_RCVBUF_SIZE),onDataReceivedCallback(std::move(onDataReceivedCallback)),ENABLE_NONBLOCKING(ENABLE_NONBLOCKING){
 }
 
 long UDPReceiver::getNReceivedBytes()const {
@@ -44,9 +28,6 @@ std::string UDPReceiver::getSourceIPAddress()const {
 void UDPReceiver::startReceiving() {
     receiving=true;
     mUDPReceiverThread=std::make_unique<std::thread>([this]{this->receiveFromUDPLoop();} );
-#ifdef __ANDROID__
-    NDKThreadHelper::setName(mUDPReceiverThread->native_handle(),mName.c_str());
-#endif
 }
 
 void UDPReceiver::stopReceiving() {
@@ -57,37 +38,31 @@ void UDPReceiver::stopReceiving() {
         mUDPReceiverThread->join();
     }
     mUDPReceiverThread.reset();
-	MLOGD<<"UDPReceiver avgDeltaBetween(recvfrom) "<<avgDeltaBetweenPackets.getAvgReadable()<<"\n";
+	std::cout<<"UDPReceiver avgDeltaBetween(recvfrom) "<<avgDeltaBetweenPackets.getAvgReadable()<<"\n";
 }
 
 void UDPReceiver::receiveFromUDPLoop() {
-	printCurrentThreadPriority("TEST_UDP_RECCEIVER");
     mSocket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (mSocket == -1) {
-        MLOGD<<"Error creating socket";
+        std::cout<<<<"Error creating socket\n";
         return;
     }
     int enable = 1;
     if (setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0){
-        MLOGD<<"Error setting reuse";
+        std::cout<<<"Error setting reuse\n";
     }
     int recvBufferSize=0;
     socklen_t len=sizeof(recvBufferSize);
     getsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, &recvBufferSize, &len);
-    MLOGD<<"Default socket recv buffer is "<<StringHelper::memorySizeReadable(recvBufferSize);
+    std::cout<<<<"Default socket recv buffer is "<<StringHelper::memorySizeReadable(recvBufferSize)<<"\n";
 
     if(WANTED_RCVBUF_SIZE>recvBufferSize){
         recvBufferSize=WANTED_RCVBUF_SIZE;
         if(setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, &WANTED_RCVBUF_SIZE,len)) {
-            MLOGD<<"Cannot increase buffer size to "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE);
+            std::cout<<"Cannot increase buffer size to "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE)<<"\n";
         }
         getsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, &recvBufferSize, &len);
-        MLOGD<<"Wanted "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE)<<" Set "<<StringHelper::memorySizeReadable(recvBufferSize);
-    }
-    if(javaVm!=nullptr){
-#ifdef __ANDROID__
-         NDKThreadHelper::setProcessThreadPriorityAttachDetach(javaVm, mCPUPriority, mName.c_str());
-#endif
+        std::cout<<<<"Wanted "<<StringHelper::memorySizeReadable(WANTED_RCVBUF_SIZE)<<" Set "<<StringHelper::memorySizeReadable(recvBufferSize)<<"\n";
     }
     struct sockaddr_in myaddr;
     memset((uint8_t *) &myaddr, 0, sizeof(myaddr));
@@ -95,7 +70,7 @@ void UDPReceiver::receiveFromUDPLoop() {
     myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     myaddr.sin_port = htons(mPort);
     if (bind(mSocket, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) {
-        MLOGE<<"Error binding Port; "<<mPort;
+        std::cerr<<"Error binding Port; "<<mPort<<"\n";
         return;
     }
     //wrap into unique pointer to avoid running out of stack

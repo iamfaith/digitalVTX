@@ -22,7 +22,7 @@ UDPSender::UDPSender(const std::string &IP,const int Port,const int WANTED_SNDBU
     //create the socket
     sockfd = socket(AF_INET,SOCK_DGRAM,0);
     if (sockfd < 0) {
-        MLOGD<<"Cannot create socket";
+        std::cout<<"Cannot create socket\n";
     }
     //Create the address
     address.sin_family = AF_INET;
