@@ -214,6 +214,7 @@ void Aggregator::dump_stats(FILE *fp) {
     //timestamp in ms
     const uint64_t runTime=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
     for(auto& wifiCard : rssiForWifiCard){
+        // no new rssi values for this card since the last call
         if(wifiCard.count_all==0)continue;
         std::cout<<"RSSI Count|Min|Max|Avg: "<<(int)wifiCard.count_all<<":"<<(int)wifiCard.rssi_min<<":"<<(int)wifiCard.rssi_max<<":"<<(int)wifiCard.getAverage()<<"\n";
         wifiCard.reset();
