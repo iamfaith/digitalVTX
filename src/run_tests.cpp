@@ -1,6 +1,3 @@
-// -*- C++ -*-
-//
-// Copyright (C) 2017, 2018 Vasily Evseenko <svpcom@p2ptech.org>
 
 /*
  *   This program is free software; you can redistribute it and/or modify
@@ -33,6 +30,8 @@
 
 #include "Helper.hpp"
 #include "Encryption.hpp"
+
+// Simple unit testing for the lib that doesn't require wifi cards
 
 namespace TestFEC{
     // test the FECEncoder / FECDecoder tuple
