@@ -111,8 +111,8 @@ namespace RawTransmitterHelper{
     }
 
     struct ParsedRxPcapPacket{
-        // Could be any of size=1 to size== N where N is the number of Antennas of this adapter
-        std::vector<RssiForAntenna> allAntennaValues;
+        // Size can be anything from size=1 to size== N where N is the number of Antennas of this adapter
+        const std::vector<RssiForAntenna> allAntennaValues;
         const Ieee80211Header* ieee80211Header;
         const uint8_t* payload;
         const std::size_t payloadSize;
