@@ -63,6 +63,7 @@ public:
         // n packets that were completely lost though FEC
         uint64_t count_p_lost=0;
         // min max and avg rssi for each wifi card since the last call.
+        // if count_all is 0 nothing has been received on this card from the last call
         std::array<RSSIForWifiCard,MAX_RX_INTERFACES> rssiPerCard{};
     };
     void writeStats(const Data& data){
