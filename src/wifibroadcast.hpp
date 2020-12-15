@@ -160,6 +160,7 @@ public:
     // Use the "Encryptor" class to encrypt / decrypt the payload
     const uint8_t* payload;
     const std::size_t payloadSize;
+private:
     // this one is for the c++-constructor only
     const std::shared_ptr<std::vector<uint8_t>> optionalPayloadDataReference=nullptr;
 };
@@ -178,7 +179,7 @@ static constexpr const auto MAX_RX_INTERFACES=8;
 
 // 1510-(13+24+9+16+2)
 //A: Any UDP with packet size <= 1466. For example x264 inside RTP or Mavlink.
-static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES - sizeof(FECDataHeader));
+static constexpr const auto MAX_PAYLOAD_SIZE=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - sizeof(FECDataHeader) - crypto_aead_chacha20poly1305_ABYTES);
 static constexpr const auto MAX_FEC_PAYLOAD=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES - sizeof(WBDataHeader) - crypto_aead_chacha20poly1305_ABYTES);
 static constexpr const auto MAX_FORWARDER_PACKET_SIZE=(MAX_PCAP_PACKET_SIZE - RadiotapHeader::SIZE_BYTES - Ieee80211Header::SIZE_BYTES);
 

@@ -183,6 +183,7 @@ public:
         // mark it as available
         fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
         availableFragmentsCount ++;
+        // store the size of the received fragment for later use
         originalSizeOfFragments[fragment_idx]=dataLen;
     }
     // if fragmentIdx<FEC_K this is a primary fragment
