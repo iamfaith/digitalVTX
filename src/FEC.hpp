@@ -19,7 +19,6 @@
 #include <functional>
 #include <map>
 #include "HelperSources/TimeHelper.hpp"
-#include "HelperSources/FixedSizeVector.h"
 
 extern "C"{
 #include "ExternalCSources/fec.h"
