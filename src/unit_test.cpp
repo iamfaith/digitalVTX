@@ -14,11 +14,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <assert.h>
-#include <stdio.h>
-#include <inttypes.h>
-#include <time.h>
-#include <limits.h>
+#include <cassert>
+#include <cstdio>
+#include <cinttypes>
+#include <ctime>
+#include <climits>
 
 #include <memory>
 #include <string>
