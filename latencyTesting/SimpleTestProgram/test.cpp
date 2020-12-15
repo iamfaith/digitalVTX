@@ -230,19 +230,19 @@ int main(int argc, char *argv[])
         case 't':
             wantedTime = atoi(optarg);
             break;
-	case 'i':
-		input_port=atoi(optarg);
-		break;
-	case 'o':
-		output_port=atoi(optarg);
-		break;
+        case 'o':
+            output_port=atoi(optarg);
+            break;
+        case 'i':
+            input_port=atoi(optarg);
+            break;
 	//case 'm':
 	//	mode=atoi(optarg);
 	//	break;
         default: /* '?' */
         show_usage:
             std::cout<<"Usage: [-s=packet size in bytes] [-p=packets per second] [-t=time to run in seconds]"
-			//<<"[-i=input udp port] [-o=output udp port]"
+			<<" [-i=input udp port] [-o=output udp port]"
 			<<" [-m= mode 0 for sendto localhost else airpi (ethernet+wfb)]\n";
             return 1;
         }
