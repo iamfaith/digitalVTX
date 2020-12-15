@@ -3,7 +3,7 @@
 #define ENCRYPTION_HPP
 
 #include "wifibroadcast.hpp"
-#include <stdio.h>
+#include <cstdio>
 #include <stdexcept>
 #include <vector>
 #include <optional>

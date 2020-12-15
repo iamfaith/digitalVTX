@@ -11,7 +11,7 @@
 #include "AndroidLogger.hpp"
 #include <cmath>
 #include <iomanip>
-#include <assert.h>
+#include <cassert>
 
 class StringHelper{
 private:
