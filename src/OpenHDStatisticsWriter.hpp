@@ -13,6 +13,7 @@
 
 // Stores the min, max and average of the rssi values reported for this wifi card
 // Doesn't differentiate from which antenna the rssi value came
+//https://www.radiotap.org/fields/Antenna%20signal.html
 class RSSIForWifiCard {
 public:
     RSSIForWifiCard()=default;
