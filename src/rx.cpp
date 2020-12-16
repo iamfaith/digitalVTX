@@ -236,6 +236,11 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         count_p_bad++;
         return;
     }
+    if(!parsedPacket->ieee80211Header->isDataFrame()){
+        // we only process data frames
+        std::cerr<<"Got packet that is not a data packet"<<(int)parsedPacket->ieee80211Header->getFrameControl()<<"\n";
+        return;
+    }
     if(parsedPacket->ieee80211Header->getRadioPort()!=RADIO_PORT) {
         // If we have the proper filter on pcap only packets with the right radiotap port should pass through
         std::cerr<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";

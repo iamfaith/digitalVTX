@@ -73,8 +73,15 @@ public:
         memcpy(&ret,&data[2],2);
         return ret;
     }
+    bool isDataFrame()const{
+        return data[0]==0x08 && data[1]==0x01;
+    }
 }__attribute__ ((packed));
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
+
+namespace Ieee80211ControllFrames{
+
+}
 
 // hmmmm ....
 // https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L175

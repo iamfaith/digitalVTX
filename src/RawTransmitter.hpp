@@ -87,6 +87,8 @@ namespace RawTransmitterHelper {
         //if (pcap_set_rfmon(p, 1) !=0) throw runtime_error("set_rfmon failed");
         if (pcap_set_timeout(p, -1) != 0) throw std::runtime_error("set_timeout failed");
         //if (pcap_set_buffer_size(p, 2048) !=0) throw runtime_error("set_buffer_size failed");
+        // hm don't think it is needed on tx
+        //better not enable stuff that is not needed if(pcap_set_immediate_mode(p,true)!=0)throw std::runtime_error(StringFormat::convert("pcap_set_immediate_mode failed: %s", pcap_geterr(p)));
         if (pcap_activate(p) != 0) throw std::runtime_error(StringFormat::convert("pcap_activate failed: %s", pcap_geterr(p)));
         //if (pcap_setnonblock(p, 1, errbuf) != 0) throw runtime_error(string_format("set_nonblock failed: %s", errbuf));
         return p;
@@ -126,6 +128,12 @@ public:
         const auto before=std::chrono::steady_clock::now();
         RawTransmitterHelper::injectPacket(ppcap, packet);
         return std::chrono::steady_clock::now()-before;
+    }
+    void injectControllFrame(const RadiotapHeader& radiotapHeader,const std::vector<uint8_t>& iee80211ControllHeader){
+        std::vector<uint8_t> packet(radiotapHeader.getSize()+iee80211ControllHeader.size());
+        memcpy(packet.data(),&radiotapHeader,RadiotapHeader::SIZE_BYTES);
+        memcpy(&packet[RadiotapHeader::SIZE_BYTES],iee80211ControllHeader.data(),iee80211ControllHeader.size());
+        RawTransmitterHelper::injectPacket(ppcap,packet);
     }
 private:
     pcap_t* ppcap;
