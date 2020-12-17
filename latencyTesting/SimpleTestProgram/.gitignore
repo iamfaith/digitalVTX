@@ -6,9 +6,7 @@ deb_dist/
 build/
 env/
 _trial_temp/
-wfb_rx
-wfb_tx
-run_tests
+test
 gs.key
 drone.key
 wfb_keygen
