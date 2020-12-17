@@ -291,17 +291,10 @@ public:
     SEND_DECODED_PACKET callback;
 
     explicit FECDecoder(int k, int n) : FEC(k,n) {
-        for(int i=0;i<RX_RING_SIZE;i++){
-            rx_ring[i]=std::make_unique<RxRingItem>(*this);
-        }
     }
     ~FECDecoder() = default;
 private:
     uint64_t seq = 0;
-    std::array<std::unique_ptr<RxRingItem>,RX_RING_SIZE> rx_ring;
-    int rx_ring_front = 0; // current packet
-    int rx_ring_alloc = 0; // number of allocated entries
-    uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
     std::shared_ptr<RxRingItem> temporaryBlock=nullptr;
 private:
     /**
@@ -350,14 +343,8 @@ private:
 public:
     // call on new session key !
     void reset() {
-        rx_ring_front = 0;
-        rx_ring_alloc = 0;
-        last_known_block = (uint64_t) -1;
         seq = 0;
-        for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
-            rx_ring[ring_idx]->repurpose();
-            temporaryBlock= nullptr;
-        }
+        temporaryBlock= nullptr;
     }
 
     // returns false if the packet is bad (which should never happen !)
