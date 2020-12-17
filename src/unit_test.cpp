@@ -185,16 +185,16 @@ int main(int argc, char *argv[]){
     std::cout<<"Tests for Wifibroadcast\n";
     try {
         std::cout<<"Testing FEC\n";
-        const int N_PACKETS=2400;
+        const int N_PACKETS=1200;
         // first, test with fec disabled
         TestFEC::testWithoutPacketLossDynamicPacketSize(0, 0, N_PACKETS);
 
         // now with FEC enabled
         const std::vector<std::pair<uint8_t,uint8_t>> fecParams={
                 {3,5},{3,6},{6,8},{6,9},
-                {2,4},{4,8},{6,12},{8,16},{12,24},
-                {4,6},
-                {12,14}
+                {2,4},{4,8},
+                {6,12},{8,16},{12,24},
+                {4,6},{12,14}
         };
         for(auto fecParam:fecParams){
             const uint8_t k=fecParam.first;

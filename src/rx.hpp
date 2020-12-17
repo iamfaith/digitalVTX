@@ -74,7 +74,7 @@ private:
     uint32_t count_p_dec_err=0;
     uint32_t count_p_dec_ok=0;
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
-private:
+public:
     BaseAvgCalculator<int> nOfPacketsPolledFromPcapQueuePerIteration;
 #ifdef ENABLE_ADVANCED_DEBUGGING
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
