@@ -82,7 +82,6 @@ private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
-    //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> block; nah leave it in c style since fec is also c
     size_t max_packet_size = 0;
     //
 public:
@@ -275,10 +274,7 @@ private:
     int nAvailableSecondaryFragments=0;
 };
 
-static inline int modN(int x, int base) {
-    return (base + (x % base)) % base;
-}
-
+#define USE_RX_RING
 
 // Takes a continuous stream of packets (data and fec correction packets) and
 // processes them such that the output is exactly (or as close as possible) to the
@@ -397,7 +393,7 @@ public:
         forwardPrimaryFragmentsIfAvailable(*temporaryBlock);
 
         if(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()){
-            std::cout<<"Done with block "<<temporaryBlock->block_idx<<"\n";
+            //std::cout<<"Done with block "<<temporaryBlock->block_idx<<"\n";
             return true;
         }
         if(temporaryBlock->allPrimaryFragmentsCanBeRecovered()){
