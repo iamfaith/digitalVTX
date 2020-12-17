@@ -3,6 +3,8 @@
 # kinda dirty (fixme but how)
 HELPER_DIR := ../../src/HelperSources/
 
+all: test
+
 test : test.cpp
 	g++ -std=c++17 test.cpp UDPReceiver.cpp UDPSender.cpp -o test -lpthread -I $(HELPER_DIR)
 

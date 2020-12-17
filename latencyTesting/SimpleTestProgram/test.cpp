@@ -37,9 +37,13 @@ std::shared_ptr<std::vector<uint8_t>> createRandomDataBuffer2(const ssize_t size
   return buf;
 }
 
-struct PacketInfoData{
+class PacketInfoData{
+public:
     uint32_t seqNr;
     std::chrono::steady_clock::time_point timestamp;
+    std::chrono::steady_clock::time_point getTimestamp()const{
+        return timestamp;
+    }
 } __attribute__ ((packed));
 //static_assert(sizeof(PacketInfoData)==4+8);
 
@@ -70,13 +74,21 @@ bool compareSentAndReceivedPacket(const std::vector<uint8_t>& sb,const std::vect
 }
 
 struct Options{
-    const int PACKET_SIZE=1466;
-    const int WANTED_PACKETS_PER_SECOND=1024;
-    const int N_PACKETS=WANTED_PACKETS_PER_SECOND*5;
-    const int INPUT_PORT=6001;
-    const int OUTPUT_PORT=6001;
-	// Default to localhost
-	const std::string DESTINATION_IP="127.0.0.1";
+    // where data goes out
+    int OUTPUT_PORT=6001;
+    // Default to localhost (rx and tx are running on the same host)
+    std::string OUTPUT_IP="127.0.0.1";
+    // where data goes back in
+    int INPUT_PORT=6001;
+    const std::string INPUT_IP="127.0.0.1";
+    // size of each packet
+    int PACKET_SIZE=1466;
+    // how many packets per second
+    int WANTED_PACKETS_PER_SECOND=1024;
+    // how long to run
+    int WANTED_RUN_TIME_SECONDS=5;
+    // n packets to send
+    int N_PACKETS=WANTED_PACKETS_PER_SECOND*WANTED_RUN_TIME_SECONDS;
 };
 
 // Use this to validate received data (mutex for thread safety)
@@ -146,7 +158,7 @@ static void test_latency(const Options& o){
     // Wait a bit such that the OS can start the receiver before we start sending data
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    UDPSender udpSender{o.DESTINATION_IP,o.OUTPUT_PORT};
+    UDPSender udpSender{o.OUTPUT_IP,o.OUTPUT_PORT};
     currentSequenceNumber=0;
     avgUDPProcessingTime.reset();
     sentDataSave.sentPackets.clear();
@@ -213,33 +225,27 @@ int main(int argc, char *argv[])
 	// For testing the localhost latency just use the same udp port for input and output
 	// Else you have to use different udp ports and run svpcom wfb_tx and rx accordingly
 	int opt;
-    int ps=1024;
-    int pps=2*1024;
-    int wantedTime=5; // 5 seconds
-	int input_port=6001;
-	int output_port=6001;
+
+	Options options{};
 	// default localhost
 	int mode=0;
     while ((opt = getopt(argc, argv, "s:p:t:i:o:")) != -1) {
         switch (opt) {
         case 's':
-            ps = atoi(optarg);
+            options.PACKET_SIZE = atoi(optarg);
             break;
         case 'p':
-            pps = atoi(optarg);
+            options.WANTED_PACKETS_PER_SECOND = atoi(optarg);
             break;
         case 't':
-            wantedTime = atoi(optarg);
+            options.WANTED_RUN_TIME_SECONDS = atoi(optarg);
             break;
         case 'o':
-            output_port=atoi(optarg);
+            options.OUTPUT_PORT=atoi(optarg);
             break;
         case 'i':
-            input_port=atoi(optarg);
+            options.INPUT_PORT=atoi(optarg);
             break;
-	//case 'm':
-	//	mode=atoi(optarg);
-	//	break;
         default: /* '?' */
         show_usage:
             std::cout<<"Usage: [-s=packet size in bytes] [-p=packets per second] [-t=time to run in seconds]"
@@ -248,8 +254,9 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    options.N_PACKETS=options.WANTED_PACKETS_PER_SECOND*options.WANTED_RUN_TIME_SECONDS;
 	// Mode test localhost
-	const Options options0{ps,pps,pps*wantedTime,6001,6001,"127.0.0.1"};
+	/*const Options options0{ps,pps,pps*wantedTime,6001,6001,"127.0.0.1"};
 	// Mode test wfb latency, data goes via ethernet to port 6002 on air pi where it is received and transmitted via wb
 	// On the ground data is received via wb and forwarded to port 6001
 	const Options options1{ps,pps,pps*wantedTime,6001,6002,"192.168.0.14"};
@@ -257,13 +264,13 @@ int main(int argc, char *argv[])
 	//const Options options2{ps,pps,pps*wantedTime,6100,6000,"127.0.0.1"};
 	const Options optionsX{ps,pps,pps*wantedTime,input_port,output_port,"127.0.0.1"};
 	//const Options options = (mode==0) ? options0 : options2;
-	const Options options=optionsX;
+	const Options options=optionsX;*/
 
     // For a packet size of 1024 bytes, 1024 packets per second equals 1 MB/s or 8 MBit/s
     // 8 MBit/s is a just enough for encoded 720p video
     std::cout<<"Selected packet size"<<options.PACKET_SIZE<<"\n";
     std::cout<<"Selected input: "<<options.INPUT_PORT<<"\n";
-    std::cout<<"Selected output: "<<options.OUTPUT_PORT<<" "<<options.DESTINATION_IP<<"\n";
+    std::cout<<"Selected output: "<<options.OUTPUT_PORT<<" "<<options.OUTPUT_IP<<"\n";
 	test_latency(options);
 
 
