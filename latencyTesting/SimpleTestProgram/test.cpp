@@ -40,9 +40,15 @@ std::shared_ptr<std::vector<uint8_t>> createRandomDataBuffer2(const ssize_t size
 class PacketInfoData{
 public:
     uint32_t seqNr;
-    std::chrono::steady_clock::time_point timestamp;
+private:
+    //std::chrono::steady_clock::time_point timestamp;
+    int64_t timestamp;
+public:
     std::chrono::steady_clock::time_point getTimestamp()const{
-        return timestamp;
+        return std::chrono::time_point<std::chrono::steady_clock,std::chrono::nanoseconds>(std::chrono::nanoseconds(timestamp));
+    }
+    void writeTimestamp(std::chrono::steady_clock::time_point ts){
+        timestamp=std::chrono::duration_cast<std::chrono::nanoseconds>(ts.time_since_epoch()).count();
     }
 } __attribute__ ((packed));
 //static_assert(sizeof(PacketInfoData)==4+8);
@@ -53,7 +59,7 @@ void writeSequenceNumberAndTimestamp(std::vector<uint8_t>& data){
     assert(data.size()>=sizeof(PacketInfoData));
     PacketInfoData* packetInfoData=(PacketInfoData*)data.data();
     packetInfoData->seqNr=currentSequenceNumber;
-    packetInfoData->timestamp= std::chrono::steady_clock::now();
+    packetInfoData->writeTimestamp(std::chrono::steady_clock::now());
 }
 
 PacketInfoData getSequenceNumberAndTimestamp(const std::vector<uint8_t>& data){
@@ -110,7 +116,7 @@ static void validateReceivedData(const uint8_t* dataP,size_t data_length){
 	receivedBytes+=data_length;
     const auto data=std::vector<uint8_t>(dataP,dataP+data_length);
     const auto info=getSequenceNumberAndTimestamp(data);
-    const auto latency=std::chrono::steady_clock::now()-info.timestamp;
+    const auto latency=std::chrono::steady_clock::now()-info.getTimestamp();
 	if(latency>std::chrono::milliseconds(1)){
         std::cout<<"XGot data"<<data_length<<" "<<info.seqNr<<" "<<MyTimeHelper::R(latency)<<"\n";
 	}
