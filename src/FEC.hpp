@@ -184,6 +184,10 @@ public:
         if(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K)return true;
         return false;
     }
+    // returns true if suddenly all primary fragments have become available
+    bool allPrimaryFragmentsAreAvailable()const{
+        return nAvailablePrimaryFragments==fec.FEC_K;
+    }
     // copy the fragment data and mark it as available
     // you should check if it is already available with hasFragment() to avoid storing a fragment multiple times
     // when using multiple RX cards
@@ -222,6 +226,7 @@ public:
     // reconstructing only part of the missing data is not supported !
     // return: the n of reconstructed packets
     int reconstructAllMissingData(){
+        std::cout<<"reconstructAllMissingData"<<nAvailablePrimaryFragments<<" "<<nAvailableSecondaryFragments<<" "<<fec.FEC_K<<"\n";
         // NOTE: FEC does only work if nPrimaryFragments+nSecondaryFragments>=FEC_K
         assert(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K);
         unsigned index[fec.FEC_K];
@@ -298,7 +303,7 @@ public:
     // call on new session key !
     void reset() {
         seq = 0;
-        temporaryBlock= nullptr;
+        //temporaryBlock= nullptr;
         // rx ring part
         rx_ring_front = 0;
         rx_ring_alloc = 0;
@@ -334,13 +339,14 @@ public:
     }
 private:
     uint64_t seq = 0;
-    std::shared_ptr<RxBlock> temporaryBlock=nullptr;
+    //std::shared_ptr<RxBlock> temporaryBlock=nullptr;
     /**
      * forward as many primary fragments as they are available until there is a gap
      * starting at the primary fragment we stopped on last time
      * @param breakOnFirstGap : if true, stop on the first gap in all primary fragments. Else, keep going skipping packets with gaps
      */
     void forwardMissingPrimaryFragmentsIfAvailable(RxBlock& rxRingItem, const bool breakOnFirstGap= true){
+        std::cout<<"forwardMissingPrimaryFragmentsIfAvailable\n";
         for(int i=rxRingItem.getNAlreadyForwardedPrimaryFragments(); i < FEC_K; i++){
             if(!rxRingItem.hasFragment(i)){
                 if(breakOnFirstGap){
@@ -356,6 +362,7 @@ private:
      * Forward the primary (data) fragment at index fragmentIdx via the output callback
      */
     void forwardPrimaryFragment(RxBlock& rxRingItem, const uint8_t fragmentIdx){
+        std::cout<<"forwardPrimaryFragment"<<fragmentIdx<<"\n";
         assert(fragmentIdx<FEC_K);
         assert(rxRingItem.hasFragment(fragmentIdx));
         const uint8_t* primaryFragment= rxRingItem.forwardPrimaryFragment(fragmentIdx);
@@ -378,7 +385,7 @@ private:
             callback(payload,packet_size);
         }
     }
-    void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
+    /*void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
         // allocate only on the first time, then use repurpose to avoid memory fragmentation
         if(temporaryBlock==nullptr){
             temporaryBlock=std::make_shared<RxBlock>(*this, block_idx);
@@ -417,7 +424,7 @@ private:
             forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
             assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
         }
-    }
+    }*/
 private:
     // Here is everything you need when using the RX queue to account for packet re-ordering due to multiple wifi cards
     std::array<std::unique_ptr<RxBlock>,RX_RING_SIZE> rx_ring;
@@ -490,51 +497,61 @@ private:
 
         //ignore already processed blocks
         if (ring_idx < 0) return;
-
-        RxBlock *p = rx_ring[ring_idx].get();
-        if(p->hasFragment(fragment_idx)){
-            // return early (ignore already processed fragments)
+        // cannot be nullptr
+        RxBlock& block = *rx_ring[ring_idx].get();
+        // ignore already processed fragments
+        if(block.hasFragment(fragment_idx)){
             return;
         }
-        p->addFragment(fragment_idx, decrypted.data(), decrypted.size());
+        block.addFragment(fragment_idx, decrypted.data(), decrypted.size());
         std::cout<<"Allocated entries "<<rx_ring_alloc<<"\n";
 
         if (ring_idx == rx_ring_front) {
+            std::cout<<"Is front\n";
             // forward packets until the first gap
-            forwardMissingPrimaryFragmentsIfAvailable(*p);
+            forwardMissingPrimaryFragmentsIfAvailable(block);
+            std::cout<<"X\n";
             // We are done with this block if either all fragments have been forwarded or it can be recovered
-            if(p->allPrimaryFragmentsHaveBeenForwarded()){
+            if(block.allPrimaryFragmentsHaveBeenForwarded()){
                 // remove block when done with it
                 rxRingPopFront();
                 return;
             }
-            if(p->allPrimaryFragmentsCanBeRecovered()){
-                count_p_fec_recovered=temporaryBlock->reconstructAllMissingData();
-                forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
-                assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
+            std::cout<<"X2\n";
+            if(block.allPrimaryFragmentsCanBeRecovered()){
+                count_p_fec_recovered=block.reconstructAllMissingData();
+                std::cout<<"X3\n";
+                forwardMissingPrimaryFragmentsIfAvailable(block);
+                assert(block.allPrimaryFragmentsHaveBeenForwarded());
                 // remove block when done with it
                 rxRingPopFront();
                 return;
             }
-        }
-
-        // If this block can be fully recovered it triggers a full flush of the pipeline
-        if(p->allPrimaryFragmentsCanBeRecovered()){
-            std::cout<<"FEC step. Allocated entries "<<rx_ring_alloc<<"\n";
-            // send all queued packets in all unfinished blocks before and remove them
-            int nrm = modN(ring_idx - rx_ring_front, RX_RING_SIZE);
-            while(nrm > 0) {
-                forwardMissingPrimaryFragmentsIfAvailable(*rx_ring[rx_ring_front], false);
+            return;
+        }else{
+            // we are not in the front of the queue but somewhere else
+            // If this block can be fully recovered or all primary fragments are available this triggers a flush
+            if(block.allPrimaryFragmentsAreAvailable() || block.allPrimaryFragmentsCanBeRecovered()){
+                // send all queued packets in all unfinished blocks before and remove them
+                int nrm = modN(ring_idx - rx_ring_front, RX_RING_SIZE);
+                while(nrm > 0) {
+                    forwardMissingPrimaryFragmentsIfAvailable(*rx_ring[rx_ring_front], false);
+                    rxRingPopFront();
+                    nrm -= 1;
+                }
+                // then process the block who is fully recoverable or has no gaps in the primary fragments
+                if(block.allPrimaryFragmentsAreAvailable()){
+                    forwardMissingPrimaryFragmentsIfAvailable(block);
+                    assert(block.allPrimaryFragmentsHaveBeenForwarded());
+                }else{
+                    // apply fec for this block
+                    count_p_fec_recovered=block.reconstructAllMissingData();
+                    forwardMissingPrimaryFragmentsIfAvailable(block);
+                    assert(block.allPrimaryFragmentsHaveBeenForwarded());
+                }
+                // remove block
                 rxRingPopFront();
-                nrm -= 1;
             }
-            // apply fec for this block
-            count_p_fec_recovered=temporaryBlock->reconstructAllMissingData();
-            forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
-            //assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
-            std::cout<<"temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()"<<temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()<<"\n";
-            // remove block
-            rxRingPopFront();
         }
     }
 protected:
