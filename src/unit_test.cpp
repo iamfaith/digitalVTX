@@ -42,7 +42,9 @@ namespace TestFEC{
         std::vector<std::vector<uint8_t>> testOut;
 
         const auto cb1=[&decoder](const WBDataPacket &wbDataPacket)mutable {
-            decoder.processPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload + wbDataPacket.payloadSize));
+            decoder.validateAndProcessPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload,
+                                                                                             wbDataPacket.payload +
+                                                                                             wbDataPacket.payloadSize));
         };
         const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
             testOut.emplace_back(payload,payload+payloadSize);
@@ -118,10 +120,14 @@ namespace TestFEC{
                 // emulate not more than N multiple wifi cards as rx
                 const auto duplicates=std::rand() % 8;
                 for(int i=0;i<duplicates+1;i++){
-                    decoder.processPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload + wbDataPacket.payloadSize));
+                    decoder.validateAndProcessPacket(wbDataPacket.wbDataHeader,
+                                                     std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload +
+                                                                                                wbDataPacket.payloadSize));
                 }
             }else{
-                decoder.processPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload + wbDataPacket.payloadSize));
+                decoder.validateAndProcessPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload,
+                                                                                                 wbDataPacket.payload +
+                                                                                                 wbDataPacket.payloadSize));
             }
         };
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
@@ -191,6 +197,7 @@ int main(int argc, char *argv[]){
 
         // now with FEC enabled
         const std::vector<std::pair<uint8_t,uint8_t>> fecParams={
+                {1,3},
                 {3,5},{3,6},{6,8},{6,9},
                 {2,4},{4,8},
                 {6,12},{8,16},{12,24},

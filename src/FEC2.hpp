@@ -373,7 +373,7 @@ public:
         }
     }
     // returns false if the packet is bad (which should never happen !)
-    bool processPacket(const WBDataHeader& wblockHdr,const std::vector<uint8_t>& decrypted){
+    bool validateAndProcessPacket(const WBDataHeader& wblockHdr, const std::vector<uint8_t>& decrypted){
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
         // Use FEC_K==0 to completely disable FEC
         if(FEC_K == 0) {

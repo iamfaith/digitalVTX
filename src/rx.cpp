@@ -328,7 +328,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 
     assert(decryptedPayload->size() <= MAX_FEC_PAYLOAD);
 
-    if(!FECDecoder::processPacket(encryptedWbDataPacket.wbDataHeader, *decryptedPayload)){
+    if(!FECDecoder::validateAndProcessPacket(encryptedWbDataPacket.wbDataHeader, *decryptedPayload)){
         count_p_bad++;
     }
 }

@@ -153,12 +153,16 @@ private:
     }
 };
 
-class RxRingItem{
+// This encapsulates everything you need when working on a single FEC block
+// for example, addFragment() or forwardPrimaryFragment()
+// it also keeps track of how many primary fragments have already been forwarded.
+// and allows you to do the FEC step once enough secondary fragments have been received
+class RxBlock{
 public:
-    explicit RxRingItem(const FEC& fec,const uint64_t block_idx=0): fec(fec),fragment_map(fec.FEC_N,FragmentStatus::UNAVAILABLE),fragments(fec.FEC_N),originalSizeOfFragments(fec.FEC_N){
+    explicit RxBlock(const FEC& fec, const uint64_t block_idx=0): fec(fec), fragment_map(fec.FEC_N, FragmentStatus::UNAVAILABLE), fragments(fec.FEC_N), originalSizeOfFragments(fec.FEC_N){
         repurpose(block_idx);
     }
-    ~RxRingItem()= default;
+    ~RxBlock()= default;
 public:
     // Use this once the decoder is done with this item and uses it for a different block
     void repurpose(const uint64_t new_block_idx= 0){
@@ -179,7 +183,7 @@ public:
         assert(nAlreadyForwardedPrimaryFragments <= fec.FEC_K);
         return nAlreadyForwardedPrimaryFragments == fec.FEC_K;
     }
-    // returns true if enough FEC secondary fragments are available to do the FEC step
+    // returns true if enough FEC secondary fragments are available to replace all missing primary fragments
     bool allPrimaryFragmentsCanBeRecovered()const{
         if(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K)return true;
         return false;
@@ -194,7 +198,7 @@ public:
         // set the rest to zero such that FEC works
         memset(fragments[fragment_idx].data()+dataLen, '\0', MAX_FEC_PAYLOAD-dataLen);
         // mark it as available
-        fragment_map[fragment_idx] = RxRingItem::AVAILABLE;
+        fragment_map[fragment_idx] = RxBlock::AVAILABLE;
         // store the size of the received fragment for later use
         originalSizeOfFragments[fragment_idx]=dataLen;
         if(fragment_idx<fec.FEC_K){
@@ -202,10 +206,10 @@ public:
         }else{
             nAvailableSecondaryFragments++;
         }
-        availableFragmentsCount++;
     }
     // increase the n of already forwarded fragments by one
     // return the data pointer for this fragment
+    // NOTE: be carefully to not get out of sync here !
     const uint8_t* forwardPrimaryFragment(const uint8_t fragmentIdx){
         assert(fragmentIdx<fec.FEC_K);
         //assert(fragmentIdx>=nAlreadyForwardedPrimaryFragments);
@@ -217,7 +221,8 @@ public:
     }
     // make sure to check if enough secondary fragments are available before calling this method !
     // reconstructing only part of the missing data is not supported !
-    void reconstructAllMissingData(){
+    // return: the n of reconstructed packets
+    int reconstructAllMissingData(){
         // NOTE: FEC does only work if nPrimaryFragments+nSecondaryFragments>=FEC_K
         assert(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K);
         unsigned index[fec.FEC_K];
@@ -252,6 +257,7 @@ public:
         assert(ob_idx>0);
         assert(tmpMaxPacketSize!=0);
         fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
+        return ob_idx;
     }
 private:
     //reference to the FEC decoder (needed for k,n)
@@ -259,7 +265,6 @@ private:
 public:
     // the block idx marks which block this element currently refers to
     uint64_t block_idx=0;
-    uint8_t availableFragmentsCount=0;
 private:
     // n of primary fragments that are already sent out
     int nAlreadyForwardedPrimaryFragments=0;
@@ -274,7 +279,6 @@ private:
     int nAvailableSecondaryFragments=0;
 };
 
-#define USE_RX_RING
 
 // Takes a continuous stream of packets (data and fec correction packets) and
 // processes them such that the output is exactly (or as close as possible) to the
@@ -289,16 +293,47 @@ public:
     explicit FECDecoder(int k, int n) : FEC(k,n) {
     }
     ~FECDecoder() = default;
+public:
+    // call on new session key !
+    void reset() {
+        seq = 0;
+        temporaryBlock= nullptr;
+    }
+    // returns false if the packet is bad (which should never happen !)
+    bool validateAndProcessPacket(const WBDataHeader& wblockHdr, const std::vector<uint8_t>& decrypted){
+        assert(wblockHdr.packet_type==WFB_PACKET_DATA);
+        // Use FEC_K==0 to completely disable FEC
+        if(FEC_K == 0) {
+            callback(decrypted.data(),decrypted.size());
+            return true;
+        }
+        const uint64_t block_idx=wblockHdr.getBlockIdx();
+        const uint8_t fragment_idx=wblockHdr.getFragmentIdx();
+
+        // Should never happen due to generating new session key on tx side
+        if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
+            std::cerr<<"block_idx overflow\n";
+            return false;
+        }
+        // fragment index must be in the range [0,...,FEC_N[
+        if (fragment_idx >= FEC_N) {
+            std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
+            return false;
+        }
+        processFECBlockWithoutRxQueue(block_idx, fragment_idx, decrypted);
+        return true;
+    }
 private:
     uint64_t seq = 0;
-    std::shared_ptr<RxRingItem> temporaryBlock=nullptr;
-private:
+    std::shared_ptr<RxBlock> temporaryBlock=nullptr;
+    std::deque<std::shared_ptr<RxBlock>> mRxQueue;
+    uint64_t last_known_block = ((uint64_t) -1);
     /**
      * forward as many primary fragments as they are available until there is a gap
      * starting at the primary fragment we stopped on last time
      * @param breakOnFirstGap : if true, stop on the first gap in all primary fragments. Else, keep going skipping packets with gaps
      */
-    void forwardPrimaryFragmentsIfAvailable(RxRingItem& rxRingItem,const bool breakOnFirstGap=true){
+    void forwardMissingPrimaryFragmentsIfAvailable(RxBlock& rxRingItem, const bool breakOnFirstGap= true){
         for(int i=rxRingItem.getNAlreadyForwardedPrimaryFragments(); i < FEC_K; i++){
             if(!rxRingItem.hasFragment(i)){
                 if(breakOnFirstGap){
@@ -313,7 +348,7 @@ private:
     /**
      * Forward the primary (data) fragment at index fragmentIdx via the output callback
      */
-    void forwardPrimaryFragment(RxRingItem& rxRingItem, const uint8_t fragmentIdx){
+    void forwardPrimaryFragment(RxBlock& rxRingItem, const uint8_t fragmentIdx){
         assert(fragmentIdx<FEC_K);
         assert(rxRingItem.hasFragment(fragmentIdx));
         const uint8_t* primaryFragment= rxRingItem.forwardPrimaryFragment(fragmentIdx);
@@ -336,72 +371,71 @@ private:
             callback(payload,packet_size);
         }
     }
-public:
-    // call on new session key !
-    void reset() {
-        seq = 0;
-        temporaryBlock= nullptr;
-    }
-
-    // returns false if the packet is bad (which should never happen !)
-    bool processPacket(const WBDataHeader& wblockHdr,const std::vector<uint8_t>& decrypted){
-        assert(wblockHdr.packet_type==WFB_PACKET_DATA);
-        // Use FEC_K==0 to completely disable FEC
-        if(FEC_K == 0) {
-            callback(decrypted.data(),decrypted.size());
-            return true;
-        }
-        const uint64_t block_idx=wblockHdr.getBlockIdx();
-        const uint8_t fragment_idx=wblockHdr.getFragmentIdx();
-
-        // Should never happen due to generating new session key on tx side
-        if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
-            std::cerr<<"block_idx overflow\n";
-            return false;
-        }
-        // fragment index must be in the range [0,...,FEC_N[
-        if (fragment_idx >= FEC_N) {
-            std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
-            return false;
-        }
+    void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
         // allocate only on the first time, then use repurpose to avoid memory fragmentation
         if(temporaryBlock==nullptr){
-            temporaryBlock=std::make_shared<RxRingItem>(*this,block_idx);
+            temporaryBlock=std::make_shared<RxBlock>(*this, block_idx);
         }
         if(temporaryBlock->block_idx!=block_idx){
             if(temporaryBlock->block_idx<block_idx) {
                 // we move on to the next block. However, make sure to send stuff even though it has gaps in between
-                forwardPrimaryFragmentsIfAvailable(*temporaryBlock,false);
+                forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock, false);
                 temporaryBlock->repurpose(block_idx);
             }else{
                 std::cout<<"We got block "<<block_idx<<" but already moved up to a higher one"<<temporaryBlock->block_idx<<"\n";
-                return true;
+                return;
             }
         }
         // get rid of any duplicate information
+        // if we are already done with this block, return early
         if(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()){
-            return true;
+            return;
         }
         // we've already got this fragment for this block
         if(temporaryBlock->hasFragment(fragment_idx)){
-            return true;
+            return;
         }
         // now add the new information
         temporaryBlock->addFragment(fragment_idx, decrypted.data(), decrypted.size());
 
         // forward primary fragments until there is a gap starting at the fragment we stopped on last time
-        forwardPrimaryFragmentsIfAvailable(*temporaryBlock);
+        forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
 
         if(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()){
             //std::cout<<"Done with block "<<temporaryBlock->block_idx<<"\n";
-            return true;
+            return;
         }
         if(temporaryBlock->allPrimaryFragmentsCanBeRecovered()){
-            temporaryBlock->reconstructAllMissingData();
-            forwardPrimaryFragmentsIfAvailable(*temporaryBlock);
+            count_p_fec_recovered=temporaryBlock->reconstructAllMissingData();
+            forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
             assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
         }
-        return true;
+    }
+
+    // if the wanted block is already in the queue, return it
+    // if the wanted block is not in the queue, check:
+    // if we have already removed this block from the queue, return nullptr
+    // else add it to the queue
+    std::shared_ptr<RxBlock> getBlockIfNotAlreadyProcessed(const uint64_t blockIdx){
+        auto tmp=std::find_if(mRxQueue.begin(), mRxQueue.end(), [blockIdx](const std::shared_ptr<RxBlock>& rxRingItem){ return rxRingItem->block_idx == blockIdx; });
+        if(tmp==mRxQueue.end()){
+            // not in the queue
+            if(last_known_block != (uint64_t) -1 && last_known_block>blockIdx){
+                // already got rid of it
+                return nullptr;
+            }
+            // push as many blocks as we need
+            const int new_blocks = last_known_block != (uint64_t) -1 ? blockIdx - last_known_block : 1;
+
+            mRxQueue.push_front(std::make_shared<RxBlock>(*this, blockIdx));
+            return mRxQueue.front();
+        }else{
+            return *tmp;
+        }
+    }
+
+    void processFECBlockWitRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
+
     }
 protected:
     uint32_t count_p_fec_recovered=0;
