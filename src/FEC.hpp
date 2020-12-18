@@ -289,7 +289,6 @@ private:
 // Most importantly, it also handles re-ordering of packets and packet duplicates due to multiple rx cards
 class FECDecoder : public FEC{
 public:
-    static constexpr auto RX_RING_SIZE = 40;
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     SEND_DECODED_PACKET callback;
 
@@ -341,8 +340,8 @@ private:
     uint64_t seq = 0;
     std::unique_ptr<RxBlock> temporaryBlock=nullptr;
     /**
+     * starting at the primary fragment we stopped on last time,
      * forward as many primary fragments as they are available until there is a gap
-     * starting at the primary fragment we stopped on last time
      * @param breakOnFirstGap : if true, stop on the first gap in all primary fragments. Else, keep going skipping packets with gaps
      */
     void forwardMissingPrimaryFragmentsIfAvailable(RxBlock& rxRingItem, const bool breakOnFirstGap= true){
@@ -400,7 +399,6 @@ private:
                 return;
             }
         }
-        // get rid of any duplicate information
         // if we are already done with this block, return early
         if(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()){
             return;
@@ -426,6 +424,7 @@ private:
         }
     }
 private:
+    static constexpr auto RX_RING_SIZE = 1;
     // Here is everything you need when using the RX queue to account for packet re-ordering due to multiple wifi cards
     std::array<std::unique_ptr<RxBlock>,RX_RING_SIZE> rx_ring;
     int rx_ring_front = 0; // current packet
@@ -435,30 +434,46 @@ private:
     static inline int modN(int x, int base) {
         return (base + (x % base)) % base;
     }
-    int rxRingPushFront() {
-        if (rx_ring_alloc < RX_RING_SIZE) {
-            int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
-            rx_ring_alloc += 1;
-            return idx;
-        }
-
-        // override existing data
-        const int idx = rx_ring_front;
-
-        /*
-          Ring overflow. This means that there are more unfinished blocks than ring size
-          Possible solutions:
-          1. Increase ring size. Do this if you have large variance of packet travel time throught WiFi card or network stack.
-             Some cards can do this due to packet reordering inside, diffent chipset and/or firmware or your RX hosts have different CPU power.
-          2. Reduce packet injection speed or try to unify RX hardware.
-        */
-        std::cerr<<"override block "<<rx_ring[idx]->block_idx<<" with "<< rx_ring[idx]->getNAvailableFragments()<<" fragments\n";
-
+    // removes the first (oldest) element
+    // returns the index of the removed element
+    int rxRingPopFront(){
+        const auto ret=rx_ring_front;
         rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
+        rx_ring_alloc -= 1;
+        assert(rx_ring_alloc >= 0);
+        return ret;
+    }
+    // makes space for 1 new element
+    // return its index
+    int rxRingPushBack(){
+        int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
+        rx_ring_alloc += 1;
+        assert(rx_ring_alloc<=RX_RING_SIZE);
         return idx;
     }
-    // TODO documentation
-    // copy paste from svpcom
+    // if enough space is available, same like push back
+    // if not enough space is available,it drops the oldest block, and also sends any fragments of this block that are not forwarded yet
+    int rxRingPushBackSafe() {
+        if (rx_ring_alloc < RX_RING_SIZE) {
+            return rxRingPushBack();
+        }
+        //Ring overflow. This means that there are more unfinished blocks than ring size
+        //Possible solutions:
+        //1. Increase ring size. Do this if you have large variance of packet travel time throught WiFi card or network stack.
+        //   Some cards can do this due to packet reordering inside, diffent chipset and/or firmware or your RX hosts have different CPU power.
+        //2. Reduce packet injection speed or try to unify RX hardware.
+
+        // remove the oldest block
+        auto oldestBlockIdx=rxRingPopFront();
+        auto oldestBlock=*rx_ring[oldestBlockIdx];
+        std::cerr<<"Forwarding block that is not yet fully finished "<<oldestBlock.block_idx<<"\n";
+        forwardMissingPrimaryFragmentsIfAvailable(oldestBlock,false);
+        //
+        return rxRingPushBack();
+    }
+    // If block is already known and not in the ring anymore return -1
+    // else if block is already in the ring return its index or if block is not yet
+    // in the ring add as many blocks as needed and then return its index
     int get_block_ring_idx(const uint64_t block_idx) {
         // check if block is already in the ring
         for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
@@ -469,8 +484,8 @@ private:
         if (last_known_block != (uint64_t) -1 && block_idx <= last_known_block) {
             return -1;
         }
-
-        int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
+        // add as many blocks as we need ( the rx ring mustn't have any gaps between the block indices
+        const int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
                                         (uint64_t) FECDecoder::RX_RING_SIZE);
         assert (new_blocks > 0);
 
@@ -478,16 +493,11 @@ private:
         int ring_idx = -1;
 
         for (int i = 0; i < new_blocks; i++) {
-            ring_idx = rxRingPushFront();
+            ring_idx = rxRingPushBackSafe();
             const auto newBlockIdx=block_idx + i + 1 - new_blocks;
             rx_ring[ring_idx]->repurpose(newBlockIdx);
         }
         return ring_idx;
-    }
-    void rxRingPopFront(){
-        rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
-        rx_ring_alloc -= 1;
-        assert(rx_ring_alloc >= 0);
     }
 
     void processFECBlockWitRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){

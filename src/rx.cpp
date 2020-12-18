@@ -232,7 +232,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     // The radio capture header precedes the 802.11 header.
     const auto parsedPacket=RawReceiverHelper::processReceivedPcapPacket(hdr, pkt);
     if(parsedPacket==std::nullopt){
-        std::cerr<< "Discarding packet due to pcap parsing error (or wrong checksum)!\n";
+        std::cerr<< "Discarding packet due to wrong checksum (or pcap parsing error)!\n";
         count_p_bad++;
         return;
     }
