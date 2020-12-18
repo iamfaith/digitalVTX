@@ -39,10 +39,6 @@ public:
     void fecEncode(const uint8_t** src,uint8_t ** fecs, size_t sz)const{
         fec_encode(fec_p,src,fecs,sz);
     }
-    // c++ - style declaration
-    void fecEncode2(const std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& inpkts,std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>>& outpkts,std::size_t size){
-        // create the right pointers for in and out
-    }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         fec_decode(fec_p,inpkts,outpkts,index,sz);
     }
@@ -199,7 +195,7 @@ public:
         memset(fragments[fragment_idx].data()+dataLen, '\0', MAX_FEC_PAYLOAD-dataLen);
         // mark it as available
         fragment_map[fragment_idx] = RxBlock::AVAILABLE;
-        // store the size of the received fragment for later use
+        // store the size of the received fragment for later use in the fec step
         originalSizeOfFragments[fragment_idx]=dataLen;
         if(fragment_idx<fec.FEC_K){
             nAvailablePrimaryFragments++;
@@ -411,6 +407,8 @@ private:
             assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
         }
     }
+private:
+    // Here is everything you need when using the RX queue to account for packet re-ordering due to multiple wifi cards
 
     // if the wanted block is already in the queue, return it
     // if the wanted block is not in the queue, check:
