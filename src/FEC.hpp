@@ -392,7 +392,7 @@ private:
         }
         if(temporaryBlock->block_idx!=block_idx){
             if(temporaryBlock->block_idx<block_idx) {
-                // we move on to the next block. However, make sure to send stuff even though it has gaps in between
+                // we move on to the next block. However, make sure to send stuff from before even though it has gaps in between
                 forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock, false);
                 temporaryBlock->repurpose(block_idx);
             }else{
