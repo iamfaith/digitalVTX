@@ -110,6 +110,7 @@ const bool COMPARE_RECEIVED_DATA=true;
 std::vector<int> lostPacketsSeqNrDiffs;
 std::size_t receivedPackets=0;
 std::size_t receivedBytes=0;
+std::size_t nReceivedPacketsWhereContentDoesntMatch=0;
 
 static void validateReceivedData(const uint8_t* dataP,size_t data_length){
     receivedPackets++;
@@ -140,6 +141,7 @@ static void validateReceivedData(const uint8_t* dataP,size_t data_length){
            if(!compareSentAndReceivedPacket(*originalPacketData,data)){
                 //Also this should never happen !
                std::cout<<"Packets do not match !"<<"\n";
+               nReceivedPacketsWhereContentDoesntMatch++;
            }else{
                 //std::cout<<"Packets do match"<<"\n";
            }
@@ -150,6 +152,8 @@ static void validateReceivedData(const uint8_t* dataP,size_t data_length){
            std::cerr<<"Got probably invalid seqNr "<<info.seqNr<<" "<<sentDataSave.sentPackets.size()<<"\n";
        }
        sentDataSave.mMutex.unlock();
+    }else{
+        nReceivedPacketsWhereContentDoesntMatch=-1;
     }
 }
 
@@ -217,6 +221,7 @@ static void test_latency(const Options& o){
    std::cout<<"N of packets sent | rec | diff ["<<writtenPackets<<" | "<<receivedPackets<<" | "<<nLostPackets<<"]\n";
    //std::cout<<"N of bytes sent | rec | diff | perc lost ["<<writtenBytes<<" | "<<receivedBytes
    //<<" | "<<nLostBytes<<" | "<<lostBytesPercentage<<"]\n";
+    std::cout<<"nReceivedPacketsWhereContentDoesntMatch "<<nReceivedPacketsWhereContentDoesntMatch<<"\n";
     std::cout<<"LostPacketsSeqNrDiffs "<<StringHelper::vectorAsString(lostPacketsSeqNrDiffs)<<"\n";
     std::cout<<"------- Latency between (I<=>O) ------- \n";
     std::cout<<avgUDPProcessingTime.getAvgReadable()<<"\n";

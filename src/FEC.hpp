@@ -215,6 +215,9 @@ public:
     int getNAlreadyForwardedPrimaryFragments()const{
         return nAlreadyForwardedPrimaryFragments;
     }
+    int getNAvailableFragments()const{
+        return nAvailablePrimaryFragments+nAvailableSecondaryFragments;
+    }
     // make sure to check if enough secondary fragments are available before calling this method !
     // reconstructing only part of the missing data is not supported !
     // return: the n of reconstructed packets
@@ -275,7 +278,6 @@ private:
     int nAvailableSecondaryFragments=0;
 };
 
-
 // Takes a continuous stream of packets (data and fec correction packets) and
 // processes them such that the output is exactly (or as close as possible) to the
 // Input stream fed to FECEncoder.
@@ -287,6 +289,9 @@ public:
     SEND_DECODED_PACKET callback;
 
     explicit FECDecoder(int k, int n) : FEC(k,n) {
+        for(int i=0;i<RX_RING_SIZE;i++){
+            rx_ring[i]=std::make_unique<RxBlock>(*this);
+        }
     }
     ~FECDecoder() = default;
 public:
@@ -294,6 +299,13 @@ public:
     void reset() {
         seq = 0;
         temporaryBlock= nullptr;
+        // rx ring part
+        rx_ring_front = 0;
+        rx_ring_alloc = 0;
+        last_known_block = (uint64_t) -1;
+        for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
+            rx_ring[ring_idx]->repurpose();
+        }
     }
     // returns false if the packet is bad (which should never happen !)
     bool validateAndProcessPacket(const WBDataHeader& wblockHdr, const std::vector<uint8_t>& decrypted){
@@ -316,14 +328,13 @@ public:
             std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
             return false;
         }
-        processFECBlockWithoutRxQueue(block_idx, fragment_idx, decrypted);
+        //processFECBlockWithoutRxQueue(block_idx, fragment_idx, decrypted);
+        processFECBlockWitRxQueue(block_idx,fragment_idx,decrypted);
         return true;
     }
 private:
     uint64_t seq = 0;
     std::shared_ptr<RxBlock> temporaryBlock=nullptr;
-    std::deque<std::shared_ptr<RxBlock>> mRxQueue;
-    uint64_t last_known_block = ((uint64_t) -1);
     /**
      * forward as many primary fragments as they are available until there is a gap
      * starting at the primary fragment we stopped on last time
@@ -409,35 +420,127 @@ private:
     }
 private:
     // Here is everything you need when using the RX queue to account for packet re-ordering due to multiple wifi cards
-
-    // if the wanted block is already in the queue, return it
-    // if the wanted block is not in the queue, check:
-    // if we have already removed this block from the queue, return nullptr
-    // else add it to the queue
-    std::shared_ptr<RxBlock> getBlockIfNotAlreadyProcessed(const uint64_t blockIdx){
-        auto tmp=std::find_if(mRxQueue.begin(), mRxQueue.end(), [blockIdx](const std::shared_ptr<RxBlock>& rxRingItem){ return rxRingItem->block_idx == blockIdx; });
-        if(tmp==mRxQueue.end()){
-            // not in the queue
-            if(last_known_block != (uint64_t) -1 && last_known_block>blockIdx){
-                // already got rid of it
-                return nullptr;
-            }
-            // push as many blocks as we need
-            const int new_blocks = last_known_block != (uint64_t) -1 ? blockIdx - last_known_block : 1;
-
-            mRxQueue.push_front(std::make_shared<RxBlock>(*this, blockIdx));
-            return mRxQueue.front();
-        }else{
-            return *tmp;
+    std::array<std::unique_ptr<RxBlock>,RX_RING_SIZE> rx_ring;
+    int rx_ring_front = 0; // current packet
+    int rx_ring_alloc = 0; // number of allocated entries
+    uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
+    //
+    static inline int modN(int x, int base) {
+        return (base + (x % base)) % base;
+    }
+    int rxRingPushFront() {
+        if (rx_ring_alloc < RX_RING_SIZE) {
+            int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
+            rx_ring_alloc += 1;
+            return idx;
         }
+
+        // override existing data
+        const int idx = rx_ring_front;
+
+        /*
+          Ring overflow. This means that there are more unfinished blocks than ring size
+          Possible solutions:
+          1. Increase ring size. Do this if you have large variance of packet travel time throught WiFi card or network stack.
+             Some cards can do this due to packet reordering inside, diffent chipset and/or firmware or your RX hosts have different CPU power.
+          2. Reduce packet injection speed or try to unify RX hardware.
+        */
+        std::cerr<<"override block "<<rx_ring[idx]->block_idx<<" with "<< rx_ring[idx]->getNAvailableFragments()<<" fragments\n";
+
+        rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
+        return idx;
+    }
+    // TODO documentation
+    // copy paste from svpcom
+    int get_block_ring_idx(const uint64_t block_idx) {
+        // check if block is already in the ring
+        for (int i = rx_ring_front, c = rx_ring_alloc; c > 0; i = modN(i + 1, FECDecoder::RX_RING_SIZE), c--) {
+            if (rx_ring[i]->block_idx == block_idx) return i;
+        }
+
+        // check if block is already known and not in the ring then it is already processed
+        if (last_known_block != (uint64_t) -1 && block_idx <= last_known_block) {
+            return -1;
+        }
+
+        int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
+                                        (uint64_t) FECDecoder::RX_RING_SIZE);
+        assert (new_blocks > 0);
+
+        last_known_block = block_idx;
+        int ring_idx = -1;
+
+        for (int i = 0; i < new_blocks; i++) {
+            ring_idx = rxRingPushFront();
+            const auto newBlockIdx=block_idx + i + 1 - new_blocks;
+            rx_ring[ring_idx]->repurpose(newBlockIdx);
+        }
+        return ring_idx;
+    }
+    void rxRingPopFront(){
+        rx_ring_front = modN(rx_ring_front + 1, RX_RING_SIZE);
+        rx_ring_alloc -= 1;
+        assert(rx_ring_alloc >= 0);
     }
 
     void processFECBlockWitRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
+        const int ring_idx = get_block_ring_idx(block_idx);
 
+        //printf("got 0x%lx %d, ring_idx=%d\n", block_idx, fragment_idx, ring_idx);
+
+        //ignore already processed blocks
+        if (ring_idx < 0) return;
+
+        RxBlock *p = rx_ring[ring_idx].get();
+        if(p->hasFragment(fragment_idx)){
+            // return early (ignore already processed fragments)
+            return;
+        }
+        p->addFragment(fragment_idx, decrypted.data(), decrypted.size());
+        std::cout<<"Allocated entries "<<rx_ring_alloc<<"\n";
+
+        if (ring_idx == rx_ring_front) {
+            // forward packets until the first gap
+            forwardMissingPrimaryFragmentsIfAvailable(*p);
+            // We are done with this block if either all fragments have been forwarded or it can be recovered
+            if(p->allPrimaryFragmentsHaveBeenForwarded()){
+                // remove block when done with it
+                rxRingPopFront();
+                return;
+            }
+            if(p->allPrimaryFragmentsCanBeRecovered()){
+                count_p_fec_recovered=temporaryBlock->reconstructAllMissingData();
+                forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
+                assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
+                // remove block when done with it
+                rxRingPopFront();
+                return;
+            }
+        }
+
+        // If this block can be fully recovered it triggers a full flush of the pipeline
+        if(p->allPrimaryFragmentsCanBeRecovered()){
+            std::cout<<"FEC step. Allocated entries "<<rx_ring_alloc<<"\n";
+            // send all queued packets in all unfinished blocks before and remove them
+            int nrm = modN(ring_idx - rx_ring_front, RX_RING_SIZE);
+            while(nrm > 0) {
+                forwardMissingPrimaryFragmentsIfAvailable(*rx_ring[rx_ring_front], false);
+                rxRingPopFront();
+                nrm -= 1;
+            }
+            // apply fec for this block
+            count_p_fec_recovered=temporaryBlock->reconstructAllMissingData();
+            forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
+            //assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
+            std::cout<<"temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()"<<temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()<<"\n";
+            // remove block
+            rxRingPopFront();
+        }
     }
 protected:
     uint32_t count_p_fec_recovered=0;
     uint32_t count_p_lost=0;
+    //
 };
 
 

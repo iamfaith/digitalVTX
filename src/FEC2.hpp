@@ -275,7 +275,7 @@ private:
     uint64_t last_known_block = ((uint64_t) -1);  //id of last known block
     // TODO documentation
     // copy paste from svpcom
-    int rx_ring_push() {
+    int rxRingPushFront() {
         if (rx_ring_alloc < RX_RING_SIZE) {
             int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
             rx_ring_alloc += 1;
