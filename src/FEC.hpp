@@ -226,7 +226,7 @@ public:
     // reconstructing only part of the missing data is not supported !
     // return: the n of reconstructed packets
     int reconstructAllMissingData(){
-        std::cout<<"reconstructAllMissingData"<<nAvailablePrimaryFragments<<" "<<nAvailableSecondaryFragments<<" "<<fec.FEC_K<<"\n";
+        //std::cout<<"reconstructAllMissingData"<<nAvailablePrimaryFragments<<" "<<nAvailableSecondaryFragments<<" "<<fec.FEC_K<<"\n";
         // NOTE: FEC does only work if nPrimaryFragments+nSecondaryFragments>=FEC_K
         assert(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K);
         unsigned index[fec.FEC_K];
@@ -308,8 +308,8 @@ public:
         rx_ring_front = 0;
         rx_ring_alloc = 0;
         last_known_block = (uint64_t) -1;
-        for (int ring_idx = 0; ring_idx < FECDecoder::RX_RING_SIZE; ring_idx++) {
-            rx_ring[ring_idx]->repurpose();
+        for(auto& rxBlock:rx_ring){
+            rxBlock->repurpose();
         }
     }
     // returns false if the packet is bad (which should never happen !)
@@ -346,7 +346,7 @@ private:
      * @param breakOnFirstGap : if true, stop on the first gap in all primary fragments. Else, keep going skipping packets with gaps
      */
     void forwardMissingPrimaryFragmentsIfAvailable(RxBlock& rxRingItem, const bool breakOnFirstGap= true){
-        std::cout<<"forwardMissingPrimaryFragmentsIfAvailable\n";
+        //std::cout<<"forwardMissingPrimaryFragmentsIfAvailable\n";
         for(int i=rxRingItem.getNAlreadyForwardedPrimaryFragments(); i < FEC_K; i++){
             if(!rxRingItem.hasFragment(i)){
                 if(breakOnFirstGap){
@@ -362,7 +362,7 @@ private:
      * Forward the primary (data) fragment at index fragmentIdx via the output callback
      */
     void forwardPrimaryFragment(RxBlock& rxRingItem, const uint8_t fragmentIdx){
-        std::cout<<"forwardPrimaryFragment"<<fragmentIdx<<"\n";
+        //std::cout<<"forwardPrimaryFragment"<<(int)fragmentIdx<<"\n";
         assert(fragmentIdx<FEC_K);
         assert(rxRingItem.hasFragment(fragmentIdx));
         const uint8_t* primaryFragment= rxRingItem.forwardPrimaryFragment(fragmentIdx);
@@ -504,7 +504,7 @@ private:
             return;
         }
         block.addFragment(fragment_idx, decrypted.data(), decrypted.size());
-        std::cout<<"Allocated entries "<<rx_ring_alloc<<"\n";
+        //std::cout<<"Allocated entries "<<rx_ring_alloc<<"\n";
 
         if (ring_idx == rx_ring_front) {
             // forward packets until the first gap
