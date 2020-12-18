@@ -374,7 +374,7 @@ private:
 
         if (packet_seq > seq + 1) {
             const auto packetsLost=(packet_seq - seq - 1);
-            std::cerr<<packetsLost<<"packets lost\n";
+            //std::cerr<<packetsLost<<"packets lost\n";
             count_p_lost += packetsLost;
         }
         seq = packet_seq;
@@ -420,7 +420,7 @@ private:
             return;
         }
         if(temporaryBlock->allPrimaryFragmentsCanBeRecovered()){
-            count_p_fec_recovered=temporaryBlock->reconstructAllMissingData();
+            count_p_fec_recovered+=temporaryBlock->reconstructAllMissingData();
             forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
             assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
         }
@@ -516,7 +516,7 @@ private:
                 return;
             }
             if(block.allPrimaryFragmentsCanBeRecovered()){
-                count_p_fec_recovered=block.reconstructAllMissingData();
+                count_p_fec_recovered+=block.reconstructAllMissingData();
                 forwardMissingPrimaryFragmentsIfAvailable(block);
                 assert(block.allPrimaryFragmentsHaveBeenForwarded());
                 // remove block when done with it
@@ -541,7 +541,7 @@ private:
                     assert(block.allPrimaryFragmentsHaveBeenForwarded());
                 }else{
                     // apply fec for this block
-                    count_p_fec_recovered=block.reconstructAllMissingData();
+                    count_p_fec_recovered+=block.reconstructAllMissingData();
                     forwardMissingPrimaryFragmentsIfAvailable(block);
                     assert(block.allPrimaryFragmentsHaveBeenForwarded());
                 }
