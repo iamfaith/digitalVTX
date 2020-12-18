@@ -303,7 +303,7 @@ public:
     // call on new session key !
     void reset() {
         seq = 0;
-        //temporaryBlock= nullptr;
+        temporaryBlock= nullptr;
         // rx ring part
         rx_ring_front = 0;
         rx_ring_alloc = 0;
@@ -339,7 +339,7 @@ public:
     }
 private:
     uint64_t seq = 0;
-    //std::shared_ptr<RxBlock> temporaryBlock=nullptr;
+    std::unique_ptr<RxBlock> temporaryBlock=nullptr;
     /**
      * forward as many primary fragments as they are available until there is a gap
      * starting at the primary fragment we stopped on last time
@@ -385,10 +385,10 @@ private:
             callback(payload,packet_size);
         }
     }
-    /*void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
+    void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
         // allocate only on the first time, then use repurpose to avoid memory fragmentation
         if(temporaryBlock==nullptr){
-            temporaryBlock=std::make_shared<RxBlock>(*this, block_idx);
+            temporaryBlock=std::make_unique<RxBlock>(*this, block_idx);
         }
         if(temporaryBlock->block_idx!=block_idx){
             if(temporaryBlock->block_idx<block_idx) {
@@ -424,7 +424,7 @@ private:
             forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
             assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
         }
-    }*/
+    }
 private:
     // Here is everything you need when using the RX queue to account for packet re-ordering due to multiple wifi cards
     std::array<std::unique_ptr<RxBlock>,RX_RING_SIZE> rx_ring;
@@ -507,20 +507,16 @@ private:
         std::cout<<"Allocated entries "<<rx_ring_alloc<<"\n";
 
         if (ring_idx == rx_ring_front) {
-            std::cout<<"Is front\n";
             // forward packets until the first gap
             forwardMissingPrimaryFragmentsIfAvailable(block);
-            std::cout<<"X\n";
             // We are done with this block if either all fragments have been forwarded or it can be recovered
             if(block.allPrimaryFragmentsHaveBeenForwarded()){
                 // remove block when done with it
                 rxRingPopFront();
                 return;
             }
-            std::cout<<"X2\n";
             if(block.allPrimaryFragmentsCanBeRecovered()){
                 count_p_fec_recovered=block.reconstructAllMissingData();
-                std::cout<<"X3\n";
                 forwardMissingPrimaryFragmentsIfAvailable(block);
                 assert(block.allPrimaryFragmentsHaveBeenForwarded());
                 // remove block when done with it
