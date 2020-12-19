@@ -55,7 +55,7 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     mEncryptor.makeSessionKey();
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
     mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,flushInterval);
-    fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
+    fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
 }
 
 WBTransmitter::~WBTransmitter() {

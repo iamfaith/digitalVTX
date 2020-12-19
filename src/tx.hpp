@@ -41,7 +41,7 @@
 class WBTransmitter: public FECEncoder{
 public:
     WBTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
-                  int udp_port, const std::string &wlan,const std::chrono::milliseconds flushInterval);
+                  int udp_port, const std::string &wlan,std::chrono::milliseconds flushInterval);
     ~WBTransmitter();
 private:
     // process the input data stream
