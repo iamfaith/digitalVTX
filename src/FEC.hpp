@@ -19,8 +19,6 @@ extern "C"{
 #include <iostream>
 #include <functional>
 #include <map>
-#include <queue>
-#include <deque>
 
 // c++ wrapper for the FEC library
 // If K and N were known at compile time we could make this much cleaner !
