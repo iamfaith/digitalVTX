@@ -199,11 +199,11 @@ void Aggregator::dump_stats() {
     for(auto& wifiCard : rssiForWifiCard){
         // no new rssi values for this card since the last call
         if(wifiCard.count_all==0)continue;
-        std::cout<<"RSSI Count|Min|Max|Avg: "<<(int)wifiCard.count_all<<":"<<(int)wifiCard.rssi_min<<":"<<(int)wifiCard.rssi_max<<":"<<(int)wifiCard.getAverage()<<"\n";
+        std::cout<<"RSSI Count|Min|Max|Avg:\t"<<(int)wifiCard.count_all<<":"<<(int)wifiCard.rssi_min<<":"<<(int)wifiCard.rssi_max<<":"<<(int)wifiCard.getAverage()<<"\n";
         wifiCard.reset();
     }
     std::stringstream ss;
-    ss<<runTime<<"\tPKT\t"<<count_p_all<<":"<<count_p_all<<":"<<count_p_dec_err<<":"<<count_p_dec_ok<<":"<<count_p_fec_recovered<<":"<<count_p_lost<<":"<<count_p_lost<<":";
+    ss<<runTime<<"\tPKT\t\t"<<count_p_all<<":"<<count_p_all<<":"<<count_p_dec_err<<":"<<count_p_dec_ok<<":"<<count_p_fec_recovered<<":"<<count_p_lost<<":"<<count_p_lost<<":";
     std::cout<<ss.str()<<"\n";
     // it is actually much more understandable when I use the absolute values for the logging
     /*count_p_all = 0;
