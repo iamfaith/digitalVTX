@@ -308,7 +308,6 @@ public:
     // call on new session key !
     void reset() {
         seq = 0;
-        temporaryBlock= nullptr;
         // rx ring part
         rx_ring_front = 0;
         rx_ring_alloc = 0;
@@ -344,7 +343,6 @@ public:
     }
 private:
     uint64_t seq = 0;
-    std::unique_ptr<RxBlock> temporaryBlock=nullptr;
     /**
      * starting at the primary fragment we stopped on last time,
      * forward as many primary fragments as they are available until there is a gap
@@ -391,45 +389,6 @@ private:
             if(packet_size>0){
                 callback(payload,packet_size);
             }
-        }
-    }
-    void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
-        // allocate only on the first time, then use repurpose to avoid memory fragmentation
-        if(temporaryBlock==nullptr){
-            temporaryBlock=std::make_unique<RxBlock>(*this, block_idx);
-        }
-        if(temporaryBlock->block_idx!=block_idx){
-            if(temporaryBlock->block_idx<block_idx) {
-                // we move on to the next block. However, make sure to send stuff from before even though it has gaps in between
-                forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock, false);
-                temporaryBlock->repurpose(block_idx);
-            }else{
-                std::cout<<"We got block "<<block_idx<<" but already moved up to a higher one"<<temporaryBlock->block_idx<<"\n";
-                return;
-            }
-        }
-        // if we are already done with this block, return early
-        if(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()){
-            return;
-        }
-        // we've already got this fragment for this block
-        if(temporaryBlock->hasFragment(fragment_idx)){
-            return;
-        }
-        // now add the new information
-        temporaryBlock->addFragment(fragment_idx, decrypted.data(), decrypted.size());
-
-        // forward primary fragments until there is a gap starting at the fragment we stopped on last time
-        forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
-
-        if(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded()){
-            //std::cout<<"Done with block "<<temporaryBlock->block_idx<<"\n";
-            return;
-        }
-        if(temporaryBlock->allPrimaryFragmentsCanBeRecovered()){
-            count_p_fec_recovered+=temporaryBlock->reconstructAllMissingData();
-            forwardMissingPrimaryFragmentsIfAvailable(*temporaryBlock);
-            assert(temporaryBlock->allPrimaryFragmentsHaveBeenForwarded());
         }
     }
 private:
