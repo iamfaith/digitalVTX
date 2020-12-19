@@ -125,6 +125,7 @@ void WBTransmitter::loop() {
             }
             firstTime=false;
         }
+        // we set the timeout earlier when creating the socket
         const ssize_t message_length = recvfrom(mInputSocket, buf.data(), MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
         if(std::chrono::steady_clock::now()>=log_ts){
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
@@ -147,6 +148,7 @@ void WBTransmitter::loop() {
                 // timeout
                 if(FLUSH_INTERVAL.count()>0){
                     // smaller than 0 means no flush enabled
+                    // else we didn't receive data for FLUSH_INTERVAL ms
                     finishCurrentBlock();
                 }
                 continue;

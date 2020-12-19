@@ -403,13 +403,13 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 
         if (rc == 0){
             // timeout expired
-            // smaller than 0 means no flush enabled
             if(flush_interval.count()>0){
+                // smaller than 0 means no flush enabled
+                // else we didn't receive data for FLUSH_INTERVAL ms
                 agg->flushRxRing();
             }
             continue;
         }
-
         for (int i = 0; rc > 0 && i < N_RECEIVERS; i++) {
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
                 throw std::runtime_error("socket error!");
