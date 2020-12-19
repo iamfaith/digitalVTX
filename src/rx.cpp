@@ -403,6 +403,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 
         if (rc == 0){
             // timeout expired
+            // smaller than 0 means no flush enabled
             if(flush_interval.count()>0){
                 agg->flushRxRing();
             }
@@ -426,6 +427,7 @@ int main(int argc, char *const *argv) {
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     std::chrono::milliseconds log_interval{1000};
+    // use -1 for no flush interval
     std::chrono::milliseconds flush_interval{-1};
     int client_udp_port = 5600;
     std::string client_addr = "127.0.0.1";

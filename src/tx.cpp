@@ -146,6 +146,7 @@ void WBTransmitter::loop() {
             if(errno==EAGAIN || errno==EWOULDBLOCK){
                 // timeout
                 if(FLUSH_INTERVAL.count()>0){
+                    // smaller than 0 means no flush enabled
                     finishCurrentBlock();
                 }
                 continue;
