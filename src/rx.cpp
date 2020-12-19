@@ -150,7 +150,7 @@ namespace RawTransmitterHelper{
             return std::nullopt;
         }
         if (tmpCopyOfIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_BADFCS) {
-            std::cerr<<"Got packet with bad fsc\n";
+            //std::cerr<<"Got packet with bad fsc\n";
             return std::nullopt;
         }
         if (tmpCopyOfIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_FCS) {
@@ -206,12 +206,6 @@ void Aggregator::dump_stats() {
     ss<<runTime<<"\tPKT\t\t"<<count_p_all<<":"<<count_p_all<<":"<<count_p_dec_err<<":"<<count_p_dec_ok<<":"<<count_p_fec_recovered<<":"<<count_p_lost<<":"<<count_p_lost<<":";
     std::cout<<ss.str()<<"\n";
     // it is actually much more understandable when I use the absolute values for the logging
-    /*count_p_all = 0;
-    count_p_dec_err = 0;
-    count_p_dec_ok = 0;
-    count_p_fec_recovered = 0;
-    count_p_lost = 0;
-    count_p_bad = 0;*/
 #ifdef ENABLE_ADVANCED_DEBUGGING
     std::cout<<"avgPcapToApplicationLatency: "<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
     std::cout<<"nOfPacketsPolledFromPcapQueuePerIteration: "<<nOfPacketsPolledFromPcapQueuePerIteration.getAvgReadable()<<"\n";
@@ -232,9 +226,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     // The radio capture header precedes the 802.11 header.
     const auto parsedPacket=RawTransmitterHelper::processReceivedPcapPacket(hdr, pkt);
     if(parsedPacket==std::nullopt){
-#ifdef ENABLE_ADVANCED_DEBUGGING
         std::cerr<< "Discarding packet due to wrong checksum (or pcap parsing error)!\n";
-#endif
         count_p_bad++;
         return;
     }
