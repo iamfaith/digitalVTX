@@ -42,16 +42,20 @@ extern "C"{
 
 
 WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port, int udp_port,
-                             const std::string &wlan) :
+                             const std::string &wlan,const std::chrono::milliseconds flushInterval) :
         FECEncoder(k,n),
         mPcapTransmitter(wlan),
         RADIO_PORT(radio_port),
         mEncryptor(keypair),
-        mRadiotapHeader(radiotapHeader){
+        mRadiotapHeader(radiotapHeader),
+        FLUSH_INTERVAL(flushInterval){
+    if(FLUSH_INTERVAL>LOG_INTERVAL){
+        std::cerr<<"Please use a flush interval smaller than the log interval\n";
+    }
     mEncryptor.makeSessionKey();
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
-    mInputSocket=SocketHelper::openUdpSocketForRx(udp_port, WBTransmitter::LOG_INTERVAL);
-    fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s\n", udp_port,radio_port,wlan.c_str());
+    mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,flushInterval);
+    fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
 }
 
 WBTransmitter::~WBTransmitter() {
@@ -137,6 +141,7 @@ void WBTransmitter::loop() {
         }else{
             if(errno==EAGAIN || errno==EWOULDBLOCK){
                 // timeout
+                finishCurrentBlock();
                 continue;
             }
             if (errno == EINTR){
@@ -153,6 +158,7 @@ int main(int argc, char *const *argv) {
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     int udp_port = 5600;
+    std::chrono::milliseconds flushInterval=std::chrono::milliseconds(40);
 
     RadiotapHeader::UserSelectableParams params{20, false, 0, false, 1};
 
@@ -160,7 +166,7 @@ int main(int argc, char *const *argv) {
 
     std::cout<<"MAX_PAYLOAD_SIZE:"<<MAX_PAYLOAD_SIZE<<"\n";
 
-    while ((opt = getopt(argc, argv, "K:k:n:u:r:p:B:G:S:L:M:")) != -1) {
+    while ((opt = getopt(argc, argv, "K:k:n:u:r:p:B:G:S:L:M:f:")) != -1) {
         switch (opt) {
             case 'K':
                 keypair = optarg;
@@ -192,15 +198,18 @@ int main(int argc, char *const *argv) {
             case 'M':
                 params.mcs_index = atoi(optarg);
                 break;
+            case 'f':
+                flushInterval=std::chrono::milliseconds(atoi(optarg));
+                break;
             default: /* '?' */
             show_usage:
                 fprintf(stderr,
-                        "Usage: %s [-K tx_key] [-k RS_K] [-n RS_N] [-u udp_port] [-p radio_port] [-B bandwidth] [-G guard_interval] [-S stbc] [-L ldpc] [-M mcs_index] interface \n",
+                        "Usage: %s [-K tx_key] [-k RS_K] [-n RS_N] [-u udp_port] [-p radio_port] [-B bandwidth] [-G guard_interval] [-S stbc] [-L ldpc] [-M mcs_index] [-f flushInterval(ms)] interface \n",
                         argv[0]);
                 fprintf(stderr,
-                        "Default: K='%s', k=%d, n=%d, udp_port=%d, radio_port=%d bandwidth=%d guard_interval=%s stbc=%d ldpc=%d mcs_index=%d\n",
-                        keypair.c_str(), k, n, udp_port, radio_port,params.bandwidth,params.short_gi ? "short" : "long",params.stbc,params.ldpc,
-                        params.mcs_index);
+                        "Default: K='%s', k=%d, n=%d, udp_port=%d, radio_port=%d bandwidth=%d guard_interval=%s stbc=%d ldpc=%d mcs_index=%d flushInterval=%d\n",
+                        keypair.c_str(), k, n, udp_port, radio_port,params.bandwidth,params.short_gi ? "short" : "long",params.stbc,params.ldpc,params.mcs_index,
+                        (int)std::chrono::duration_cast<std::chrono::milliseconds>(flushInterval).count());
                 fprintf(stderr, "Radio MTU: %lu\n", (unsigned long) MAX_PAYLOAD_SIZE);
                 fprintf(stderr, "WFB version "
                 WFB_VERSION
@@ -220,7 +229,7 @@ int main(int argc, char *const *argv) {
 
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(
-                radiotapHeader, k, n, keypair, radio_port,udp_port, wlan);
+                radiotapHeader, k, n, keypair, radio_port,udp_port, wlan,flushInterval);
         t->loop();
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());

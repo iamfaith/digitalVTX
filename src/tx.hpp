@@ -38,10 +38,10 @@
 // WBTransmitter uses an UDP port as input for the data stream
 // Each input UDP port has to be assigned with a Unique ID to differentiate between streams on the RX
 // It does all the FEC encoding & encryption for this stream, then uses PcapTransmitter to inject the generated packets
-class WBTransmitter: private FECEncoder{
+class WBTransmitter: public FECEncoder{
 public:
     WBTransmitter(RadiotapHeader radiotapHeader, int k, int m, const std::string &keypair, uint8_t radio_port,
-                  int udp_port, const std::string &wlan);
+                  int udp_port, const std::string &wlan,const std::chrono::milliseconds flushInterval);
     ~WBTransmitter();
 private:
     // process the input data stream
@@ -72,6 +72,7 @@ private:
     int64_t nInjectedPackets=0;
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
     static constexpr const std::chrono::nanoseconds LOG_INTERVAL=std::chrono::milliseconds(1000);
+    const std::chrono::milliseconds FLUSH_INTERVAL;
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
 public:
     // run as long as nothing goes completely wrong

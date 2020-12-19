@@ -138,6 +138,14 @@ public:
         }
         return false;
     }
+    // add as many "empty packets" as needed until the block is done
+    // if the block is already done,return immediately
+    void finishCurrentBlock(){
+        uint8_t emptyPacket[0];
+        while(fragment_idx!=0){
+            encodePacket(emptyPacket,0);
+        }
+    }
 private:
     // construct WB data packet, from either primary or secondary fragment
     // then forward via the callback
@@ -381,7 +389,10 @@ private:
             // this should never happen !
             std::cerr<<"corrupted packet on FECDecoder out "<<seq;
         } else {
-            callback(payload,packet_size);
+            // we use packets of size 0 to flush the tx pipeline
+            if(packet_size>0){
+                callback(payload,packet_size);
+            }
         }
     }
     void processFECBlockWithoutRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){

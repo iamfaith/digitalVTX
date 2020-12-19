@@ -163,7 +163,8 @@ namespace SocketHelper{
         if(timeout!=std::chrono::nanoseconds(0)){
             auto tv=GenericHelper::durationToTimeval(timeout);
             if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-                std::cout<<"Cannot set socket timeout "<<timeout.count()<<"\n";
+                throw std::runtime_error(StringFormat::convert("Cannot set socket timeout %d",timeout.count()));
+                //std::cout<<"Cannot set socket timeout "<<timeout.count()<<"\n";
             }
         }
         struct sockaddr_in saddr{};
