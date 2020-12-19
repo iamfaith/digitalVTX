@@ -65,6 +65,7 @@ struct RadiotapHeaderWithTxFlagsAndMCS{
     // mcs is more than just the mcs index. Be carefully !
     Radiotap::MCS mcs{};
 }__attribute__ ((packed));
+static_assert(sizeof(RadiotapHeaderWithTxFlagsAndMCS)==13);
 
 
 // To inject packets we need a proper radiotap header. The fields of importance for use are:
@@ -145,7 +146,7 @@ public:
         return (const uint8_t*)&radiotapHeaderData;
     }
     constexpr std::size_t getSize()const{
-        return 13;
+        return SIZE_BYTES;
     }
 private:
     RadiotapHeaderWithTxFlagsAndMCS radiotapHeaderData;

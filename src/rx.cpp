@@ -369,7 +369,7 @@ void PcapReceiver::loop_iter() {
 
 
 void
-radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval) {
+radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval) {
     const int N_RECEIVERS = rxInterfaces.size();
     struct pollfd fds[N_RECEIVERS];
     PcapReceiver *rx[N_RECEIVERS];
@@ -385,10 +385,14 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
         ss<<rxInterfaces[i]<<" ";
     }
     std::cout<<ss.str()<<"\n";
+    if(flush_interval>log_interval){
+        std::cerr<<"Please use a flush interval smaller than the log interval\n";
+    }
     std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
-        const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
+        //const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
+        const int timeoutMS=std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count();
         int rc = poll(fds, N_RECEIVERS,timeoutMS);
 
         if (rc < 0) {
@@ -403,7 +407,11 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
             log_send_ts = std::chrono::steady_clock::now() + log_interval;
         }
 
-        if (rc == 0) continue; // timeout expired
+        if (rc == 0){
+            // timeout expired
+            agg->flushRxRing();
+            continue;
+        }
 
         for (int i = 0; rc > 0 && i < N_RECEIVERS; i++) {
             if (fds[i].revents & (POLLERR | POLLNVAL)) {
@@ -422,11 +430,12 @@ int main(int argc, char *const *argv) {
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     std::chrono::milliseconds log_interval{1000};
+    std::chrono::milliseconds flush_interval{40};
     int client_udp_port = 5600;
     std::string client_addr = "127.0.0.1";
     std::string keypair = "gs.key";
 
-    while ((opt = getopt(argc, argv, "K:k:n:c:u:p:l:")) != -1) {
+    while ((opt = getopt(argc, argv, "K:k:n:c:u:p:l:f:")) != -1) {
         switch (opt) {
             case 'K':
                 keypair = optarg;
@@ -449,13 +458,17 @@ int main(int argc, char *const *argv) {
             case 'l':
                 log_interval = std::chrono::milliseconds(atoi(optarg));
                 break;
+            case 'f':
+                flush_interval=std::chrono::milliseconds(atoi(optarg));
+                break;
             default: /* '?' */
             show_usage:
                 fprintf(stderr,
-                        "Local receiver: %s [-K rx_key] [-k RS_K] [-n RS_N] [-c client_addr] [-u client_port] [-p radio_port] [-l log_interval] interface1 [interface2] ...\n",
+                        "Local receiver: %s [-K rx_key] [-k RS_K] [-n RS_N] [-c client_addr] [-u client_port] [-p radio_port] [-l log_interval(ms)] [-f flush_interval(ms)] interface1 [interface2] ...\n",
                         argv[0]);
-                fprintf(stderr, "Default: K='%s', k=%d, n=%d, connect=%s:%d, radio_port=%d, log_interval=%d\n",
-                        keypair.c_str(), k, n, client_addr.c_str(), client_udp_port, radio_port, (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count());
+                fprintf(stderr, "Default: K='%s', k=%d, n=%d, connect=%s:%d, radio_port=%d, log_interval=%d flush_interval=%d\n",
+                        keypair.c_str(), k, n, client_addr.c_str(), client_udp_port, radio_port,
+                        (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count(),(int)std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count());
                 fprintf(stderr, "WFB version "
                 WFB_VERSION
                 "\n");
@@ -473,7 +486,7 @@ int main(int argc, char *const *argv) {
     }
     try {
         std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port,radio_port, k, n, keypair);
-        radio_loop(agg,rxInterfaces, radio_port, log_interval);
+        radio_loop(agg,rxInterfaces, radio_port, log_interval,flush_interval);
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);

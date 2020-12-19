@@ -424,7 +424,7 @@ private:
         }
     }
 private:
-    static constexpr auto RX_RING_SIZE = 1;
+    static constexpr auto RX_RING_SIZE = 20;
     // Here is everything you need when using the RX queue to account for packet re-ordering due to multiple wifi cards
     std::array<std::unique_ptr<RxBlock>,RX_RING_SIZE> rx_ring;
     int rx_ring_front = 0; // current packet
@@ -444,7 +444,7 @@ private:
         return ret;
     }
     // makes space for 1 new element
-    // return its index
+    // return its index (this is now the latest element)
     int rxRingPushBack(){
         int idx = modN(rx_ring_front + rx_ring_alloc, RX_RING_SIZE);
         rx_ring_alloc += 1;
@@ -466,7 +466,7 @@ private:
         // remove the oldest block
         auto oldestBlockIdx=rxRingPopFront();
         auto oldestBlock=*rx_ring[oldestBlockIdx];
-        std::cerr<<"Forwarding block that is not yet fully finished "<<oldestBlock.block_idx<<"\n";
+        std::cerr<<"Forwarding block that is not yet fully finished "<<oldestBlock.block_idx<<" with n fragments"<<oldestBlock.getNAvailableFragments()<<"\n";
         forwardMissingPrimaryFragmentsIfAvailable(oldestBlock,false);
         //
         return rxRingPushBack();
@@ -484,7 +484,7 @@ private:
         if (last_known_block != (uint64_t) -1 && block_idx <= last_known_block) {
             return -1;
         }
-        // add as many blocks as we need ( the rx ring mustn't have any gaps between the block indices
+        // add as many blocks as we need ( the rx ring mustn't have any gaps between the block indices)
         const int new_blocks = (int) std::min(last_known_block != (uint64_t) -1 ? block_idx - last_known_block : 1,
                                         (uint64_t) FECDecoder::RX_RING_SIZE);
         assert (new_blocks > 0);
@@ -558,6 +558,17 @@ private:
                 // remove block
                 rxRingPopFront();
             }
+        }
+    }
+public:
+    // By doing so you are telling the pipeline:
+    // It makes no sense to hold on to any blocks. Future packets won't help you to recover any blocks that might still be in the pipeline
+    // For example, if the RX doesn't receive anything for N ms any data that is going to arrive will not have a smaller or equal block index than the blocks that are currently in the queue
+    void flushRxRing(){
+        while(rx_ring_alloc>0){
+            std::cout<<"Flushing pipeline\n";
+            auto idx=rxRingPopFront();
+            forwardMissingPrimaryFragmentsIfAvailable(*rx_ring[idx],false);
         }
     }
 protected:
