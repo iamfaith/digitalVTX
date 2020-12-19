@@ -260,8 +260,7 @@ int main(int argc, char *argv[])
         default: /* '?' */
         show_usage:
             std::cout<<"Usage: [-s=packet size in bytes] [-p=packets per second] [-t=time to run in seconds]"
-			<<" [-i=input udp port] [-o=output udp port]"
-			<<" [-m= mode 0 for sendto localhost else airpi (ethernet+wfb)]\n";
+			<<" [-i=input udp port] [-o=output udp port]"<<"\n";
             return 1;
         }
     }
