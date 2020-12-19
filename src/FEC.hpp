@@ -583,8 +583,8 @@ public:
         }
     }
 protected:
-    uint32_t count_p_fec_recovered=0;
-    uint32_t count_p_lost=0;
+    uint64_t count_p_fec_recovered=0;
+    uint64_t count_p_lost=0;
     //
 };
 

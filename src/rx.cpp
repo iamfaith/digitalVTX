@@ -189,7 +189,7 @@ Aggregator::~Aggregator() {
     close(sockfd);
 }
 
-void Aggregator::dump_stats(FILE *fp) {
+void Aggregator::dump_stats() {
     // first forward to OpenHD
     openHdStatisticsWriter.writeStats({
         count_p_all,count_p_dec_err,count_p_dec_ok,count_p_fec_recovered,count_p_lost,count_p_bad,rssiForWifiCard
@@ -202,9 +202,9 @@ void Aggregator::dump_stats(FILE *fp) {
         std::cout<<"RSSI Count|Min|Max|Avg: "<<(int)wifiCard.count_all<<":"<<(int)wifiCard.rssi_min<<":"<<(int)wifiCard.rssi_max<<":"<<(int)wifiCard.getAverage()<<"\n";
         wifiCard.reset();
     }
-    fprintf(fp, "%" PRIu64 "\tPKT\t%u:%u:%u:%u:%u:%u\n", runTime, count_p_all, count_p_dec_err, count_p_dec_ok,
-            count_p_fec_recovered, count_p_lost, count_p_bad);
-    fflush(fp);
+    std::stringstream ss;
+    ss<<runTime<<"\tPKT\t"<<count_p_all<<":"<<count_p_all<<":"<<count_p_dec_err<<":"<<count_p_dec_ok<<":"<<count_p_fec_recovered<<":"<<count_p_lost<<":"<<count_p_lost<<":";
+    std::cout<<ss.str()<<"\n";
     // it is actually much more understandable when I use the absolute values for the logging
     /*count_p_all = 0;
     count_p_dec_err = 0;
@@ -403,7 +403,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
         cur_ts = std::chrono::steady_clock::now();
 
         if (cur_ts >= log_send_ts) {
-            agg->dump_stats(stdout);
+            agg->dump_stats();
             log_send_ts = std::chrono::steady_clock::now() + log_interval;
         }
 

@@ -56,7 +56,7 @@ public:
     void
     processPacket(uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt);
 
-    void dump_stats(FILE *fp) ;
+    void dump_stats() ;
     // the port data is forwarded to
     const int CLIENT_UDP_PORT;
     // do not pass data from the receiver to the Aggregator where radio port doesn't match
@@ -69,10 +69,10 @@ private:
     Decryptor mDecryptor;
     int sockfd;
     std::array<RSSIForWifiCard,MAX_RX_INTERFACES> rssiForWifiCard;
-    uint32_t count_p_all=0;
-    uint32_t count_p_bad=0;
-    uint32_t count_p_dec_err=0;
-    uint32_t count_p_dec_ok=0;
+    uint64_t count_p_all=0;
+    uint64_t count_p_bad=0;
+    uint64_t count_p_dec_err=0;
+    uint64_t count_p_dec_ok=0;
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
 public:
     BaseAvgCalculator<int> nOfPacketsPolledFromPcapQueuePerIteration;
