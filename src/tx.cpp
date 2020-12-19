@@ -54,7 +54,11 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     }
     mEncryptor.makeSessionKey();
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
-    mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,flushInterval);
+    if(FLUSH_INTERVAL.count()<0){
+        mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,LOG_INTERVAL);
+    }else{
+        mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,FLUSH_INTERVAL);
+    }
     fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
 }
 
@@ -141,7 +145,9 @@ void WBTransmitter::loop() {
         }else{
             if(errno==EAGAIN || errno==EWOULDBLOCK){
                 // timeout
-                finishCurrentBlock();
+                if(FLUSH_INTERVAL.count()>0){
+                    finishCurrentBlock();
+                }
                 continue;
             }
             if (errno == EINTR){
@@ -158,7 +164,8 @@ int main(int argc, char *const *argv) {
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     int udp_port = 5600;
-    std::chrono::milliseconds flushInterval=std::chrono::milliseconds(40);
+    // use -1 for no flush interval
+    std::chrono::milliseconds flushInterval=std::chrono::milliseconds(-1);
 
     RadiotapHeader::UserSelectableParams params{20, false, 0, false, 1};
 

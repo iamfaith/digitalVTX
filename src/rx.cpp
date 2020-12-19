@@ -386,7 +386,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
         //const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
-        const int timeoutMS=std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count();
+        const int timeoutMS=flush_interval.count()>0 ? std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count() : std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count();
         int rc = poll(fds, N_RECEIVERS,timeoutMS);
 
         if (rc < 0) {
@@ -403,7 +403,9 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
 
         if (rc == 0){
             // timeout expired
-            agg->flushRxRing();
+            if(flush_interval.count()>0){
+                agg->flushRxRing();
+            }
             continue;
         }
 
@@ -424,7 +426,7 @@ int main(int argc, char *const *argv) {
     int opt;
     uint8_t k = 8, n = 12, radio_port = 1;
     std::chrono::milliseconds log_interval{1000};
-    std::chrono::milliseconds flush_interval{40};
+    std::chrono::milliseconds flush_interval{-1};
     int client_udp_port = 5600;
     std::string client_addr = "127.0.0.1";
     std::string keypair = "gs.key";

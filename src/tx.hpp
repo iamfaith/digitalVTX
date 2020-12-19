@@ -72,6 +72,7 @@ private:
     int64_t nInjectedPackets=0;
     const std::chrono::steady_clock::time_point INIT_TIME=std::chrono::steady_clock::now();
     static constexpr const std::chrono::nanoseconds LOG_INTERVAL=std::chrono::milliseconds(1000);
+    // use -1 for no flush interval
     const std::chrono::milliseconds FLUSH_INTERVAL;
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
 public:
