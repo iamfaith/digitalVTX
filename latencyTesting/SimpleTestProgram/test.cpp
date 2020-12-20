@@ -153,7 +153,7 @@ static void validateReceivedData(const uint8_t* dataP,size_t data_length){
 }
 
 static void test_latency(const Options& o){
-    SchedulingHelper::setThreadParams();
+    SchedulingHelper::setThreadParamsMaxRealtime();
     SchedulingHelper::printCurrentThreadPriority("TEST_MAIN");
     SchedulingHelper::printCurrentThreadSchedulingPolicy("TEST_MAIN");
 	
