@@ -26,13 +26,19 @@ namespace SchedulingHelper{
         std::cout<<name<<" has policy "<<policy<<" and priority "<<param.sched_priority<<"\n";
     }
 
-    static void setThreadParams(){
-        auto self=pthread_self();
+    // this thread should run as close to realtime as possible
+    static void setThreadParamsMaxRealtime(pthread_t target){
         int policy=SCHED_FIFO;
         sched_param param;
         param.sched_priority=sched_get_priority_max(policy);
-        auto result= pthread_setschedparam(self,policy,&param);
-        assert(result==0);
+        auto result= pthread_setschedparam(target,policy,&param);
+        if(result!=0){
+            std::cerr<<"WARNING cannot set ThreadParamsMaxRealtime\n";
+        }
+    }
+
+    static void setThreadParamsMaxRealtime(){
+        setThreadParamsMaxRealtime(pthread_self());
     }
 }
 #endif //WIFIBROADCAST_SCHEDULINGHELPER_H

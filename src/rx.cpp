@@ -479,7 +479,7 @@ int main(int argc, char *const *argv) {
         std::cout<<"Too many RX interfaces "<<nRxInterfaces<<"\n";
         goto show_usage;
     }
-    SchedulingHelper::setThreadParams();
+    SchedulingHelper::setThreadParamsMaxRealtime();
 
     std::vector<std::string> rxInterfaces;
     for (int i = 0; i < nRxInterfaces; i++) {
