@@ -16,6 +16,13 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "wifibroadcast.hpp"
+#include "tx.hpp"
+extern "C"{
+#include "ExternalCSources/fec.h"
+}
+#include "HelperSources/SchedulingHelper.hpp"
+
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -32,13 +39,6 @@
 #include <memory>
 #include <vector>
 #include <thread>
-
-#include "wifibroadcast.hpp"
-#include "tx.hpp"
-
-extern "C"{
-#include "ExternalCSources/fec.h"
-}
 
 
 WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const std::string &keypair, uint8_t radio_port, int udp_port,
@@ -236,6 +236,7 @@ int main(int argc, char *const *argv) {
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&radiotapHeader,sizeof(RadiotapHeader));
     RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader80211n, sizeof(OldRadiotapHeaders::u8aRadiotapHeader80211n));
     //RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader, sizeof(OldRadiotapHeaders::u8aRadiotapHeader));
+    SchedulingHelper::setThreadParams();
 
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(

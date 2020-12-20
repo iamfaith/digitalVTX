@@ -17,6 +17,7 @@
 #include <vector>
 #include <chrono>
 #include <optional>
+#include <poll.h>
 
 // Doesn't specify what / how big the custom header is.
 // This way it is easy to make the injection part generic for future changes

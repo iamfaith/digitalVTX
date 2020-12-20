@@ -12,8 +12,8 @@ MY_RX="wlxc4e9840e3cbe"
 #MY_RX_SECONDARY="wlxc4e984126183"
 WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
 
-FEC_K=6
-FEC_N=12
+FEC_K=0
+FEC_N=0
 
 sudo rfkill unblock wifi
 #sudo killall ifplugd #stop management of interface

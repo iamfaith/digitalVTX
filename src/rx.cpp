@@ -18,6 +18,7 @@
  */
 #include "rx.hpp"
 #include "wifibroadcast.hpp"
+#include "HelperSources/SchedulingHelper.hpp"
 #include <cassert>
 #include <cstdio>
 #include <cinttypes>
@@ -478,6 +479,8 @@ int main(int argc, char *const *argv) {
         std::cout<<"Too many RX interfaces "<<nRxInterfaces<<"\n";
         goto show_usage;
     }
+    SchedulingHelper::setThreadParams();
+
     std::vector<std::string> rxInterfaces;
     for (int i = 0; i < nRxInterfaces; i++) {
         rxInterfaces.push_back(argv[optind + i]);
