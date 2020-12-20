@@ -12,8 +12,8 @@ MY_RX="wlxc4e9840e3cbe"
 #MY_RX_SECONDARY="wlxc4e984126183"
 WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
 
-FEC_K=0
-FEC_N=0
+FEC_K=8
+FEC_N=12
 
 sudo rfkill unblock wifi
 #sudo killall ifplugd #stop management of interface
@@ -39,9 +39,9 @@ sudo iwconfig $MY_RX channel 13
 
 
 # $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 7 -K $WFB_FOLDER/drone.key $MY_TX
-xterm -hold -e $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 4 -B 40 -K $WFB_FOLDER/drone.key $MY_TX &
+xterm -hold -e $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 4 -B 40 -K $WFB_FOLDER/drone.key -f 2 $MY_TX &
 
-$WFB_FOLDER/wfb_rx -k $FEC_K -n $FEC_N -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key $MY_RX
+$WFB_FOLDER/wfb_rx -k $FEC_K -n $FEC_N -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key -f 10 $MY_RX
 
 #other usefull commands:
 #sudo iw dev
