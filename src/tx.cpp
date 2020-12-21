@@ -52,6 +52,9 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     if(FLUSH_INTERVAL>LOG_INTERVAL){
         std::cerr<<"Please use a flush interval smaller than the log interval\n";
     }
+    if(FLUSH_INTERVAL==std::chrono::milliseconds(0)){
+        std::cerr<<"Please do not use a flush interval of 0 (would hog the cpu)\n";
+    }
     mEncryptor.makeSessionKey();
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
     mInputSocket=SocketHelper::openUdpSocketForRx(udp_port);

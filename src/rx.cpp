@@ -383,6 +383,9 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
     if(flush_interval>log_interval){
         std::cerr<<"Please use a flush interval smaller than the log interval\n";
     }
+    if(flush_interval==std::chrono::milliseconds(0)){
+        std::cerr<<"Please do not use a flush interval of 0 (this hogs the cpu)\n";
+    }
     std::chrono::steady_clock::time_point log_send_ts{};
     for (;;) {
         auto cur_ts=std::chrono::steady_clock::now();
