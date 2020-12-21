@@ -144,6 +144,12 @@ public:
             encodePacket(emptyPacket,0);
         }
     }
+    // returns true if the last block was already fully processed.
+    // in this case, you don't need to finish the current block until you put data in the next time
+    // also, in the beginning the pipeline is already flushed due to no data packets yet
+    bool isAlreadyInFinishedState(){
+        return fragment_idx==0;
+    }
 private:
     // construct WB data packet, from either primary or secondary fragment
     // then forward via the callback

@@ -35,6 +35,7 @@
 #include <net/if.h>
 #include <iostream>
 #include <memory>
+#include <cassert>
 
 // For all the stuff that was once in wifibroadcast.hpp
 
@@ -151,7 +152,7 @@ namespace SocketHelper{
     // Open the specified port for udp receiving
     // sets SO_REUSEADDR
     // sets timeout if if it is not 0
-    static int openUdpSocketForRx(const int port,std::chrono::nanoseconds timeout=std::chrono::nanoseconds(0)){
+    static int openUdpSocketForRx(const int port){
         int fd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (fd < 0) throw std::runtime_error(StringFormat::convert("Error opening socket %d: %s",port, strerror(errno)));
         int enable = 1;
@@ -159,13 +160,6 @@ namespace SocketHelper{
             //throw std::runtime_error(StringFormat::convert("Error setting reuse on socket %d: %s",port, strerror(errno)));
             // don't crash here
             std::cout<<"Cannot set socket reuse\n";
-        }
-        if(timeout!=std::chrono::nanoseconds(0)){
-            auto tv=GenericHelper::durationToTimeval(timeout);
-            if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-                throw std::runtime_error(StringFormat::convert("Cannot set socket timeout %d",timeout.count()));
-                //std::cout<<"Cannot set socket timeout "<<timeout.count()<<"\n";
-            }
         }
         struct sockaddr_in saddr{};
         bzero((char *) &saddr, sizeof(saddr));
@@ -176,6 +170,25 @@ namespace SocketHelper{
             throw std::runtime_error(StringFormat::convert("Bind error on socket %d: %s",port, strerror(errno)));
         }
         return fd;
+    }
+    static std::chrono::nanoseconds getCurrentSocketReceiveTimeout(int socketFd){
+        timeval tv{};
+        socklen_t len=sizeof(tv);
+        auto res=getsockopt(socketFd,SOL_SOCKET,SO_RCVTIMEO,&tv,&len);
+        assert(res==0);
+        assert(len==sizeof(tv));
+        return GenericHelper::timevalToDuration(tv);
+    }
+    static void setSocketReceiveTimeout(int socketFd,const std::chrono::nanoseconds timeout){
+        const auto currentTimeout=getCurrentSocketReceiveTimeout(socketFd);
+        if(currentTimeout!=timeout){
+            //std::cout<<"Changing timeout\n";
+            auto tv=GenericHelper::durationToTimeval(timeout);
+            if (setsockopt(socketFd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+                throw std::runtime_error(StringFormat::convert("Cannot set socket timeout %d",timeout.count()));
+                //std::cout<<"Cannot set socket timeout "<<timeout.count()<<"\n";
+            }
+        }
     }
     ///  taken from https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L86
     // open wifi interface using a socket (somehow this works ?!)

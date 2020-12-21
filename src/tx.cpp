@@ -54,11 +54,7 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     }
     mEncryptor.makeSessionKey();
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
-    if(FLUSH_INTERVAL.count()<0){
-        mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,LOG_INTERVAL);
-    }else{
-        mInputSocket=SocketHelper::openUdpSocketForRx(udp_port,FLUSH_INTERVAL);
-    }
+    mInputSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
 }
 
@@ -117,7 +113,13 @@ void WBTransmitter::loop() {
     std::chrono::steady_clock::time_point log_ts{};
     // send the key a couple of times on startup to increase the likeliness it is received
     bool firstTime=true;
+    if(FLUSH_INTERVAL>std::chrono::milliseconds(0)){
+        SocketHelper::setSocketReceiveTimeout(mInputSocket,FLUSH_INTERVAL);
+    }else{
+        SocketHelper::setSocketReceiveTimeout(mInputSocket,LOG_INTERVAL);
+    }
     for(;;){
+        // send the session key a couple of times on startup
         if(firstTime){
             for(int i=0;i<5;i++){
                 sendSessionKey();
@@ -125,6 +127,13 @@ void WBTransmitter::loop() {
             }
             firstTime=false;
         }
+        // only use a small timeout when the pipeline might need a flush
+        //if(isAlreadyInFinishedState()){
+        //    SocketHelper::setSocketReceiveTimeout(mInputSocket,LOG_INTERVAL);
+        //}else{
+        //    SocketHelper::setSocketReceiveTimeout(mInputSocket,FLUSH_INTERVAL);
+        //}
+
         // we set the timeout earlier when creating the socket
         const ssize_t message_length = recvfrom(mInputSocket, buf.data(), MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
         if(std::chrono::steady_clock::now()>=log_ts){
