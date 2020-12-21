@@ -81,6 +81,12 @@ namespace RawReceiverHelper{
         pcap_freecode(&bpfprogram);
         return ppcap;
     }
+    struct RssiForAntenna{
+        // which antenna the value refers to
+        const uint8_t antennaIdx;
+        // https://www.radiotap.org/fields/Antenna%20signal.html
+        const int8_t rssi;
+    };
     struct ParsedRxPcapPacket{
         // Size can be anything from size=1 to size== N where N is the number of Antennas of this adapter
         const std::vector<RssiForAntenna> allAntennaValues;

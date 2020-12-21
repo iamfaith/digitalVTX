@@ -38,13 +38,6 @@
 static constexpr const auto MAX_N_ANTENNAS_PER_WIFI_CARD=4;
 //
 
-struct RssiForAntenna{
-    // which antenna the value refers to
-    const uint8_t antennaIdx;
-    // https://www.radiotap.org/fields/Antenna%20signal.html
-    const int8_t rssi;
-};
-
 // This class processes the received wifi data (decryption and FEC)
 // and forwards it via UDP.
 class Aggregator :  public FECDecoder {
