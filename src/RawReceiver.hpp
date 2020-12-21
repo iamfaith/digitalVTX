@@ -140,7 +140,9 @@ public:
     // this fd is created by pcap
     int fd;
     pcap_t *ppcap;
+    // measures the cpu time spent on the callback
     Chronometer timeForParsingPackets{"PP"};
+    // If each iteration pulls too many packets out your CPU is most likely too slow
     BaseAvgCalculator<int> nOfPacketsPolledFromPcapQueuePerIteration;
 };
 
