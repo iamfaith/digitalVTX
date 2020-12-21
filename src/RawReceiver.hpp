@@ -84,10 +84,11 @@ namespace RawReceiverHelper{
 }
 
 // This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT
-// Processing of data is done by the Aggregator
-// It uses a slightly different pattern than at the transmitter:
+// Processing of data is done by the callback
+// It uses a slightly complicated pattern:
+// 1) check if data is available via the fd
+// 2) then call loop_iter().
 // loop_iter loops over all packets for this wifi card that are not processed yet, then returns.
-// Use the fd to check if data is available for this wifi card
 class PcapReceiver {
 public:
     // this callback is called with the received packet from pcap
@@ -121,7 +122,7 @@ public:
             timeForParsingPackets.stop();
 #ifdef ENABLE_ADVANCED_DEBUGGING
             // how long the cpu spends on agg.processPacket
-        timeForParsingPackets.printInIntervalls(std::chrono::seconds(1));
+            timeForParsingPackets.printInIntervalls(std::chrono::seconds(1));
 #endif
             nPacketsPolledUntilQueueWasEmpty++;
         }
