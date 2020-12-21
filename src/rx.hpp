@@ -75,7 +75,6 @@ private:
     uint64_t count_p_dec_ok=0;
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
 public:
-    BaseAvgCalculator<int> nOfPacketsPolledFromPcapQueuePerIteration;
 #ifdef ENABLE_ADVANCED_DEBUGGING
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
     AvgCalculator avgPcapToApplicationLatency;
@@ -83,29 +82,3 @@ public:
 #endif
 };
 
-// This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT
-// Processing of data is done by the Aggregator
-class PcapReceiver {
-public:
-    //typedef std::function<void(const WBDataPacket &wbDataPacket)> PROCESS_PACKET_CALLBACK;
-    PcapReceiver(const std::string& wlan, int wlan_idx, int radio_port, Aggregator *agg);
-
-    ~PcapReceiver();
-
-    void loop_iter();
-
-    int getfd() const { return fd; }
-
-public:
-    // the wifi interface this receiver listens on (not the radio port)
-    const int WLAN_IDX;
-    // the radio port it filters pacp packets for
-    const int RADIO_PORT;
-    // processes received packets
-public:
-    Aggregator* agg;
-    // this fd is created by pcap
-    int fd;
-    pcap_t *ppcap;
-    Chronometer timeForParsingPackets{"PP"};
-};

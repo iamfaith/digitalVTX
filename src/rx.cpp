@@ -16,6 +16,7 @@
  *   with this program; if not, write to the Free Software Foundation, Inc.,
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include "RawReceiver.hpp"
 #include "rx.hpp"
 #include "wifibroadcast.hpp"
 #include "HelperSources/SchedulingHelper.hpp"
@@ -31,69 +32,6 @@
 #include <sstream>
 
 namespace RawReceiverHelper{
-    // call before pcap_activate
-    static void iteratePcapTimestamps(pcap_t* ppcap){
-        int* availableTimestamps;
-        const int nTypes=pcap_list_tstamp_types(ppcap,&availableTimestamps);
-        std::cout<<"N available timestamp types "<<nTypes<<"\n";
-        for(int i=0;i<nTypes;i++){
-            const char* name=pcap_tstamp_type_val_to_name(availableTimestamps[i]);
-            const char* description=pcap_tstamp_type_val_to_description(availableTimestamps[i]);
-            std::cout<<"Name: "<<std::string(name)<<" Description: "<<std::string(description)<<"\n";
-            if(availableTimestamps[i]==PCAP_TSTAMP_HOST){
-                std::cout<<"Setting timestamp to host\n";
-                pcap_set_tstamp_type(ppcap,PCAP_TSTAMP_HOST);
-            }
-        }
-        pcap_free_tstamp_types(availableTimestamps);
-    }
-    // copy paste from svpcom
-    // I think this one opens the rx interface with pcap and then sets a filter such that only packets pass through for the selected radio port
-    static pcap_t* openRxWithPcap(const std::string& wlan,const int radio_port){
-        pcap_t* ppcap;
-        char errbuf[PCAP_ERRBUF_SIZE];
-        ppcap = pcap_create(wlan.c_str(), errbuf);
-        if (ppcap == NULL) {
-            throw std::runtime_error(StringFormat::convert("Unable to open interface %s in pcap: %s", wlan.c_str(), errbuf));
-        }
-        iteratePcapTimestamps(ppcap);
-        if (pcap_set_snaplen(ppcap, 4096) != 0) throw std::runtime_error("set_snaplen failed");
-        if (pcap_set_promisc(ppcap, 1) != 0) throw std::runtime_error("set_promisc failed");
-        //if (pcap_set_rfmon(ppcap, 1) !=0) throw runtime_error("set_rfmon failed");
-        if (pcap_set_timeout(ppcap, -1) != 0) throw std::runtime_error("set_timeout failed");
-        //if (pcap_set_buffer_size(ppcap, 2048) !=0) throw runtime_error("set_buffer_size failed");
-        // Important: Without enabling this mode pcap buffers quite a lot of packets starting with version 1.5.0 !
-        // https://www.tcpdump.org/manpages/pcap_set_immediate_mode.3pcap.html
-        if(pcap_set_immediate_mode(ppcap,true)!=0)throw std::runtime_error(StringFormat::convert("pcap_set_immediate_mode failed: %s", pcap_geterr(ppcap)));
-        if (pcap_activate(ppcap) != 0) throw std::runtime_error(StringFormat::convert("pcap_activate failed: %s", pcap_geterr(ppcap)));
-        if (pcap_setnonblock(ppcap, 1, errbuf) != 0) throw std::runtime_error(StringFormat::convert("set_nonblock failed: %s", errbuf));
-
-        int link_encap = pcap_datalink(ppcap);
-        struct bpf_program bpfprogram{};
-        std::string program;
-        switch (link_encap) {
-            case DLT_PRISM_HEADER:
-                std::cout<<wlan<<" has DLT_PRISM_HEADER Encap\n";
-                program = StringFormat::convert("radio[0x4a:4]==0x13223344 && radio[0x4e:2] == 0x55%.2x", radio_port);
-                break;
-
-            case DLT_IEEE802_11_RADIO:
-                std::cout<<wlan<<" has DLT_IEEE802_11_RADIO Encap\n";
-                program = StringFormat::convert("ether[0x0a:4]==0x13223344 && ether[0x0e:2] == 0x55%.2x", radio_port);
-                break;
-            default:
-                throw std::runtime_error(StringFormat::convert("unknown encapsulation on %s", wlan.c_str()));
-        }
-        if (pcap_compile(ppcap, &bpfprogram, program.c_str(), 1, 0) == -1) {
-            throw std::runtime_error(StringFormat::convert("Unable to compile %s: %s", program.c_str(), pcap_geterr(ppcap)));
-        }
-        if (pcap_setfilter(ppcap, &bpfprogram) == -1) {
-            throw std::runtime_error(StringFormat::convert("Unable to set filter %s: %s", program.c_str(), pcap_geterr(ppcap)));
-        }
-        pcap_freecode(&bpfprogram);
-        return ppcap;
-    }
-
     struct ParsedRxPcapPacket{
         // Size can be anything from size=1 to size== N where N is the number of Antennas of this adapter
         const std::vector<RssiForAntenna> allAntennaValues;
@@ -213,8 +151,6 @@ void Aggregator::dump_stats() {
     // it is actually much more understandable when I use the absolute values for the logging
 #ifdef ENABLE_ADVANCED_DEBUGGING
     std::cout<<"avgPcapToApplicationLatency: "<<avgPcapToApplicationLatency.getAvgReadable()<<"\n";
-    std::cout<<"nOfPacketsPolledFromPcapQueuePerIteration: "<<nOfPacketsPolledFromPcapQueuePerIteration.getAvgReadable()<<"\n";
-    nOfPacketsPolledFromPcapQueuePerIteration.reset();
     //std::cout<<"avgLatencyBeaconPacketLatency"<<avgLatencyBeaconPacketLatency.getAvgReadable()<<"\n";
     //std::cout<<"avgLatencyBeaconPacketLatencyX:"<<avgLatencyBeaconPacketLatency.getNValuesLowHigh(20)<<"\n";
     //std::cout<<"avgLatencyPacketInQueue"<<avgLatencyPacketInQueue.getAvgReadable()<<"\n";
@@ -337,40 +273,6 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
 }
 
-PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
-    ppcap=RawReceiverHelper::openRxWithPcap(wlan, RADIO_PORT);
-    fd = pcap_get_selectable_fd(ppcap);
-}
-
-PcapReceiver::~PcapReceiver() {
-    close(fd);
-    pcap_close(ppcap);
-}
-
-void PcapReceiver::loop_iter() {
-    // loop while incoming queue is not empty
-    int nPacketsPolledUntilQueueWasEmpty=0;
-    for (;;){
-        struct pcap_pkthdr hdr{};
-        const uint8_t *pkt = pcap_next(ppcap, &hdr);
-        if (pkt == nullptr) {
-#ifdef ENABLE_ADVANCED_DEBUGGING
-            //std::cout<<"N of packets polled from pcap queue until empty: "<<nPacketsPolledUntilQueueWasEmpty<<"\n";
-            agg->nOfPacketsPolledFromPcapQueuePerIteration.add(nPacketsPolledUntilQueueWasEmpty);
-#endif
-            break;
-        }
-        timeForParsingPackets.start();
-        agg->processPacket(WLAN_IDX,hdr,pkt);
-        timeForParsingPackets.stop();
-#ifdef ENABLE_ADVANCED_DEBUGGING
-        // how long the cpu spends on agg.processPacket
-        timeForParsingPackets.printInIntervalls(std::chrono::seconds(1));
-#endif
-        nPacketsPolledUntilQueueWasEmpty++;
-    }
-}
-
 
 void
 radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval) {
@@ -383,7 +285,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
     ss<<"WB-RX Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
 
     for (int i = 0; i < N_RECEIVERS; i++) {
-        rx[i] = new PcapReceiver(rxInterfaces[i], i, radio_port, agg.get());
+        rx[i] = new PcapReceiver(rxInterfaces[i], i, radio_port, std::bind(&Aggregator::processPacket,agg.get(), std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
         fds[i].fd = rx[i]->getfd();
         fds[i].events = POLLIN;
         ss<<rxInterfaces[i]<<" ";
