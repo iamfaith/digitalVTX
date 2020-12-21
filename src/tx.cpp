@@ -142,8 +142,7 @@ void WBTransmitter::loop() {
         const ssize_t message_length = recvfrom(mInputSocket, buf.data(), MAX_PAYLOAD_SIZE, 0, nullptr, nullptr);
         if(std::chrono::steady_clock::now()>=log_ts){
             const auto runTimeMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
-            std::cout<<StringFormat::convert("%d \tTX %d:%d",runTimeMs,nPacketsFromUdpPort,nInjectedPackets)<<"\n";
-            //<<" nPacketsFromUdpPort: "<<nPacketsFromUdpPort<<" nInjectedPackets: "<<nInjectedPackets<<"\n";
+            std::cout<<runTimeMs<<"\tTX "<<nPacketsFromUdpPort<<":"<<nInjectedPackets<<"\n";
             log_ts= std::chrono::steady_clock::now() + WBTransmitter::LOG_INTERVAL;
         }
         if(message_length>0){
@@ -162,6 +161,7 @@ void WBTransmitter::loop() {
                 if(FLUSH_INTERVAL.count()>0){
                     // smaller than 0 means no flush enabled
                     // else we didn't receive data for FLUSH_INTERVAL ms
+                    // if nothing needs to be flushed, this call returns immediately
                     finishCurrentBlock();
                 }
                 continue;
