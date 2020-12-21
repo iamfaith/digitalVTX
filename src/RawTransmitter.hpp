@@ -19,6 +19,8 @@
 #include <optional>
 #include <poll.h>
 
+// This is a single header-only file you can use to build your own wifibroadcast link
+
 // Doesn't specify what / how big the custom header is.
 // This way it is easy to make the injection part generic for future changes
 // by using a pointer / size tuple the data for the customHeader and payload can reside at different memory locations

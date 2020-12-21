@@ -15,6 +15,8 @@
 #include "HelperSources/TimeHelper.hpp"
 #include "wifibroadcast.hpp"
 
+// This is a single header-only file you can use to build your own wifibroadcast link
+
 // stuff that helps for receiving data with pcap
 namespace RawReceiverHelper{
     // call before pcap_activate
@@ -80,8 +82,12 @@ namespace RawReceiverHelper{
         return ppcap;
     }
 }
+
 // This class listens for WIFI data on the specified wlan for wifi packets with the right RADIO_PORT
 // Processing of data is done by the Aggregator
+// It uses a slightly different pattern than at the transmitter:
+// loop_iter loops over all packets for this wifi card that are not processed yet, then returns.
+// Use the fd to check if data is available for this wifi card
 class PcapReceiver {
 public:
     // this callback is called with the received packet from pcap
