@@ -150,8 +150,8 @@ namespace SocketHelper{
         return fd;
     }
     // Open the specified port for udp receiving
-    // sets SO_REUSEADDR
-    // sets timeout if if it is not 0
+    // sets SO_REUSEADDR to true if possible
+    // throws a runtime exception if opening the socket fails
     static int openUdpSocketForRx(const int port){
         int fd=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (fd < 0) throw std::runtime_error(StringFormat::convert("Error opening socket %d: %s",port, strerror(errno)));
@@ -171,6 +171,7 @@ namespace SocketHelper{
         }
         return fd;
     }
+    // returns the current socket receive timeout
     static std::chrono::nanoseconds getCurrentSocketReceiveTimeout(int socketFd){
         timeval tv{};
         socklen_t len=sizeof(tv);
@@ -179,6 +180,8 @@ namespace SocketHelper{
         assert(len==sizeof(tv));
         return GenericHelper::timevalToDuration(tv);
     }
+    // set the receive timeout on the socket
+    // throws runtime exception if this step fails (should never fail on linux)
     static void setSocketReceiveTimeout(int socketFd,const std::chrono::nanoseconds timeout){
         const auto currentTimeout=getCurrentSocketReceiveTimeout(socketFd);
         if(currentTimeout!=timeout){
@@ -190,7 +193,7 @@ namespace SocketHelper{
             }
         }
     }
-    ///  taken from https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L86
+    // taken from https://github.com/OpenHD/Open.HD/blob/2.0/wifibroadcast-base/tx_rawsock.c#L86
     // open wifi interface using a socket (somehow this works ?!)
     static int openWifiInterfaceAsTx(const std::string& wifi) {
         struct sockaddr_ll ll_addr{};

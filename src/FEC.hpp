@@ -147,7 +147,7 @@ public:
     // returns true if the last block was already fully processed.
     // in this case, you don't need to finish the current block until you put data in the next time
     // also, in the beginning the pipeline is already flushed due to no data packets yet
-    bool isAlreadyInFinishedState(){
+    bool isAlreadyInFinishedState()const{
         return fragment_idx==0;
     }
 private:
