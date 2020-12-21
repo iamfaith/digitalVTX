@@ -116,6 +116,7 @@ void WBTransmitter::loop() {
     std::chrono::steady_clock::time_point log_ts{};
     // send the key a couple of times on startup to increase the likeliness it is received
     bool firstTime=true;
+    // -1 would mean "flushing disabled"
     if(FLUSH_INTERVAL>std::chrono::milliseconds(0)){
         SocketHelper::setSocketReceiveTimeout(mInputSocket,FLUSH_INTERVAL);
     }else{
