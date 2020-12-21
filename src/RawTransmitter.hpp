@@ -45,7 +45,7 @@ public:
     const std::size_t payloadSize;
 };
 
-namespace RawTransmitterHelper {
+namespace RawReceiverHelper {
     // construct a pcap packet with the following data layout:
     // [RadiotapHeader | Ieee80211Header | customHeader (if not size 0) | payload (if not size 0)]
     static std::vector<uint8_t>
@@ -117,7 +117,7 @@ namespace RawTransmitterHelper {
 class PcapTransmitter{
 public:
     explicit PcapTransmitter(const std::string &wlan){
-        ppcap=RawTransmitterHelper::openTxWithPcap(wlan);
+        ppcap=RawReceiverHelper::openTxWithPcap(wlan);
     }
     ~PcapTransmitter(){
         pcap_close(ppcap);
@@ -125,16 +125,16 @@ public:
     // inject packet by prefixing wifibroadcast packet with the IEE and Radiotap header
     // return: time it took to inject the packet.If the injection time is absurdly high, you might want to do something about it
     std::chrono::steady_clock::duration injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket){
-        const auto packet = RawTransmitterHelper::createPcapPacket(radiotapHeader, ieee80211Header, abstractWbPacket);
+        const auto packet = RawReceiverHelper::createPcapPacket(radiotapHeader, ieee80211Header, abstractWbPacket);
         const auto before=std::chrono::steady_clock::now();
-        RawTransmitterHelper::injectPacket(ppcap, packet);
+        RawReceiverHelper::injectPacket(ppcap, packet);
         return std::chrono::steady_clock::now()-before;
     }
     void injectControllFrame(const RadiotapHeader& radiotapHeader,const std::vector<uint8_t>& iee80211ControllHeader){
         std::vector<uint8_t> packet(radiotapHeader.getSize()+iee80211ControllHeader.size());
         memcpy(packet.data(),&radiotapHeader,RadiotapHeader::SIZE_BYTES);
         memcpy(&packet[RadiotapHeader::SIZE_BYTES],iee80211ControllHeader.data(),iee80211ControllHeader.size());
-        RawTransmitterHelper::injectPacket(ppcap, packet);
+        RawReceiverHelper::injectPacket(ppcap, packet);
     }
 private:
     pcap_t* ppcap;
@@ -153,7 +153,7 @@ public:
     // inject packet by prefixing wifibroadcast packet with the IEE and Radiotap header
     // return: time it took to inject the packet.If the injection time is absurdly high, you might want to do something about it
     std::chrono::steady_clock::duration injectPacket(const RadiotapHeader& radiotapHeader, const Ieee80211Header& ieee80211Header,const AbstractWBPacket& abstractWbPacket)const{
-        const auto packet = RawTransmitterHelper::createPcapPacket(radiotapHeader, ieee80211Header, abstractWbPacket);
+        const auto packet = RawReceiverHelper::createPcapPacket(radiotapHeader, ieee80211Header, abstractWbPacket);
         const auto before=std::chrono::steady_clock::now();
         if (write(sockFd,packet.data(),packet.size()) !=packet.size()) {
             throw std::runtime_error(StringFormat::convert("Unable to inject packet (raw sock) %s",strerror(errno)));

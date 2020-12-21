@@ -30,7 +30,7 @@
 #include <chrono>
 #include <sstream>
 
-namespace RawTransmitterHelper{
+namespace RawReceiverHelper{
     // call before pcap_activate
     static void iteratePcapTimestamps(pcap_t* ppcap){
         int* availableTimestamps;
@@ -100,8 +100,10 @@ namespace RawTransmitterHelper{
         const Ieee80211Header* ieee80211Header;
         const uint8_t* payload;
         const std::size_t payloadSize;
+        // Atheros forwards frames even though the fcs check failed ( this packet is corrupted)
+        const bool frameFailedFCSCheck;
     };
-    // Returns std::nullopt if this packet should not be processed further
+    // Returns std::nullopt if radiotap was unable to parse the header
     // else return the *parsed information*
     // To avoid confusion it might help to treat this method as a big black Box :)
     static std::optional<ParsedRxPcapPacket> processReceivedPcapPacket(const pcap_pkthdr& hdr, const uint8_t *pkt){
@@ -147,13 +149,15 @@ namespace RawTransmitterHelper{
             }
         }  /* while more rt headers */
         if (ret != -ENOENT) {
-            std::cerr<<"Error parsing radiotap header!\n";
+            //std::cerr<<"Error parsing radiotap header!\n";
             return std::nullopt;
         }
+        bool frameFailedFcsCheck=false;
         if (tmpCopyOfIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_BADFCS) {
             //std::cerr<<"Got packet with bad fsc\n";
-            return std::nullopt;
+            frameFailedFcsCheck=true;
         }
+        // the fcs is at the end of the packet
         if (tmpCopyOfIEEE80211_RADIOTAP_FLAGS & IEEE80211_RADIOTAP_F_FCS) {
             //std::cout<<"Packet has IEEE80211_RADIOTAP_F_FCS";
             pktlen -= 4;
@@ -173,7 +177,7 @@ namespace RawTransmitterHelper{
         const Ieee80211Header* ieee80211Header=(Ieee80211Header*)pkt;
         const uint8_t* payload=pkt+Ieee80211Header::SIZE_BYTES;
         const std::size_t payloadSize=(std::size_t)pktlen-Ieee80211Header::SIZE_BYTES;
-        return ParsedRxPcapPacket{allAntennaValues,ieee80211Header,payload,payloadSize};
+        return ParsedRxPcapPacket{allAntennaValues,ieee80211Header,payload,payloadSize,frameFailedFcsCheck};
     }
 }
 
@@ -225,9 +229,14 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 #endif
     count_p_all++;
     // The radio capture header precedes the 802.11 header.
-    const auto parsedPacket=RawTransmitterHelper::processReceivedPcapPacket(hdr, pkt);
+    const auto parsedPacket=RawReceiverHelper::processReceivedPcapPacket(hdr, pkt);
     if(parsedPacket==std::nullopt){
-        std::cerr<< "Discarding packet due to wrong checksum (or pcap parsing error)!\n";
+        std::cerr<< "Discarding packet due to pcap parsing error!\n";
+        count_p_bad++;
+        return;
+    }
+    if(parsedPacket->frameFailedFCSCheck){
+        std::cerr<< "Discarding packet due to bad FCS!\n";
         count_p_bad++;
         return;
     }
@@ -329,7 +338,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 }
 
 PcapReceiver::PcapReceiver(const std::string& wlan, int WLAN_IDX, int RADIO_PORT,Aggregator* agg) : WLAN_IDX(WLAN_IDX),RADIO_PORT(RADIO_PORT), agg(agg) {
-    ppcap=RawTransmitterHelper::openRxWithPcap(wlan, RADIO_PORT);
+    ppcap=RawReceiverHelper::openRxWithPcap(wlan, RADIO_PORT);
     fd = pcap_get_selectable_fd(ppcap);
 }
 
