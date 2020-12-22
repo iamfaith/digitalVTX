@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pcap/pcap.h>
 #include "Helper.hpp"
 #include "HelperSources/TimeHelper.hpp"
 #include "wifibroadcast.hpp"
