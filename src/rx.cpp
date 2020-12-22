@@ -191,16 +191,16 @@ void
 radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval) {
     const int N_RECEIVERS = rxInterfaces.size();
     struct pollfd fds[N_RECEIVERS];
-    //PcapReceiver *rx[N_RECEIVERS];
-    std::unique_ptr<PcapReceiver> rx[N_RECEIVERS];
+    // one receiver for each wifi card
+    std::unique_ptr<PcapReceiver> receivers[N_RECEIVERS];
 
     memset(fds, '\0', sizeof(fds));
     std::stringstream ss;
     ss<<"WB-RX Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
 
     for (int i = 0; i < N_RECEIVERS; i++) {
-        rx[i] = std::make_unique<PcapReceiver>(rxInterfaces[i], i, radio_port, std::bind(&Aggregator::processPacket,agg.get(), std::placeholders::_1,std::placeholders::_2,std::placeholders::_3));
-        fds[i].fd = rx[i]->getfd();
+        receivers[i] = std::make_unique<PcapReceiver>(rxInterfaces[i], i, radio_port, std::bind(&Aggregator::processPacket, agg.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        fds[i].fd = receivers[i]->getfd();
         fds[i].events = POLLIN;
         ss<<rxInterfaces[i]<<" ";
     }
@@ -244,7 +244,7 @@ radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInte
                 throw std::runtime_error("socket error!");
             }
             if (fds[i].revents & POLLIN) {
-                rx[i]->loop_iter();
+                receivers[i]->loop_iter();
                 rc -= 1;
             }
         }
@@ -311,7 +311,7 @@ int main(int argc, char *const *argv) {
 
     std::vector<std::string> rxInterfaces;
     for (int i = 0; i < nRxInterfaces; i++) {
-        rxInterfaces.push_back(argv[optind + i]);
+        rxInterfaces.emplace_back(argv[optind + i]);
     }
     try {
         std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port,radio_port, k, n, keypair);

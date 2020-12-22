@@ -32,7 +32,7 @@ public:
     static constexpr const auto FRAME_SEQ_HB=23;
     // raw data buffer
     std::array<uint8_t,SIZE_BYTES> data={
-            0x08, 0x01, // first 2 bytes controll fiels
+            0x08, 0x01, // first 2 bytes control fiels
             0x00, 0x00, // 2 bytes duration (has this even an effect ?!)
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // something MAC ( 6 bytes)
             0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // something MAC ( 6 bytes)
