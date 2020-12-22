@@ -92,12 +92,14 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     if(!parsedPacket->ieee80211Header->isDataFrame()){
         // we only process data frames
         std::cerr<<"Got packet that is not a data packet"<<(int)parsedPacket->ieee80211Header->getFrameControl()<<"\n";
+        count_p_bad++;
         return;
     }
     if(parsedPacket->ieee80211Header->getRadioPort()!=RADIO_PORT) {
         // If we have the proper filter on pcap only packets with the right radiotap port should pass through
         std::cerr<<"Got packet with wrong radio port "<<(int)parsedPacket->ieee80211Header->getRadioPort()<<"\n";
         //RadiotapHelper::debugRadiotapHeader(pkt,hdr.caplen);
+        count_p_bad++;
         return;
     }
     // All these edge cases should NEVER happen if using a proper tx/rx setup and the wifi driver isn't complete crap
