@@ -389,7 +389,7 @@ private:
         seq = packet_seq;
         if (packet_size > MAX_PAYLOAD_SIZE) {
             // this should never happen !
-            std::cerr<<"corrupted packet on FECDecoder out "<<seq;
+            std::cerr<<"corrupted packet on FECDecoder out "<<seq<<"\n";
         } else {
             // we use packets of size 0 to flush the tx pipeline
             if(packet_size>0){

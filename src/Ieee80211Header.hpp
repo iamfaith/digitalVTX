@@ -80,7 +80,10 @@ public:
 static_assert(sizeof(Ieee80211Header) == Ieee80211Header::SIZE_BYTES, "ALWAYS TRUE");
 
 namespace Ieee80211ControllFrames{
-
+    static uint8_t u8aIeeeHeader_rts[] = {
+            0xb4, 0x01, 0x00, 0x00, // frame control field (2 bytes), duration (2 bytes)
+            0xff                    // 1st byte of MAC will be overwritten with encoded port
+    };
 }
 
 // hmmmm ....
@@ -94,14 +97,16 @@ namespace OldWifibroadcastIeee8021Header{
             0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // mac
             0x00, 0x00                          // IEEE802.11 seqnum, (will be overwritten later by Atheros firmware/wifi chip)
     };
-
-
+    // I think this is actually this type of frame
+    // https://en.wikipedia.org/wiki/Block_acknowledgement
+    // has only 64*16=1024 bits payload
     static uint8_t u8aIeeeHeader_data_short[] = {
             0x08, 0x01, 0x00, 0x00, // frame control field (2 bytes), duration (2 bytes)
             0xff                    // 1st byte of MAC will be overwritten with encoded port
     };
-
-
+    // I think this is this type of frame 01 Control 1011 RTS
+    // https://en.wikipedia.org/wiki/IEEE_802.11_RTS/CTS
+    // however, rts frames usually don't have a payload
     static uint8_t u8aIeeeHeader_rts[] = {
             0xb4, 0x01, 0x00, 0x00, // frame control field (2 bytes), duration (2 bytes)
             0xff                    // 1st byte of MAC will be overwritten with encoded port
