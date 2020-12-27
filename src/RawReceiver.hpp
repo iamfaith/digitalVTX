@@ -5,6 +5,11 @@
 #ifndef WIFIBROADCAST_RAWRECEIVER_H
 #define WIFIBROADCAST_RAWRECEIVER_H
 
+#include "Helper.hpp"
+#include "HelperSources/TimeHelper.hpp"
+#include "Ieee80211Header.hpp"
+#include "RadiotapHeader.hpp"
+
 #include <functional>
 #include <unordered_map>
 #include <cstdint>
@@ -12,9 +17,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pcap/pcap.h>
-#include "Helper.hpp"
-#include "HelperSources/TimeHelper.hpp"
-#include "wifibroadcast.hpp"
 
 // This is a single header-only file you can use to build your own wifibroadcast link
 
