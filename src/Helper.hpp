@@ -235,6 +235,14 @@ namespace SocketHelper{
     }
 }
 
+/*#include <linux/wireless.h>
+#include <ifaddrs.h>
+#include <linux/nl80211.h>
+#include <linux/netlink.h>
+
+namespace Experiment{
+}*/
+
 
 
 #endif //WIFIBROADCAST_SOCKETHELPER_H

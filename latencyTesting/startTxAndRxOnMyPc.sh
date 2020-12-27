@@ -4,20 +4,22 @@
 
 #MY_TX="wlp3s0"
 #MY_TX="wlxc4e984126183"
-#MY_TX="wlx000f00460445" # ALFA card
+MY_RX="wlx000f00460445" # ALFA card
 #MY_TX="wlx6cfdb9b2a156" #PW-DN421
 #MY_TX="wlx0018e7bd24db"
-MY_TX="wlx00e0863200b9" #Taobao card
+#MY_TX="wlx00e0863200b9" #Taobao card
 
-MY_RX="wlx0018e7bd24db" #Ralink card aliexpress
-#MY_RX="wlxc4e9840e3cbe"
+#MY_RX="wlx244bfeb71c05" #Asus card
+#MY_RX="wlx0018e7bd24db" #Ralink card aliexpress
+MY_TX="wlxc4e9840e3cbe" #tp-link rx
 #MY_RX_SECONDARY="wlxc4e984126183"
 WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
 
-FEC_K=8
-FEC_N=12
+FEC_K=0
+FEC_N=0
 
-MY_WIFI_CHANNEL=149
+#MY_WIFI_CHANNEL=149
+MY_WIFI_CHANNEL=13
 
 sudo rfkill unblock wifi
 #sudo killall ifplugd #stop management of interface

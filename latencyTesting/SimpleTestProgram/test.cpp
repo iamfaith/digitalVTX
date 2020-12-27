@@ -101,7 +101,7 @@ SentDataSave sentDataSave{};
 AvgCalculator2 avgUDPProcessingTime{0};
 //AvgCalculator avgUDPProcessingTime;
 std::uint32_t lastReceivedSequenceNr=0;
-const bool COMPARE_RECEIVED_DATA=true;
+const bool COMPARE_RECEIVED_DATA=false;
 std::vector<int> lostPacketsSeqNrDiffs;
 std::size_t receivedPackets=0;
 std::size_t receivedBytes=0;
