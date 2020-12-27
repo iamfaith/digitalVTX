@@ -6,7 +6,6 @@
 #define WIFIBROADCAST_SCHEDULINGHELPER_H
 
 #include <pthread.h>
-#include <sys/time.h>
 #include <sys/resource.h>
 
 namespace SchedulingHelper{
