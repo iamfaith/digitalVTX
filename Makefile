@@ -17,6 +17,7 @@ src/ExternalCSources/%.o: src/ExternalCSources/radiotap/%.c src/ExternalCSources
 src/ExternalCSources/%.o: src/ExternalCSources/fec/%.c src/ExternalCSources/fec/*.h
 	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
 
+# the c++ part
 src/%.o: src/%.cpp src/*.hpp
 	$(CXX) $(_CFLAGS) -std=c++17 -c -o $@ $<
 

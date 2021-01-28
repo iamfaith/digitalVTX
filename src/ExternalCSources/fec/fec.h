@@ -1,6 +1,10 @@
 #ifndef FEC_H
 #define FEC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * zfec -- fast forward error correction library with Python interface
  * https://tahoe-lafs.org/trac/zfec/
@@ -113,5 +117,8 @@ void fec_decode(const fec_t* code, const gf** inpkts, gf** outpkts, const unsign
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  */
+#ifdef __cplusplus
+}
+#endif
 
 #endif FEC_H
