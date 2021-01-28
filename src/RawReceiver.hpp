@@ -282,7 +282,6 @@ public:
             std::cerr<<"Please do not use a flush interval of 0 (this hogs the cpu)\n";
         }
         loop();
-
     }
     ~MultiRxPcapReceiver()=default;
 private:
@@ -302,7 +301,6 @@ private:
             cur_ts = std::chrono::steady_clock::now();
 
             if (cur_ts >= log_send_ts) {
-                //agg->dump_stats();
                 mCallbackLog();
                 log_send_ts = std::chrono::steady_clock::now() + log_interval;
             }
@@ -312,7 +310,6 @@ private:
                 if(flush_interval.count()>0){
                     // smaller than 0 means no flush enabled
                     // else we didn't receive data for FLUSH_INTERVAL ms
-                    //agg->flushRxRing();
                     mCallbackTimeout();
                 }
                 continue;
