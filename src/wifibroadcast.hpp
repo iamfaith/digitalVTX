@@ -109,6 +109,7 @@ public:
 public:
     const uint8_t packet_type=WFB_PACKET_DATA;
     const uint64_t nonce;  // big endian, nonce = block_idx << 8 + fragment_idx
+    //const uint8_t reserved=0;
 }  __attribute__ ((packed));
 static_assert(sizeof(WBDataHeader)==8+1,"ALWAYS_TRUE");
 

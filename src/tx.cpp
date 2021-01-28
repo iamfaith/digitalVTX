@@ -16,11 +16,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "wifibroadcast.hpp"
 #include "tx.hpp"
-extern "C"{
-#include "ExternalCSources/fec.h"
-}
 #include "HelperSources/SchedulingHelper.hpp"
 
 #include <cstdio>

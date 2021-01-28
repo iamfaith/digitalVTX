@@ -22,6 +22,7 @@
 #include "Helper.hpp"
 #include "RawTransmitter.hpp"
 #include "HelperSources/TimeHelper.hpp"
+#include "wifibroadcast.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -31,7 +32,6 @@
 #include <string>
 #include <vector>
 #include <cstring>
-#include "wifibroadcast.hpp"
 #include <stdexcept>
 #include <iostream>
 
