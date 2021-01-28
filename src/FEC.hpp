@@ -332,9 +332,16 @@ public:
         if(FEC_K == 0) {
             // here we buffer nothing, but still make sure that packets only are forwarded with increasing sequence number
             // If one RX was used only, this would not be needed. But with multiple RX we can have duplicates
-            if(wblockHdr.getBlockIdx()<=seq){
+            const auto packetSeq=wblockHdr.getBlockIdx();
+            if(packetSeq<=seq){
                 // we have already received this block or it is too old (for simplicity, nothing is buffered with FEC_K=0)
                 return true;
+            }
+            //also write lost packet count in this mode
+            if (packetSeq > seq + 1) {
+                const auto packetsLost=(packetSeq - seq - 1);
+                //std::cerr<<packetsLost<<"packets lost\n";
+                count_p_lost += packetsLost;
             }
             callback(decrypted.data(),decrypted.size());
             seq=wblockHdr.getBlockIdx();
