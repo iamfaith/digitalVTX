@@ -265,7 +265,7 @@ public:
 
         memset(mReceiverFDs.data(), '\0', mReceiverFDs.size()*sizeof(pollfd));
         std::stringstream ss;
-        ss<<"MultiRxPcapReceiver"<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
+        ss<<"MultiRxPcapReceiver"<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" LOG_INTERVAL(ms)"<<(int)log_interval.count()<<" Assigned WLAN(s):";
 
         for (int i = 0; i < N_RECEIVERS; i++) {
             mReceivers[i] = std::make_unique<PcapReceiver>(rxInterfaces[i], i, radio_port,mCallbackData);
@@ -317,12 +317,12 @@ private:
                 }
                 continue;
             }
+            // TODO Optimization: If rc>1 we have data on more than one wifi card. It would be better to alternating process a couple of packets from card 1, then card 2 or similar
             for (int i = 0; rc > 0 && i < mReceiverFDs.size(); i++) {
                 if (mReceiverFDs[i].revents & (POLLERR | POLLNVAL)) {
                     throw std::runtime_error("socket error!");
                 }
                 if (mReceiverFDs[i].revents & POLLIN) {
-                    //receivers[i]->loop_iter();
                     mReceivers[i]->loop_iter();
                     rc -= 1;
                 }
