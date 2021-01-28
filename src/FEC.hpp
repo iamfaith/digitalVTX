@@ -327,7 +327,14 @@ public:
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
         // Use FEC_K==0 to completely disable FEC
         if(FEC_K == 0) {
+            // here we buffer nothing, but still make sure that packets only are forwarded with increasing sequence number
+            // If one RX was used only, this would not be needed. But with multiple RX we can have duplicates
+            if(wblockHdr.getBlockIdx()<=seq){
+                // we have already received this block or it is too old (for simplicity, nothing is buffered with FEC_K=0)
+                return true;
+            }
             callback(decrypted.data(),decrypted.size());
+            seq=wblockHdr.getBlockIdx();
             return true;
         }
         const uint64_t block_idx=wblockHdr.getBlockIdx();
