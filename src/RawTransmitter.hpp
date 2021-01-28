@@ -20,6 +20,7 @@
 #include <poll.h>
 
 // This is a single header-only file you can use to build your own wifibroadcast link
+// It doesn't specify if / what FEC to use and so on
 
 // Doesn't specify what / how big the custom header is.
 // This way it is easy to make the injection part generic for future changes
