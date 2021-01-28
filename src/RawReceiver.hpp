@@ -251,6 +251,12 @@ public:
 // 3) callback that is called when no data has been received for n ms
 class MultiRxPcapReceiver{
 public:
+    /**
+     * @param rxInterfaces list of wifi adapters to listen on
+     * @param radio_port  radio port (aka stream ID) to filter packets for
+     * @param log_interval the log callback is called in the interval specified by @param log_interval
+     * @param flush_interval the flush callback is called every time no data has been received for more than @param flush_interval milliseconds
+     */
     explicit MultiRxPcapReceiver(const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval):
     rxInterfaces(rxInterfaces),radio_port(radio_port),log_interval(log_interval),flush_interval(flush_interval){
         const int N_RECEIVERS = rxInterfaces.size();
@@ -259,7 +265,6 @@ public:
 
         memset(mReceiverFDs.data(), '\0', mReceiverFDs.size()*sizeof(pollfd));
         std::stringstream ss;
-        //ss<<"WB-RX Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
         ss<<"MultiRxPcapReceiver"<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
 
         for (int i = 0; i < N_RECEIVERS; i++) {
