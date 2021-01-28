@@ -47,6 +47,7 @@ private:
     fec_t *fec_p=nullptr;
 };
 
+
 // Takes a continuous stream of packets and
 // encodes them via FEC such that they can be decoded by FECDecoder
 // The encoding is slightly different from traditional FEC. It
@@ -58,7 +59,9 @@ class FECEncoder : private FEC{
 public:
     typedef std::function<void(const WBDataPacket &wbDataPacket)> OUTPUT_DATA_CALLBACK;
     OUTPUT_DATA_CALLBACK outputDataCallback;
-
+    // TODO: So we have to be carefully here:
+    // 1) If k,n is given: fixed packet size
+    // 2) If k,n is not given, but we do variable k,(n) -> what to do ?
     explicit FECEncoder(int k, int n) : FEC(k,n) {
         block = new uint8_t *[FEC_N];
         for (int i = 0; i < FEC_N; i++) {

@@ -187,6 +187,7 @@ class PcapReceiver {
 public:
     // this callback is called with the received packet from pcap
     typedef std::function<void(const uint8_t wlan_idx,const pcap_pkthdr& hdr,const uint8_t* pkt)> PROCESS_PACKET_CALLBACK;
+    // This constructor only takes one wlan (aka one wlan adapter)
     PcapReceiver(const std::string& wlan, int wlan_idx, int radio_port,PROCESS_PACKET_CALLBACK callback): WLAN_IDX(wlan_idx),RADIO_PORT(radio_port), mCallback(callback){
         ppcap=RawReceiverHelper::openRxWithPcap(wlan, RADIO_PORT);
         fd = pcap_get_selectable_fd(ppcap);
@@ -239,6 +240,103 @@ public:
     Chronometer timeForParsingPackets{"PP"};
     // If each iteration pulls too many packets out your CPU is most likely too slow
     BaseAvgCalculator<int> nOfPacketsPolledFromPcapQueuePerIteration;
+};
+
+#include <poll.h>
+
+// This class supports more than one Receiver (aka multiple wlan adapters)
+// 3 Callbacks to register:
+// 1) the PROCESS_PACKET_CALLBACK
+// 2) callback that is called in regular intervals, independent of wether data was received or not
+// 3) callback that is called when no data has been received for n ms
+class MultiRxPcapReceiver{
+public:
+    explicit MultiRxPcapReceiver(const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval):
+    rxInterfaces(rxInterfaces),radio_port(radio_port),log_interval(log_interval),flush_interval(flush_interval){
+        const int N_RECEIVERS = rxInterfaces.size();
+        mReceivers.resize(N_RECEIVERS);
+        mReceiverFDs.resize(N_RECEIVERS);
+
+        memset(mReceiverFDs.data(), '\0', mReceiverFDs.size()*sizeof(pollfd));
+        std::stringstream ss;
+        //ss<<"WB-RX Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
+        ss<<"MultiRxPcapReceiver"<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
+
+        for (int i = 0; i < N_RECEIVERS; i++) {
+            mReceivers[i] = std::make_unique<PcapReceiver>(rxInterfaces[i], i, radio_port,mCallbackData);
+            mReceiverFDs[i].fd = mReceivers[i]->getfd();
+            mReceiverFDs[i].events = POLLIN;
+            ss<<rxInterfaces[i]<<" ";
+        }
+        std::cout<<ss.str()<<"\n";
+        std::cout<<ss.str()<<"\n";
+        if(flush_interval>log_interval){
+            std::cerr<<"Please use a flush interval smaller than the log interval\n";
+        }
+        if(flush_interval==std::chrono::milliseconds(0)){
+            std::cerr<<"Please do not use a flush interval of 0 (this hogs the cpu)\n";
+        }
+        loop();
+
+    }
+    ~MultiRxPcapReceiver()=default;
+private:
+    void loop(){
+        std::chrono::steady_clock::time_point log_send_ts{};
+        for (;;) {
+            auto cur_ts=std::chrono::steady_clock::now();
+            //const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
+            const int timeoutMS=flush_interval.count()>0 ? std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count() : std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count();
+            int rc = poll(mReceiverFDs.data(), mReceiverFDs.size(),timeoutMS);
+
+            if (rc < 0) {
+                if (errno == EINTR || errno == EAGAIN) continue;
+                throw std::runtime_error(StringFormat::convert("Poll error: %s", strerror(errno)));
+            }
+
+            cur_ts = std::chrono::steady_clock::now();
+
+            if (cur_ts >= log_send_ts) {
+                //agg->dump_stats();
+                mCallbackLog();
+                log_send_ts = std::chrono::steady_clock::now() + log_interval;
+            }
+
+            if (rc == 0){
+                // timeout expired
+                if(flush_interval.count()>0){
+                    // smaller than 0 means no flush enabled
+                    // else we didn't receive data for FLUSH_INTERVAL ms
+                    //agg->flushRxRing();
+                    mCallbackTimeout();
+                }
+                continue;
+            }
+            for (int i = 0; rc > 0 && i < mReceiverFDs.size(); i++) {
+                if (mReceiverFDs[i].revents & (POLLERR | POLLNVAL)) {
+                    throw std::runtime_error("socket error!");
+                }
+                if (mReceiverFDs[i].revents & POLLIN) {
+                    //receivers[i]->loop_iter();
+                    mReceivers[i]->loop_iter();
+                    rc -= 1;
+                }
+            }
+        }
+    }
+    // all the callbacks:
+    // this callback is called with the received packet from pcap
+    PcapReceiver::PROCESS_PACKET_CALLBACK mCallbackData;
+    typedef std::function<void()> GENERIC_CALLBACK;
+    GENERIC_CALLBACK mCallbackLog;
+    GENERIC_CALLBACK mCallbackTimeout;
+public:
+    const std::vector<std::string> rxInterfaces;
+    std::vector<std::unique_ptr<PcapReceiver>> mReceivers;
+    std::vector<pollfd> mReceiverFDs;
+    const int radio_port;
+    const std::chrono::milliseconds log_interval;
+    const std::chrono::milliseconds flush_interval;
 };
 
 #endif //WIFIBROADCAST_RAWRECEIVER_H
