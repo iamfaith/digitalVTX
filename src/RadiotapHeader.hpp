@@ -3,8 +3,8 @@
 
 #include "Helper.hpp"
 extern "C"{
-#include "ExternalCSources/radiotap_iter.h"
-#include "ExternalCSources/radiotap.h"
+#include "ExternalCSources/radiotap/radiotap_iter.h"
+#include "ExternalCSources/radiotap/radiotap.h"
 };
 
 #include <cstdio>

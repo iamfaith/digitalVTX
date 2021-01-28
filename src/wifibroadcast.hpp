@@ -39,9 +39,6 @@
 #include <chrono>
 #include <optional>
 
-extern "C"{
-#include "ExternalCSources/radiotap.h"
-};
 #include "Ieee80211Header.hpp"
 #include "RadiotapHeader.hpp"
 

@@ -7,7 +7,7 @@
 
 #include "wifibroadcast.hpp"
 extern "C"{
-#include "ExternalCSources/fec.h"
+#include "ExternalCSources/fec/fec.h"
 //#include "ExternalCSources/fec2.h"
 }
 #include "HelperSources/TimeHelper.hpp"

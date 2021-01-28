@@ -11,16 +11,19 @@ all_bin: wfb_rx wfb_tx wfb_keygen unit_test
 all: all_bin gs.key
 
 # The non-c++ part
-src/ExternalCSources/%.o: src/ExternalCSources/%.c src/ExternalCSources/*.h
+src/ExternalCSources/%.o: src/ExternalCSources/radiotap/%.c src/ExternalCSources/radiotap/*.h
+	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
+
+src/ExternalCSources/%.o: src/ExternalCSources/fec/%.c src/ExternalCSources/fec/*.h
 	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
 
 src/%.o: src/%.cpp src/*.hpp
 	$(CXX) $(_CFLAGS) -std=c++17 -c -o $@ $<
 
-wfb_rx: src/rx.o src/ExternalCSources/radiotap.o src/ExternalCSources/fec.o
+wfb_rx: src/rx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
-wfb_tx: src/tx.o src/ExternalCSources/radiotap.o src/ExternalCSources/fec.o
+wfb_tx: src/tx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
 unit_test: src/unit_test.o src/ExternalCSources/fec.o
