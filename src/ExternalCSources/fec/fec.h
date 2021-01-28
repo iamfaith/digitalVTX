@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FEC_H
+#define FEC_H
 
 /**
  * zfec -- fast forward error correction library with Python interface
@@ -113,3 +114,4 @@ void fec_decode(const fec_t* code, const gf** inpkts, gf** outpkts, const unsign
  * OF SUCH DAMAGE.
  */
 
+#endif FEC_H
