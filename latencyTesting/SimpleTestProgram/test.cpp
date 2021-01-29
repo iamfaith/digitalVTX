@@ -101,7 +101,7 @@ SentDataSave sentDataSave{};
 AvgCalculator2 avgUDPProcessingTime{0};
 //AvgCalculator avgUDPProcessingTime;
 std::uint32_t lastReceivedSequenceNr=0;
-const bool COMPARE_RECEIVED_DATA=false;
+const bool COMPARE_RECEIVED_DATA=true;
 std::vector<int> lostPacketsSeqNrDiffs;
 std::size_t receivedPackets=0;
 std::size_t receivedBytes=0;
@@ -209,7 +209,6 @@ static void test_latency(const Options& o){
 	const long nLostBytes=(writtenBytes-receivedBytes);
 	const long nLostPackets=(writtenPackets-receivedPackets);
     const double lostBytesPercentage=((double)receivedBytes/(double)writtenBytes)*100.0f;
-
 
 
    std::cout<<"Testing took:"<<testTimeSeconds<<"s\n";

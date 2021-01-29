@@ -310,7 +310,7 @@ private:
 class FECDecoder : public FEC{
 public:
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
-    SEND_DECODED_PACKET callback;
+    SEND_DECODED_PACKET mSendDecodedPayloadCallback;
 
     explicit FECDecoder(int k, int n) : FEC(k,n) {
         for(int i=0;i<RX_RING_SIZE;i++){
@@ -348,7 +348,7 @@ public:
                 //std::cerr<<packetsLost<<"packets lost\n";
                 count_p_lost += packetsLost;
             }
-            callback(decrypted.data(),decrypted.size());
+            mSendDecodedPayloadCallback(decrypted.data(), decrypted.size());
             seq=packetSeq;
             return true;
         }
@@ -415,7 +415,7 @@ private:
         } else {
             // we use packets of size 0 to flush the tx pipeline
             if(packet_size>0){
-                callback(payload,packet_size);
+                mSendDecodedPayloadCallback(payload, packet_size);
             }
         }
     }

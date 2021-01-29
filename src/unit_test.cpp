@@ -50,7 +50,7 @@ namespace TestFEC{
             testOut.emplace_back(payload,payload+payloadSize);
         };
         encoder.outputDataCallback=cb1;
-        decoder.callback=cb2;
+        decoder.mSendDecodedPayloadCallback=cb2;
         // If there is no data loss the packets should arrive immediately
         for(std::size_t i=0;i<testIn.size();i++){
             const auto& in=testIn[i];
@@ -134,7 +134,7 @@ namespace TestFEC{
             testOut.emplace_back(payload, payload + payloadSize);
         };
         encoder.outputDataCallback = cb1;
-        decoder.callback = cb2;
+        decoder.mSendDecodedPayloadCallback = cb2;
         for (std::size_t i = 0; i < testIn.size(); i++) {
             const auto &in = testIn[i];
             encoder.encodePacket(in.data(), in.size());

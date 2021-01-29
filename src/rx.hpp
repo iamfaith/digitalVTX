@@ -54,6 +54,7 @@ public:
     const int CLIENT_UDP_PORT;
     // do not pass data from the receiver to the Aggregator where radio port doesn't match
     const uint8_t RADIO_PORT;
+    void loop();
 private:
     void sendPacketViaUDP(const uint8_t *packet,std::size_t packetSize) const{
         send(sockfd,packet,packetSize, MSG_DONTWAIT);
@@ -67,6 +68,7 @@ private:
     uint64_t count_p_dec_err=0;
     uint64_t count_p_dec_ok=0;
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
+    std::unique_ptr<MultiRxPcapReceiver> mMultiRxPcapReceiver;
 public:
 #ifdef ENABLE_ADVANCED_DEBUGGING
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>

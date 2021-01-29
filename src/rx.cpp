@@ -38,11 +38,16 @@ CLIENT_UDP_PORT(client_udp_port),
 RADIO_PORT(radio_port),
 mDecryptor(keypair){
     sockfd = SocketHelper::open_udp_socket_for_tx(client_addr,client_udp_port);
-    callback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1,std::placeholders::_2);
+    mSendDecodedPayloadCallback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1, std::placeholders::_2);
+
 }
 
 Aggregator::~Aggregator() {
     close(sockfd);
+}
+
+void Aggregator::loop() {
+
 }
 
 void Aggregator::dump_stats() {
