@@ -7,8 +7,8 @@
 
 #include "wifibroadcast.hpp"
 extern "C"{
-#include "ExternalCSources/fec/fec.h"
-//#include "ExternalCSources/fec2.h"
+//#include "ExternalCSources/fec/fec.h"
+#include "ExternalCSources/fec/fec2.h"
 }
 #include "HelperSources/TimeHelper.hpp"
 #include <cstdint>
@@ -27,21 +27,21 @@ class FEC{
 public:
     explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
         if(FEC_K != 0){
-            fec_p = fec_new(FEC_K, FEC_N);
+            //fec_p = fec_new(FEC_K, FEC_N);
         }
         //fec_init();
     }
     ~FEC(){
-        if(fec_p!= nullptr){
+        /*if(fec_p!= nullptr){
             fec_free(fec_p);
-        }
+        }*/
     }
     void fecEncode(const uint8_t** src,uint8_t ** fecs, size_t sz)const{
-        fec_encode(fec_p,src,fecs,sz);
+        //fec_encode(fec_p,src,fecs,sz);
         //fec_encode(sz,(unsigned char**)src,FEC_K,(unsigned char**)fecs,FEC_N);
     }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
-        fec_decode(fec_p,inpkts,outpkts,index,sz);
+        //fec_decode(fec_p,inpkts,outpkts,index,sz);
         // for some reason, the fec2 implementation wants also a list of the "missing" aka "erased" blocks
         //fec_decode(sz,(unsigned char**)inpkts,FEC_K,)
     }
@@ -49,7 +49,7 @@ public:
     const int FEC_K;  // RS number of primary fragments in block default 8
     const int FEC_N;  // RS total number of fragments in block default 12
 private:
-    fec_t *fec_p=nullptr;
+    //fec_t *fec_p=nullptr;
 };
 
 

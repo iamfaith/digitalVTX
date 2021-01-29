@@ -14,4 +14,4 @@ https://github.com/qca/open-ath9k-htc-firmware/blob/d0ad09603867beab49ead2536b22
 https://github.com/qca/open-ath9k-htc-firmware/blob/d0ad09603867beab49ead2536b2239be43d6eb42/target_firmware/wlan/if_ath.c#L119
 
 
-//https://github.com/aircrack-ng/rtl8812au/issues/116
+https://github.com/aircrack-ng/rtl8812au/issues/116

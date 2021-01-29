@@ -22,10 +22,10 @@ src/ExternalCSources/%.o: src/ExternalCSources/fec/%.c src/ExternalCSources/fec/
 src/%.o: src/%.cpp src/*.hpp
 	$(CXX) $(_CFLAGS) -std=c++17 -c -o $@ $<
 
-wfb_rx: src/rx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec.o
+wfb_rx: src/rx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec2.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
-wfb_tx: src/tx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec.o
+wfb_tx: src/tx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec2.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
 unit_test: src/unit_test.o src/ExternalCSources/fec.o
