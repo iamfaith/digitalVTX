@@ -248,8 +248,8 @@ public:
 // This class supports more than one Receiver (aka multiple wlan adapters)
 // 3 Callbacks to register:
 // 1) the PROCESS_PACKET_CALLBACK
-// 2) callback that is called in regular intervals, independent of wether data was received or not
-// 3) callback that is called when no data has been received for n ms
+// 2) mCallbackLog: callback that is called in regular intervals, independent of weather data was received or not
+// 3) mCallbackFlush: callback that is called when no data has been received for n ms
 class MultiRxPcapReceiver{
 public:
     typedef std::function<void()> GENERIC_CALLBACK;
