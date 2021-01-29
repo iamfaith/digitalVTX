@@ -193,13 +193,12 @@ public:
         ppcap=RawReceiverHelper::openRxWithPcap(wlan, RADIO_PORT);
         fd = pcap_get_selectable_fd(ppcap);
     }
-
     ~PcapReceiver(){
         close(fd);
         pcap_close(ppcap);
     }
     // loop receiving data from this interface until no more data is available
-    void loop_iter() {
+    int loop_iter() {
         // loop while incoming queue is not empty
         int nPacketsPolledUntilQueueWasEmpty=0;
         for (;;){
@@ -222,6 +221,7 @@ public:
 #endif
             nPacketsPolledUntilQueueWasEmpty++;
         }
+        return nPacketsPolledUntilQueueWasEmpty;
     }
 
     int getfd() const { return fd; }
@@ -252,14 +252,16 @@ public:
 // 3) callback that is called when no data has been received for n ms
 class MultiRxPcapReceiver{
 public:
+    typedef std::function<void()> GENERIC_CALLBACK;
     /**
      * @param rxInterfaces list of wifi adapters to listen on
      * @param radio_port  radio port (aka stream ID) to filter packets for
      * @param log_interval the log callback is called in the interval specified by @param log_interval
      * @param flush_interval the flush callback is called every time no data has been received for more than @param flush_interval milliseconds
      */
-    explicit MultiRxPcapReceiver(const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval):
-    rxInterfaces(rxInterfaces),radio_port(radio_port),log_interval(log_interval),flush_interval(flush_interval){
+    explicit MultiRxPcapReceiver(const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval,
+                                 PcapReceiver::PROCESS_PACKET_CALLBACK dataCallback,GENERIC_CALLBACK logCallback,GENERIC_CALLBACK flushCallback):
+            rxInterfaces(rxInterfaces), radio_port(radio_port), log_interval(log_interval), flush_interval(flush_interval), mCallbackData(dataCallback), mCallbackLog(logCallback), mCallbackFlush(flushCallback){
         const int N_RECEIVERS = rxInterfaces.size();
         mReceivers.resize(N_RECEIVERS);
         mReceiverFDs.resize(N_RECEIVERS);
@@ -312,7 +314,7 @@ private:
                 if(flush_interval.count()>0){
                     // smaller than 0 means no flush enabled
                     // else we didn't receive data for FLUSH_INTERVAL ms
-                    mCallbackTimeout();
+                    mCallbackFlush();
                 }
                 continue;
             }
@@ -332,12 +334,11 @@ private:
     // NOTE 1: If you are using only wifi card as RX: I personally did not see any packet reordering with my wifi adapters, but according to svpcom this would be possible
     // NOTE 2: If you are using more than one wifi card as RX, There are probably duplicate packets and packets do not arrive in order. E.g. the following is possible:
     // You get packet nr 0,1,2,3 from card 1 | then you get packet 0,2,3 from card 2
-    PcapReceiver::PROCESS_PACKET_CALLBACK mCallbackData;
-    typedef std::function<void()> GENERIC_CALLBACK;
+    const PcapReceiver::PROCESS_PACKET_CALLBACK mCallbackData;
     // This callback is called regularily independent weather data was received or not
-    GENERIC_CALLBACK mCallbackLog;
+    const GENERIC_CALLBACK mCallbackLog;
     // This callback is called after @param flush_intervall ms if no data was received
-    GENERIC_CALLBACK mCallbackTimeout;
+    const GENERIC_CALLBACK mCallbackFlush;
 public:
     const std::vector<std::string> rxInterfaces;
     std::vector<std::unique_ptr<PcapReceiver>> mReceivers;
