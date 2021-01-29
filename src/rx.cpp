@@ -38,16 +38,12 @@ CLIENT_UDP_PORT(client_udp_port),
 RADIO_PORT(radio_port),
 mDecryptor(keypair){
     sockfd = SocketHelper::open_udp_socket_for_tx(client_addr,client_udp_port);
-    mSendDecodedPayloadCallback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1, std::placeholders::_2);
-
+    FECDecoder::mSendDecodedPayloadCallback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1, std::placeholders::_2);
+    //
 }
 
 Aggregator::~Aggregator() {
     close(sockfd);
-}
-
-void Aggregator::loop() {
-
 }
 
 void Aggregator::dump_stats() {
@@ -193,71 +189,9 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
 }
 
-
-void
-radio_loop(std::shared_ptr<Aggregator> agg,const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval) {
-    const int N_RECEIVERS = rxInterfaces.size();
-    struct pollfd fds[N_RECEIVERS];
-    // one receiver for each wifi card
-    std::unique_ptr<PcapReceiver> receivers[N_RECEIVERS];
-
-    memset(fds, '\0', sizeof(fds));
-    std::stringstream ss;
-    ss<<"WB-RX Forwarding to: "<<agg->CLIENT_UDP_PORT<<" Assigned ID: "<<radio_port<<" FLUSH_INTERVAL(ms):"<<(int)flush_interval.count()<<" Assigned WLAN(s):";
-
-    for (int i = 0; i < N_RECEIVERS; i++) {
-        receivers[i] = std::make_unique<PcapReceiver>(rxInterfaces[i], i, radio_port, std::bind(&Aggregator::processPacket, agg.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-        fds[i].fd = receivers[i]->getfd();
-        fds[i].events = POLLIN;
-        ss<<rxInterfaces[i]<<" ";
-    }
-    std::cout<<ss.str()<<"\n";
-    if(flush_interval>log_interval){
-        std::cerr<<"Please use a flush interval smaller than the log interval\n";
-    }
-    if(flush_interval==std::chrono::milliseconds(0)){
-        std::cerr<<"Please do not use a flush interval of 0 (this hogs the cpu)\n";
-    }
-    std::chrono::steady_clock::time_point log_send_ts{};
-    for (;;) {
-        auto cur_ts=std::chrono::steady_clock::now();
-        //const int timeoutMS=log_send_ts > cur_ts ? (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_send_ts - cur_ts).count() : 0;
-        const int timeoutMS=flush_interval.count()>0 ? std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count() : std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count();
-        int rc = poll(fds, N_RECEIVERS,timeoutMS);
-
-        if (rc < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
-            throw std::runtime_error(StringFormat::convert("Poll error: %s", strerror(errno)));
-        }
-
-        cur_ts = std::chrono::steady_clock::now();
-
-        if (cur_ts >= log_send_ts) {
-            agg->dump_stats();
-            log_send_ts = std::chrono::steady_clock::now() + log_interval;
-        }
-
-        if (rc == 0){
-            // timeout expired
-            if(flush_interval.count()>0){
-                // smaller than 0 means no flush enabled
-                // else we didn't receive data for FLUSH_INTERVAL ms
-                agg->flushRxRing();
-            }
-            continue;
-        }
-        for (int i = 0; rc > 0 && i < N_RECEIVERS; i++) {
-            if (fds[i].revents & (POLLERR | POLLNVAL)) {
-                throw std::runtime_error("socket error!");
-            }
-            if (fds[i].revents & POLLIN) {
-                receivers[i]->loop_iter();
-                rc -= 1;
-            }
-        }
-    }
+void Aggregator::flushFecPipeline() {
+    FECDecoder::flushRxRing();
 }
-
 
 int main(int argc, char *const *argv) {
     int opt;
@@ -322,7 +256,13 @@ int main(int argc, char *const *argv) {
     }
     try {
         std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port,radio_port, k, n, keypair);
-        radio_loop(agg,rxInterfaces, radio_port, log_interval,flush_interval);
+        //radio_loop(agg,rxInterfaces, radio_port, log_interval,flush_interval);
+        //std::unique_ptr<MultiRxPcapReceiver> mMultiRxPcapReceiver=std::make_unique<MultiRxPcapReceiver>(rxInterfaces,)
+        MultiRxPcapReceiver receiver(rxInterfaces,radio_port,log_interval,flush_interval,
+                                     std::bind(&Aggregator::processPacket, agg.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+                                     std::bind(&Aggregator::dump_stats, agg.get()),
+                                     std::bind(&Aggregator::flushFecPipeline, agg.get()));
+        receiver.loop();
     } catch (std::runtime_error &e) {
         fprintf(stderr, "Error: %s\n", e.what());
         exit(1);

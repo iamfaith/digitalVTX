@@ -287,7 +287,6 @@ public:
         loop();
     }
     ~MultiRxPcapReceiver()=default;
-private:
     // Runs until an error occurs
     void loop(){
         std::chrono::steady_clock::time_point log_send_ts{};
@@ -330,6 +329,7 @@ private:
             }
         }
     }
+private:
     // this callback is called with the received packets from pcap
     // NOTE 1: If you are using only wifi card as RX: I personally did not see any packet reordering with my wifi adapters, but according to svpcom this would be possible
     // NOTE 2: If you are using more than one wifi card as RX, There are probably duplicate packets and packets do not arrive in order. E.g. the following is possible:
