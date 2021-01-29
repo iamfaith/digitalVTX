@@ -259,8 +259,8 @@ public:
      * @param log_interval the log callback is called in the interval specified by @param log_interval
      * @param flush_interval the flush callback is called every time no data has been received for more than @param flush_interval milliseconds
      */
-    explicit MultiRxPcapReceiver(const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval,
-                                 PcapReceiver::PROCESS_PACKET_CALLBACK dataCallback,GENERIC_CALLBACK logCallback,GENERIC_CALLBACK flushCallback):
+    explicit MultiRxPcapReceiver(const std::vector<std::string>& rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval,
+                                 PcapReceiver::PROCESS_PACKET_CALLBACK& dataCallback,GENERIC_CALLBACK logCallback,GENERIC_CALLBACK flushCallback):
             rxInterfaces(rxInterfaces), radio_port(radio_port), log_interval(log_interval), flush_interval(flush_interval), mCallbackData(dataCallback), mCallbackLog(logCallback), mCallbackFlush(flushCallback){
         const int N_RECEIVERS = rxInterfaces.size();
         mReceivers.resize(N_RECEIVERS);
