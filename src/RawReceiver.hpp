@@ -247,7 +247,7 @@ public:
 
 // This class supports more than one Receiver (aka multiple wlan adapters)
 // 3 Callbacks to register:
-// 1) the PROCESS_PACKET_CALLBACK
+// 1) the PROCESS_PACKET_CALLBACK. You can find out from which wifi card this packet came by @param wlan_idx
 // 2) mCallbackLog: callback that is called in regular intervals, independent of weather data was received or not
 // 3) mCallbackFlush: callback that is called when no data has been received for n ms
 class MultiRxPcapReceiver{
