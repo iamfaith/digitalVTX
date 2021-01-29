@@ -21,6 +21,8 @@ void fec_encode(unsigned int blockSize,
                 unsigned char **fec_blocks,
                 unsigned int nrFecBlocks);
 
+// block size: size of a packet in bytes
+// nr_data_blocks: == FEC_K
 void fec_decode(unsigned int blockSize,
                 unsigned char **data_blocks,
                 unsigned int nr_data_blocks,

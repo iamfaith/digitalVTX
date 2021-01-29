@@ -29,7 +29,7 @@ public:
         if(FEC_K != 0){
             //fec_p = fec_new(FEC_K, FEC_N);
         }
-        //fec_init();
+        fec_init();
     }
     ~FEC(){
         /*if(fec_p!= nullptr){
@@ -38,7 +38,7 @@ public:
     }
     void fecEncode(const uint8_t** src,uint8_t ** fecs, size_t sz)const{
         //fec_encode(fec_p,src,fecs,sz);
-        //fec_encode(sz,(unsigned char**)src,FEC_K,(unsigned char**)fecs,FEC_N);
+        fec_encode(sz,(unsigned char**)src,FEC_K,(unsigned char**)fecs,FEC_N);
     }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         //fec_decode(fec_p,inpkts,outpkts,index,sz);

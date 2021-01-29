@@ -28,7 +28,7 @@ wfb_rx: src/rx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/f
 wfb_tx: src/tx.o src/ExternalCSources/radiotap/radiotap.o src/ExternalCSources/fec/fec2.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
-unit_test: src/unit_test.o src/ExternalCSources/fec.o
+unit_test: src/unit_test.o src/ExternalCSources/fec/fec2.o
 	$(CXX) -o $@ $^ $(_LDFLAGS)
 
 wfb_keygen: src/keygen.o
