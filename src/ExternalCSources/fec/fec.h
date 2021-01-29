@@ -121,4 +121,4 @@ void fec_decode(const fec_t* code, const gf** inpkts, gf** outpkts, const unsign
 }
 #endif
 
-#endif FEC_H
+#endif //FEC_H
