@@ -286,6 +286,7 @@ public:
     }
     ~MultiRxPcapReceiver()=default;
 private:
+    // Runs until an error occurs
     void loop(){
         std::chrono::steady_clock::time_point log_send_ts{};
         for (;;) {
@@ -327,11 +328,15 @@ private:
             }
         }
     }
-    // all the callbacks:
-    // this callback is called with the received packet from pcap
+    // this callback is called with the received packets from pcap
+    // NOTE 1: If you are using only wifi card as RX: I personally did not see any packet reordering with my wifi adapters, but according to svpcom this would be possible
+    // NOTE 2: If you are using more than one wifi card as RX, There are probably duplicate packets and packets do not arrive in order. E.g. the following is possible:
+    // You get packet nr 0,1,2,3 from card 1 | then you get packet 0,2,3 from card 2
     PcapReceiver::PROCESS_PACKET_CALLBACK mCallbackData;
     typedef std::function<void()> GENERIC_CALLBACK;
+    // This callback is called regularily independent weather data was received or not
     GENERIC_CALLBACK mCallbackLog;
+    // This callback is called after @param flush_intervall ms if no data was received
     GENERIC_CALLBACK mCallbackTimeout;
 public:
     const std::vector<std::string> rxInterfaces;

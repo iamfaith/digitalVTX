@@ -42,6 +42,7 @@ public:
     }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         fec_decode(fec_p,inpkts,outpkts,index,sz);
+        // for some reason, the fec2 implementation wants also a list of the "missing" aka "erased" blocks
         //fec_decode(sz,(unsigned char**)inpkts,FEC_K,)
     }
 public:
