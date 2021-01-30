@@ -311,9 +311,11 @@ public:
             }
         }
         fec_decode(maxPacketSizeOfThisBlock, primaryFragmentsData.data(), fec.FEC_K, secondaryFragmentsData.data(), indicesAvailableSecondaryFragments.data(), indicesMissingPrimaryFragments.data(), indicesAvailableSecondaryFragments.size());
+        // after the decode step,all primary fragments are available - mark the missing ones as available
         for(const auto idx:indicesMissingPrimaryFragments){
             fragment_map[idx]=AVAILABLE;
         }
+        // n of reconstructed packets
         return indicesMissingPrimaryFragments.size();
     }
 private:
