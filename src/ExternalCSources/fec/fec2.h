@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 typedef struct fec_parms *fec_code_t;
+typedef unsigned char gf;
 
 /*
  * create a new encoder, returning a descriptor. This contains k,n and
@@ -16,17 +17,24 @@ typedef struct fec_parms *fec_code_t;
 void fec_init(void);
 
 void fec_encode(unsigned int blockSize,
-                unsigned char **data_blocks,
+                gf **data_blocks,
                 unsigned int nrDataBlocks,
-                unsigned char **fec_blocks,
+                gf **fec_blocks,
                 unsigned int nrFecBlocks);
 
-// block size: size of a packet in bytes
-// nr_data_blocks: == FEC_K
+/** Documentation comes from https://github.com/DroneBridge/DroneBridge/blob/55eec5fad91a6faaaf6ac1fdd350d4db21a0435f/video/fec.c
+* @param blockSize Size of packets
+* @param data_blocks pointer to list of data packets
+* @param nr_data_blocks number of data packets
+* @param fec_blocks pointer to list of FEC packets
+* @param fec_block_nos Indices of FEC packets that shall repair erased data packets in data packet list [array]
+* @param erased_blocks Indices of erased data packets in FEC packet data list [array]
+* @param nr_fec_blocks Number of FEC blocks used to repair data packets
+*/
 void fec_decode(unsigned int blockSize,
-                unsigned char **data_blocks,
+                gf **data_blocks,
                 unsigned int nr_data_blocks,
-                unsigned char **fec_blocks,
+                gf **fec_blocks,
                 unsigned int *fec_block_nos,
                 unsigned int *erased_blocks,
                 unsigned short nr_fec_blocks  /* how many blocks per stripe */);

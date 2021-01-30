@@ -36,7 +36,7 @@
 namespace TestFEC{
     // test the FECEncoder / FECDecoder tuple
     static void testWithoutPacketLoss(const int k, const int n, const std::vector<std::vector<uint8_t>>& testIn){
-        std::cout<<"Test K:"<<k<<" N:"<<n<<" N_PACKETS:"<<testIn.size()<<"\n";
+        std::cout<<"Test without packet loss. K:"<<k<<" N:"<<n<<" N_PACKETS:"<<testIn.size()<<"\n";
         FECEncoder encoder(k,n);
         FECDecoder decoder(k,n);
         std::vector<std::vector<uint8_t>> testOut;

@@ -26,9 +26,9 @@ extern "C"{
 class FEC{
 public:
     explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
-        if(FEC_K != 0){
-            //fec_p = fec_new(FEC_K, FEC_N);
-        }
+        /*if(FEC_K != 0){
+            fec_p = fec_new(FEC_K, FEC_N);
+        }*/
         fec_init();
     }
     ~FEC(){
@@ -38,16 +38,17 @@ public:
     }
     void fecEncode(const uint8_t** src,uint8_t ** fecs, size_t sz)const{
         //fec_encode(fec_p,src,fecs,sz);
-        fec_encode(sz,(unsigned char**)src,FEC_K,(unsigned char**)fecs,FEC_N);
     }
     void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
         //fec_decode(fec_p,inpkts,outpkts,index,sz);
         // for some reason, the fec2 implementation wants also a list of the "missing" aka "erased" blocks
-        //fec_decode(sz,(unsigned char**)inpkts,FEC_K,)
+        //fec_decode(sz,(unsigned char**)inpkts,FEC_K, nullptr, nullptr, nullptr,FEC_N);
     }
 public:
     const int FEC_K;  // RS number of primary fragments in block default 8
     const int FEC_N;  // RS total number of fragments in block default 12
+    const int N_PRIMARY_FRAGMENTS=FEC_K;
+    const int N_SECONDARY_FRAGMENTS=FEC_N-FEC_K;
 private:
     //fec_t *fec_p=nullptr;
 };
@@ -72,6 +73,7 @@ public:
         for (int i = 0; i < FEC_N; i++) {
             block[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
+        //block.resize(n);
     }
 
     ~FECEncoder() {
@@ -84,6 +86,7 @@ private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     uint8_t **block;
+    //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> block;
     size_t max_packet_size = 0;
     //
 public:
@@ -123,7 +126,9 @@ public:
             return;
         }
         // once enough data has been buffered, create all the secondary fragments
-        fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
+        //fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
+        fec_encode(max_packet_size,(unsigned char**)block, N_PRIMARY_FRAGMENTS,(unsigned char**)&block[FEC_K],N_SECONDARY_FRAGMENTS);
+
         // and send all the secondary fragments one after another
         while (fragment_idx < FEC_N) {
             send_block_fragment(max_packet_size);
@@ -249,7 +254,9 @@ public:
         //std::cout<<"reconstructAllMissingData"<<nAvailablePrimaryFragments<<" "<<nAvailableSecondaryFragments<<" "<<fec.FEC_K<<"\n";
         // NOTE: FEC does only work if nPrimaryFragments+nSecondaryFragments>=FEC_K
         assert(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K);
-        unsigned index[fec.FEC_K];
+        // also do not reconstruct if reconstruction is not needed
+        assert(nAvailableSecondaryFragments>0);
+        /*unsigned index[fec.FEC_K];
         uint8_t const* in_blocks[fec.FEC_K];
         uint8_t *out_blocks[fec.FEC_N - fec.FEC_K];
         int j = fec.FEC_K;
@@ -280,8 +287,45 @@ public:
         }
         assert(ob_idx>0);
         assert(tmpMaxPacketSize!=0);
-        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);
-        return ob_idx;
+        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);*/
+
+        /**
+ * Decode data applying FEC
+ * @param blockSize Size of packets
+ * @param data_blocks pointer to list of data packets
+ * @param nr_data_blocks number of data packets
+ * @param fec_blocks pointer to list of FEC packets
+ * @param fec_block_nos Indices of FEC packets that shall repair erased data packets in data packet list [array]
+ * @param erased_blocks Indices of erased data packets in FEC packet data list [array]
+ * @param nr_fec_blocks Number of FEC blocks used to repair data packets
+ */
+        std::vector<uint8_t*> primaryFragmentsData;
+        std::vector<unsigned int> indicesMissingPrimaryFragments;
+        for(int i=0;i<fec.FEC_K;i++){
+            primaryFragmentsData.push_back(fragments[i].data());
+            // if primary fragment is not available,add its index to the list of missing primary fragments
+            if(fragment_map[i]!=AVAILABLE){
+                indicesMissingPrimaryFragments.push_back(i);
+            }
+        }
+        // each FEC packet has the size of max(size of primary fragments)
+        std::size_t maxPacketSizeOfThisBlock=0;
+        std::vector<uint8_t*> secondaryFragmentsData;
+        std::vector<unsigned int> indicesAvailableSecondaryFragments;
+        for(int i=0;i<fec.N_SECONDARY_FRAGMENTS;i++){
+            const int idx=fec.FEC_K+i;
+            secondaryFragmentsData.push_back(fragments[idx].data());
+            // if secondary fragment is available,add its index to the list of secondary packets that will be used for reconstruction
+            if(fragment_map[idx]==AVAILABLE){
+                indicesAvailableSecondaryFragments.push_back(i);
+                maxPacketSizeOfThisBlock=originalSizeOfFragments.at(idx);
+            }
+        }
+        fec_decode(maxPacketSizeOfThisBlock, primaryFragmentsData.data(), fec.FEC_K, secondaryFragmentsData.data(), indicesAvailableSecondaryFragments.data(), indicesMissingPrimaryFragments.data(), indicesAvailableSecondaryFragments.size());
+        for(const auto idx:indicesMissingPrimaryFragments){
+            fragment_map[idx]=AVAILABLE;
+        }
+        return indicesMissingPrimaryFragments.size();
     }
 private:
     //reference to the FEC decoder (needed for k,n)

@@ -396,7 +396,7 @@ slow_mul1(gf *dst1, gf *src1, gf c, int sz)
 
 # define mul1 slow_mul1
 
-static inline void mul(gf *dst, gf *src, gf c, int sz) {
+static inline void mul(gf *dst,const gf *src, gf c, int sz) {
     /*fprintf(stderr, "%p = %02x * %p\n", dst, c, src);*/
     if (c != 0) mul1(dst, src, c, sz); else memset(dst, 0, sz);
 }
@@ -641,9 +641,9 @@ void fec_init(void)
  * in the L2 cache...)
  */
 void fec_encode(unsigned int blockSize,
-                unsigned char **data_blocks,
+                gf **data_blocks,
                 unsigned int nrDataBlocks,
-                unsigned char **fec_blocks,
+                gf **fec_blocks,
                 unsigned int nrFecBlocks)
 
 {
@@ -675,9 +675,9 @@ void fec_encode(unsigned int blockSize,
  * + fec)
  */
 static inline void reduce(unsigned int blockSize,
-                          unsigned char **data_blocks,
+                          gf **data_blocks,
                           unsigned int nr_data_blocks,
-                          unsigned char **fec_blocks,
+                          gf **fec_blocks,
                           unsigned int *fec_block_nos,
                           unsigned int *erased_blocks,
                           unsigned short nr_fec_blocks)
@@ -691,7 +691,7 @@ static inline void reduce(unsigned int blockSize,
         if(erasedIdx < nr_fec_blocks && erased_blocks[erasedIdx] == col) {
             erasedIdx++;
         } else {
-            unsigned char *src = data_blocks[col];
+            gf *src = data_blocks[col];
             int j;
             for(j=0; j < nr_fec_blocks; j++) {
                 int blno = fec_block_nos[j];
@@ -721,8 +721,8 @@ long long invTime =0;
  * it, and multiply reduced vector by it.
  */
 static inline void resolve(int blockSize,
-                           unsigned char **data_blocks,
-                           unsigned char **fec_blocks,
+                           gf **data_blocks,
+                           gf **fec_blocks,
                            unsigned int *fec_block_nos,
                            unsigned int *erased_blocks,
                            short nr_fec_blocks)
@@ -732,7 +732,7 @@ static inline void resolve(int blockSize,
 #endif
     /* construct matrix */
     int row;
-    unsigned char matrix[nr_fec_blocks*nr_fec_blocks];
+    gf matrix[nr_fec_blocks*nr_fec_blocks];
     int ptr;
     int r;
 
@@ -775,7 +775,7 @@ static inline void resolve(int blockSize,
     /* do the multiplication with the reduced code vector */
     for(row = 0, ptr=0; row < nr_fec_blocks; row++) {
         int col;
-        unsigned char *target = data_blocks[erased_blocks[row]];
+        gf *target = data_blocks[erased_blocks[row]];
         mul(target,fec_blocks[0],matrix[ptr++],blockSize);
         for(col = 1; col < nr_fec_blocks;  col++,ptr++) {
             addmul(target,fec_blocks[col],matrix[ptr],blockSize);
@@ -785,9 +785,9 @@ static inline void resolve(int blockSize,
 
 void fec_decode(unsigned int blockSize,
 
-                unsigned char **data_blocks,
+                gf **data_blocks,
                 unsigned int nr_data_blocks,
-                unsigned char **fec_blocks,
+                gf **fec_blocks,
                 unsigned int *fec_block_nos,
                 unsigned int *erased_blocks,
                 unsigned short nr_fec_blocks)
