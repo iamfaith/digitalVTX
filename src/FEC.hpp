@@ -65,10 +65,8 @@ public:
         }
     }
 private:
-    uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
-    uint8_t fragment_idx = 0;
-    //uint8_t **fragments;
-    //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
+    uint64_t currBlockIdx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
+    uint8_t currFragmentIdx = 0;
     std::vector<uint8_t*> fragments;
     size_t max_packet_size = 0;
     //
@@ -77,22 +75,22 @@ public:
         assert(size <= MAX_PAYLOAD_SIZE);
         // Use FEC_K==0 to completely disable FEC
         if(FEC_K == 0) {
-            const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
+            const auto nonce=WBDataHeader::calculateNonce(currBlockIdx, currFragmentIdx);
             WBDataPacket wbDataPacket{nonce, buf, size};
             outputDataCallback(wbDataPacket);
-            block_idx++;
+            currBlockIdx++;
             return;
         }
         FECDataHeader dataHeader(size);
         // write the size of the data part into each primary fragment.
         // This is needed for the 'up to n bytes' workaround
-        memcpy(fragments[fragment_idx], &dataHeader, sizeof(dataHeader));
+        memcpy(fragments[currFragmentIdx], &dataHeader, sizeof(dataHeader));
         // write the actual data
-        memcpy(fragments[fragment_idx] + sizeof(dataHeader), buf, size);
+        memcpy(fragments[currFragmentIdx] + sizeof(dataHeader), buf, size);
         // zero out the remaining bytes such that FEC always sees zeroes
         // same is done on the rx. These zero bytes are never transmitted via wifi
         const auto writtenDataSize= sizeof(FECDataHeader) + size;
-        memset(fragments[fragment_idx] + writtenDataSize, '\0', MAX_FEC_PAYLOAD - writtenDataSize);
+        memset(fragments[currFragmentIdx] + writtenDataSize, '\0', MAX_FEC_PAYLOAD - writtenDataSize);
 
         // send primary fragments immediately before calculating the FECs
         send_block_fragment(sizeof(dataHeader) + size);
@@ -102,10 +100,10 @@ public:
         // Note,the loss in raw bandwidth comes from the size of the FEC secondary packets, which always has to be the max of all primary fragments
         // Not from the primary fragments, they are transmitted without the "zeroed out" part
         max_packet_size = std::max(max_packet_size, sizeof(dataHeader) + size);
-        fragment_idx += 1;
+        currFragmentIdx += 1;
 
         //std::cout<<"Fragment index is "<<(int)fragment_idx<<"FEC_K"<<(int)FEC_K<<"\n";
-        if (fragment_idx < FEC_K) {
+        if (currFragmentIdx < FEC_K) {
             return;
         }
         // once enough data has been buffered, create all the secondary fragments
@@ -114,21 +112,21 @@ public:
         //fecEncode(max_packet_size,fragments,N_PRIMARY_FRAGMENTS,N_SECONDARY_FRAGMENTS);
 
         // and send all the secondary fragments one after another
-        while (fragment_idx < FEC_N) {
+        while (currFragmentIdx < FEC_N) {
             send_block_fragment(max_packet_size);
-            fragment_idx += 1;
+            currFragmentIdx += 1;
         }
-        block_idx += 1;
-        fragment_idx = 0;
+        currBlockIdx += 1;
+        currFragmentIdx = 0;
         max_packet_size = 0;
     }
 
     // returns true if the block_idx has reached its maximum
     // You want to send a new session key in this case
     bool resetOnOverflow() {
-        if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
-            block_idx = 0;
-            fragment_idx=0;
+        if (currBlockIdx > WBDataHeader::MAX_BLOCK_IDX) {
+            currBlockIdx = 0;
+            currFragmentIdx=0;
             return true;
         }
         return false;
@@ -137,7 +135,7 @@ public:
     // if the block is already done,return immediately
     void finishCurrentBlock(){
         uint8_t emptyPacket[0];
-        while(fragment_idx!=0){
+        while(currFragmentIdx != 0){
             encodePacket(emptyPacket,0);
         }
     }
@@ -145,14 +143,14 @@ public:
     // in this case, you don't need to finish the current block until you put data in the next time
     // also, in the beginning the pipeline is already flushed due to no data packets yet
     bool isAlreadyInFinishedState()const{
-        return fragment_idx==0;
+        return currFragmentIdx == 0;
     }
 private:
     // construct WB data packet, from either primary or secondary fragment
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
-        const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
-        const uint8_t *dataP = fragments[fragment_idx];
+        const auto nonce=WBDataHeader::calculateNonce(currBlockIdx, currFragmentIdx);
+        const uint8_t *dataP = fragments[currFragmentIdx];
         WBDataPacket packet{nonce, dataP, packet_size};
         outputDataCallback(packet);
     }
