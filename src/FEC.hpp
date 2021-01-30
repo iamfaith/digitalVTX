@@ -48,24 +48,24 @@ public:
     // 1) If k,n is given: fixed packet size
     // 2) If k,n is not given, but we do variable k,(n) -> what to do ?
     explicit FECEncoder(int k, int n) : FEC(k,n) {
-        block = new uint8_t *[FEC_N];
+        fragments = new uint8_t *[FEC_N];
         for (int i = 0; i < FEC_N; i++) {
-            block[i] = new uint8_t[MAX_FEC_PAYLOAD];
+            fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
         //block.resize(n);
     }
 
     ~FECEncoder() {
         for (int i = 0; i < FEC_N; i++) {
-            delete block[i];
+            delete fragments[i];
         }
-        delete block;
+        delete fragments;
     }
 private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
-    uint8_t **block;
-    //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> block;
+    uint8_t **fragments;
+    //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
     size_t max_packet_size = 0;
     //
 public:
@@ -82,13 +82,13 @@ public:
         FECDataHeader dataHeader(size);
         // write the size of the data part into each primary fragment.
         // This is needed for the 'up to n bytes' workaround
-        memcpy(block[fragment_idx], &dataHeader, sizeof(dataHeader));
+        memcpy(fragments[fragment_idx], &dataHeader, sizeof(dataHeader));
         // write the actual data
-        memcpy(block[fragment_idx] + sizeof(dataHeader), buf, size);
+        memcpy(fragments[fragment_idx] + sizeof(dataHeader), buf, size);
         // zero out the remaining bytes such that FEC always sees zeroes
         // same is done on the rx. These zero bytes are never transmitted via wifi
         const auto writtenDataSize= sizeof(FECDataHeader) + size;
-        memset(block[fragment_idx]+writtenDataSize, '\0', MAX_FEC_PAYLOAD-writtenDataSize);
+        memset(fragments[fragment_idx] + writtenDataSize, '\0', MAX_FEC_PAYLOAD - writtenDataSize);
 
         // send primary fragments immediately before calculating the FECs
         send_block_fragment(sizeof(dataHeader) + size);
@@ -106,7 +106,7 @@ public:
         }
         // once enough data has been buffered, create all the secondary fragments
         //fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
-        fec_encode(max_packet_size,(const unsigned char**)block, N_PRIMARY_FRAGMENTS,(unsigned char**)&block[FEC_K],N_SECONDARY_FRAGMENTS);
+        fec_encode(max_packet_size, (const unsigned char**)fragments, N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[FEC_K], N_SECONDARY_FRAGMENTS);
 
         // and send all the secondary fragments one after another
         while (fragment_idx < FEC_N) {
@@ -147,7 +147,7 @@ private:
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
-        const uint8_t *dataP = block[fragment_idx];
+        const uint8_t *dataP = fragments[fragment_idx];
         WBDataPacket packet{nonce, dataP, packet_size};
         outputDataCallback(packet);
     }
@@ -234,7 +234,7 @@ public:
         // NOTE: FEC does only work if nPrimaryFragments+nSecondaryFragments>=FEC_K
         assert(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K);
         // also do not reconstruct if reconstruction is not needed
-        assert(nAvailableSecondaryFragments>0);
+        assert(nAvailablePrimaryFragments<fec.FEC_K && nAvailableSecondaryFragments>0);
         // now bring it into a format that the c-style fec implementation understands
         std::vector<uint8_t*> primaryFragmentsData;
         std::vector<unsigned int> indicesMissingPrimaryFragments;
@@ -259,7 +259,7 @@ public:
             }
         }
         fec_decode(maxPacketSizeOfThisBlock, primaryFragmentsData.data(), fec.FEC_K, secondaryFragmentsData.data(), indicesAvailableSecondaryFragments.data(), indicesMissingPrimaryFragments.data(), indicesAvailableSecondaryFragments.size());
-        // after the decode step,all primary fragments are available - mark the missing ones as available
+        // after the decode step,all previously missing primary fragments have become available - mark them as such
         for(const auto idx:indicesMissingPrimaryFragments){
             fragment_map[idx]=AVAILABLE;
         }
@@ -277,6 +277,7 @@ private:
     int nAlreadyForwardedPrimaryFragments=0;
     // for each fragment (via fragment_idx) store if it has been received yet
     enum FragmentStatus{UNAVAILABLE=0,AVAILABLE=1};
+    // size of all these vectors is always FEC_N
     std::vector<FragmentStatus> fragment_map;
     // holds all the data for all received fragments (if fragment_map says UNAVALIABLE at this position, content is undefined)
     std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
