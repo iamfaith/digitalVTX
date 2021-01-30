@@ -67,9 +67,8 @@ public:
 private:
     uint64_t currBlockIdx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t currFragmentIdx = 0;
+    size_t currMaxPacketSize = 0;
     std::vector<uint8_t*> fragments;
-    size_t max_packet_size = 0;
-    //
 public:
     void encodePacket(const uint8_t *buf,const size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
@@ -99,7 +98,7 @@ public:
         // As long as the deviation in packet size of primary fragments isn't too high the loss in raw bandwidth is negligible
         // Note,the loss in raw bandwidth comes from the size of the FEC secondary packets, which always has to be the max of all primary fragments
         // Not from the primary fragments, they are transmitted without the "zeroed out" part
-        max_packet_size = std::max(max_packet_size, sizeof(dataHeader) + size);
+        currMaxPacketSize = std::max(currMaxPacketSize, sizeof(dataHeader) + size);
         currFragmentIdx += 1;
 
         //std::cout<<"Fragment index is "<<(int)fragment_idx<<"FEC_K"<<(int)FEC_K<<"\n";
@@ -108,17 +107,17 @@ public:
         }
         // once enough data has been buffered, create all the secondary fragments
         //fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
-        fec_encode(max_packet_size, (const unsigned char**)fragments.data(), N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[FEC_K], N_SECONDARY_FRAGMENTS);
+        fec_encode(currMaxPacketSize, (const unsigned char**)fragments.data(), N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[FEC_K], N_SECONDARY_FRAGMENTS);
         //fecEncode(max_packet_size,fragments,N_PRIMARY_FRAGMENTS,N_SECONDARY_FRAGMENTS);
 
         // and send all the secondary fragments one after another
         while (currFragmentIdx < FEC_N) {
-            send_block_fragment(max_packet_size);
+            send_block_fragment(currMaxPacketSize);
             currFragmentIdx += 1;
         }
         currBlockIdx += 1;
         currFragmentIdx = 0;
-        max_packet_size = 0;
+        currMaxPacketSize = 0;
     }
 
     // returns true if the block_idx has reached its maximum
@@ -309,15 +308,15 @@ private:
 // Most importantly, it also handles re-ordering of packets and packet duplicates due to multiple rx cards
 class FECDecoder : public FEC{
 public:
-    typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
-    SEND_DECODED_PACKET mSendDecodedPayloadCallback;
-
     explicit FECDecoder(int k, int n) : FEC(k,n) {
         for(int i=0;i<RX_RING_SIZE;i++){
             rx_ring[i]=std::make_unique<RxBlock>(*this);
         }
     }
     ~FECDecoder() = default;
+    typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
+    // WARNING: Don't forget to register this callback !
+    SEND_DECODED_PACKET mSendDecodedPayloadCallback;
 public:
     // call on new session key !
     void reset() {
