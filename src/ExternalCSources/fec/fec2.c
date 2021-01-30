@@ -679,8 +679,8 @@ static inline void reduce(unsigned int blockSize,
                           gf **data_blocks,
                           unsigned int nr_data_blocks,
                           gf **fec_blocks,
-                          unsigned int *fec_block_nos,
-                          unsigned int *erased_blocks,
+                          const unsigned int fec_block_nos[],
+                          const unsigned int erased_blocks[],
                           unsigned short nr_fec_blocks)
 {
     int erasedIdx=0;
@@ -724,8 +724,8 @@ long long invTime =0;
 static inline void resolve(int blockSize,
                            gf **data_blocks,
                            gf **fec_blocks,
-                           unsigned int *fec_block_nos,
-                           unsigned int *erased_blocks,
+                           const unsigned int fec_block_nos[],
+                           const unsigned int erased_blocks[],
                            short nr_fec_blocks)
 {
 #ifdef PROFILE
@@ -789,8 +789,8 @@ void fec_decode(unsigned int blockSize,
                 gf **data_blocks,
                 unsigned int nr_data_blocks,
                 gf **fec_blocks,
-                unsigned int *fec_block_nos,
-                unsigned int *erased_blocks,
+                const unsigned int fec_block_nos[],
+                const unsigned int erased_blocks[],
                 unsigned short nr_fec_blocks)
 {
 #ifdef PROFILE
