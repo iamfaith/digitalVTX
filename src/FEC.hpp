@@ -26,33 +26,14 @@ extern "C"{
 class FEC{
 public:
     explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
-        /*if(FEC_K != 0){
-            fec_p = fec_new(FEC_K, FEC_N);
-        }*/
         fec_init();
-    }
-    ~FEC(){
-        /*if(fec_p!= nullptr){
-            fec_free(fec_p);
-        }*/
-    }
-    void fecEncode(const uint8_t** src,uint8_t ** fecs, size_t sz)const{
-        //fec_encode(fec_p,src,fecs,sz);
-    }
-    void fecDecode(const uint8_t** inpkts, uint8_t** outpkts, const unsigned*  index, size_t sz)const{
-        //fec_decode(fec_p,inpkts,outpkts,index,sz);
-        // for some reason, the fec2 implementation wants also a list of the "missing" aka "erased" blocks
-        //fec_decode(sz,(unsigned char**)inpkts,FEC_K, nullptr, nullptr, nullptr,FEC_N);
     }
 public:
     const int FEC_K;  // RS number of primary fragments in block default 8
     const int FEC_N;  // RS total number of fragments in block default 12
     const int N_PRIMARY_FRAGMENTS=FEC_K;
     const int N_SECONDARY_FRAGMENTS=FEC_N-FEC_K;
-private:
-    //fec_t *fec_p=nullptr;
 };
-
 
 // Takes a continuous stream of packets and
 // encodes them via FEC such that they can be decoded by FECDecoder
@@ -256,38 +237,7 @@ public:
         assert(nAvailablePrimaryFragments+nAvailableSecondaryFragments>=fec.FEC_K);
         // also do not reconstruct if reconstruction is not needed
         assert(nAvailableSecondaryFragments>0);
-        /*unsigned index[fec.FEC_K];
-        uint8_t const* in_blocks[fec.FEC_K];
-        uint8_t *out_blocks[fec.FEC_N - fec.FEC_K];
-        int j = fec.FEC_K;
-        int ob_idx = 0;
-        std::size_t tmpMaxPacketSize=0;
-        for (int k = 0; k < fec.FEC_K; k++) {
-            if (fragment_map[k]==AVAILABLE) {
-                in_blocks[k] = fragments[k].data();
-                index[k] = k;
-            } else {
-                for (; j < fec.FEC_N; j++) {
-                    if (fragment_map[j]) {
-                        tmpMaxPacketSize=originalSizeOfFragments[j];
-                        in_blocks[k] = fragments[j].data();
-                        out_blocks[ob_idx++] = fragments[k].data();
-                        index[k] = j;
-                        // mark recovered primary fragment as available
-                        fragment_map[k]=AVAILABLE;
-                        // mark used secondary packet as unavailable
-                        fragment_map[j]=UNAVAILABLE;
-                        j++;
-                        break;
-                    }else{
-                        //std::cout<<"primary fragment "<<k<<" cannot be recovered yet\n";
-                    }
-                }
-            }
-        }
-        assert(ob_idx>0);
-        assert(tmpMaxPacketSize!=0);
-        fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);*/
+        // now bring it into a format that the c-style fec implementation understands
         std::vector<uint8_t*> primaryFragmentsData;
         std::vector<unsigned int> indicesMissingPrimaryFragments;
         for(int i=0;i<fec.FEC_K;i++){
