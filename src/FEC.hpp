@@ -6,7 +6,7 @@
 #define WIFIBROADCAST_FEC_HPP
 
 #include "wifibroadcast.hpp"
-#include "ExternalCSources/fec/fec2.h"
+#include "ExternalCSources/fec/fec.h"
 #include "HelperSources/TimeHelper.hpp"
 #include <cstdint>
 #include <cerrno>
@@ -213,7 +213,7 @@ public:
             nAvailableSecondaryFragments++;
         }
     }
-    // returns the indices for all primary fragments that have not yet been forwarded and are available (already received). Once an index is returned here, it won't be returned again
+    // returns the indices for all primary fragments that have not yet been forwarded and are available (already received or reconstructed). Once an index is returned here, it won't be returned again
     // (Therefore, as long as you immediately forward all primary fragments returned here,everything happens in order)
     // @param breakOnFirstGap : if true (default), stop on the first gap (missing packet). Else, keep going, skipping packets with gaps. Use this parameter if
     // you need to forward everything left on a block before getting rid of it.
@@ -364,7 +364,6 @@ public:
             std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
             return false;
         }
-        //processFECBlockWithoutRxQueue(block_idx, fragment_idx, decrypted);
         processFECBlockWitRxQueue(block_idx,fragment_idx,decrypted);
         return true;
     }
