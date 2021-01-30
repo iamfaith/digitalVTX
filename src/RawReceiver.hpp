@@ -261,7 +261,7 @@ public:
      */
     explicit MultiRxPcapReceiver(const std::vector<std::string> rxInterfaces,const int radio_port,const std::chrono::milliseconds log_interval,const std::chrono::milliseconds flush_interval,
                                  PcapReceiver::PROCESS_PACKET_CALLBACK dataCallback,GENERIC_CALLBACK logCallback,GENERIC_CALLBACK flushCallback):
-            rxInterfaces(rxInterfaces), radio_port(radio_port), log_interval(log_interval), flush_interval(flush_interval), mCallbackData(dataCallback), mCallbackLog(logCallback), mCallbackFlush(flushCallback){
+            rxInterfaces(rxInterfaces), radio_port(radio_port), log_interval(log_interval), flush_interval(flush_interval), mCallbackData(std::move(dataCallback)), mCallbackLog(std::move(logCallback)), mCallbackFlush(std::move(flushCallback)){
         const int N_RECEIVERS = rxInterfaces.size();
         mReceivers.resize(N_RECEIVERS);
         mReceiverFDs.resize(N_RECEIVERS);
@@ -284,7 +284,6 @@ public:
         if(flush_interval==std::chrono::milliseconds(0)){
             std::cerr<<"Please do not use a flush interval of 0 (this hogs the cpu)\n";
         }
-        loop();
     }
     ~MultiRxPcapReceiver()=default;
     // Runs until an error occurs
@@ -330,6 +329,12 @@ public:
         }
     }
 private:
+    const std::vector<std::string> rxInterfaces;
+    const int radio_port;
+    const std::chrono::milliseconds log_interval;
+    const std::chrono::milliseconds flush_interval;
+    std::vector<std::unique_ptr<PcapReceiver>> mReceivers;
+    std::vector<pollfd> mReceiverFDs;
     // this callback is called with the received packets from pcap
     // NOTE 1: If you are using only wifi card as RX: I personally did not see any packet reordering with my wifi adapters, but according to svpcom this would be possible
     // NOTE 2: If you are using more than one wifi card as RX, There are probably duplicate packets and packets do not arrive in order. E.g. the following is possible:
@@ -340,12 +345,6 @@ private:
     // This callback is called after @param flush_intervall ms if no data was received
     const GENERIC_CALLBACK mCallbackFlush;
 public:
-    const std::vector<std::string> rxInterfaces;
-    std::vector<std::unique_ptr<PcapReceiver>> mReceivers;
-    std::vector<pollfd> mReceiverFDs;
-    const int radio_port;
-    const std::chrono::milliseconds log_interval;
-    const std::chrono::milliseconds flush_interval;
 };
 
 #endif //WIFIBROADCAST_RAWRECEIVER_H
