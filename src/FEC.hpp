@@ -288,17 +288,6 @@ public:
         assert(ob_idx>0);
         assert(tmpMaxPacketSize!=0);
         fec.fecDecode((const uint8_t **) in_blocks, out_blocks, index, tmpMaxPacketSize);*/
-
-        /**
- * Decode data applying FEC
- * @param blockSize Size of packets
- * @param data_blocks pointer to list of data packets
- * @param nr_data_blocks number of data packets
- * @param fec_blocks pointer to list of FEC packets
- * @param fec_block_nos Indices of FEC packets that shall repair erased data packets in data packet list [array]
- * @param erased_blocks Indices of erased data packets in FEC packet data list [array]
- * @param nr_fec_blocks Number of FEC blocks used to repair data packets
- */
         std::vector<uint8_t*> primaryFragmentsData;
         std::vector<unsigned int> indicesMissingPrimaryFragments;
         for(int i=0;i<fec.FEC_K;i++){
