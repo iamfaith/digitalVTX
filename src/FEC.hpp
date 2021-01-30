@@ -127,7 +127,7 @@ public:
         }
         // once enough data has been buffered, create all the secondary fragments
         //fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
-        fec_encode(max_packet_size,(unsigned char**)block, N_PRIMARY_FRAGMENTS,(unsigned char**)&block[FEC_K],N_SECONDARY_FRAGMENTS);
+        fec_encode(max_packet_size,(const unsigned char**)block, N_PRIMARY_FRAGMENTS,(unsigned char**)&block[FEC_K],N_SECONDARY_FRAGMENTS);
 
         // and send all the secondary fragments one after another
         while (fragment_idx < FEC_N) {
