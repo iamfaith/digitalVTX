@@ -6,10 +6,7 @@
 #define WIFIBROADCAST_FEC_HPP
 
 #include "wifibroadcast.hpp"
-extern "C"{
-//#include "ExternalCSources/fec/fec.h"
 #include "ExternalCSources/fec/fec2.h"
-}
 #include "HelperSources/TimeHelper.hpp"
 #include <cstdint>
 #include <cerrno>
@@ -26,6 +23,7 @@ extern "C"{
 class FEC{
 public:
     explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
+        assert(n>=k);
         fec_init();
     }
 public:
