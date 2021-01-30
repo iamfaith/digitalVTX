@@ -215,7 +215,6 @@ public:
     // (Therefore, as long as you immediately forward all primary fragments returned here,everything happens in order)
     // @param breakOnFirstGap : if true (default), stop on the first gap (missing packet). Else, keep going, skipping packets with gaps. Use this parameter if
     // you need to forward everything left on a block before getting rid of it.
-    // NOTE: If you call this method,all the primary fragments returned here won't be marked
     std::vector<uint8_t> pullAvailablePrimaryFragments(const bool breakOnFirstGap= true){
         std::vector<uint8_t> ret;
         for(int i=nAlreadyForwardedPrimaryFragments; i < fec.FEC_K; i++){
@@ -370,6 +369,7 @@ public:
 private:
     uint64_t seq = 0;
     /**
+     * For this Block,
      * starting at the primary fragment we stopped on last time,
      * forward as many primary fragments as they are available until there is a gap
      * @param breakOnFirstGap : if true, stop on the first gap in all primary fragments. Else, keep going skipping packets with gaps
