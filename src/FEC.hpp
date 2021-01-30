@@ -32,20 +32,6 @@ public:
         assert(n>=k);
         fec_init();
     }
-    template<std::size_t S>
-    void fecEncode(std::size_t maxFragmentSize, std::vector<std::array<uint8_t,S>>& primaryAndSecondaryFragments, int nPrimaryFragments, int nSecondaryFragments){
-        std::vector<const uint8_t*> primaryFragments(nPrimaryFragments);
-        std::vector<uint8_t*> secondaryFragments(nSecondaryFragments);
-        for(int i=0; i < nPrimaryFragments; i++){
-            primaryFragments[i]=primaryAndSecondaryFragments[i].data();
-        }
-        for(int i=0; i < nSecondaryFragments; i++){
-            secondaryFragments[i]=primaryAndSecondaryFragments[nPrimaryFragments + i].data();
-        }
-        fec_encode(maxFragmentSize, (const unsigned char**)primaryFragments.data(), N_PRIMARY_FRAGMENTS, (unsigned char**)secondaryFragments.data(), N_SECONDARY_FRAGMENTS);
-    }
-    //template<std::size_t S>
-    //void fecEncode(std::size_t maxFragmentSize,std::vector<std::array<uint8_t,S>>& primaryAndSecondaryFragments,const std::vector<unsigned int>& indicesMissingPrimaryFragments)
 public:
     const int FEC_K;  // RS number of primary fragments in block default 8
     const int FEC_N;  // RS total number of fragments in block default 12
@@ -67,24 +53,23 @@ public:
     // TODO: So we have to be carefully here:
     // 1) If k,n is given: fixed packet size
     // 2) If k,n is not given, but we do variable k,(n) -> what to do ?
-    explicit FECEncoder(int k, int n) : FEC(k,n) {
+    explicit FECEncoder(int k, int n) : FEC(k,n){
         fragments.resize(FEC_N);
-        /*for (int i = 0; i < FEC_N; i++) {
+        for (int i = 0; i < FEC_N; i++) {
             fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
-        }*/
+        }
     }
     ~FECEncoder() {
-        /*for (int i = 0; i < FEC_N; i++) {
+        for (int i = 0; i < FEC_N; i++) {
             delete fragments[i];
-        }*/
+        }
     }
 private:
     uint64_t block_idx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t fragment_idx = 0;
     //uint8_t **fragments;
     //std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
-    //std::vector<uint8_t*> fragments;
-    std::vector<std::array<uint8_t,MAX_FEC_PAYLOAD>> fragments;
+    std::vector<uint8_t*> fragments;
     size_t max_packet_size = 0;
     //
 public:
@@ -101,13 +86,13 @@ public:
         FECDataHeader dataHeader(size);
         // write the size of the data part into each primary fragment.
         // This is needed for the 'up to n bytes' workaround
-        memcpy(fragments[fragment_idx].data(), &dataHeader, sizeof(dataHeader));
+        memcpy(fragments[fragment_idx], &dataHeader, sizeof(dataHeader));
         // write the actual data
-        memcpy(fragments[fragment_idx].data() + sizeof(dataHeader), buf, size);
+        memcpy(fragments[fragment_idx] + sizeof(dataHeader), buf, size);
         // zero out the remaining bytes such that FEC always sees zeroes
         // same is done on the rx. These zero bytes are never transmitted via wifi
         const auto writtenDataSize= sizeof(FECDataHeader) + size;
-        memset(fragments[fragment_idx].data() + writtenDataSize, '\0', MAX_FEC_PAYLOAD - writtenDataSize);
+        memset(fragments[fragment_idx] + writtenDataSize, '\0', MAX_FEC_PAYLOAD - writtenDataSize);
 
         // send primary fragments immediately before calculating the FECs
         send_block_fragment(sizeof(dataHeader) + size);
@@ -125,8 +110,8 @@ public:
         }
         // once enough data has been buffered, create all the secondary fragments
         //fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
-        //fec_encode(max_packet_size, (const unsigned char**)fragments.data(), N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[FEC_K], N_SECONDARY_FRAGMENTS);
-        fecEncode(max_packet_size,fragments,N_PRIMARY_FRAGMENTS,N_SECONDARY_FRAGMENTS);
+        fec_encode(max_packet_size, (const unsigned char**)fragments.data(), N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[FEC_K], N_SECONDARY_FRAGMENTS);
+        //fecEncode(max_packet_size,fragments,N_PRIMARY_FRAGMENTS,N_SECONDARY_FRAGMENTS);
 
         // and send all the secondary fragments one after another
         while (fragment_idx < FEC_N) {
@@ -167,7 +152,7 @@ private:
     // then forward via the callback
     void send_block_fragment(const std::size_t packet_size) const {
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
-        const uint8_t *dataP = fragments[fragment_idx].data();
+        const uint8_t *dataP = fragments[fragment_idx];
         WBDataPacket packet{nonce, dataP, packet_size};
         outputDataCallback(packet);
     }
