@@ -211,17 +211,31 @@ public:
             nAvailableSecondaryFragments++;
         }
     }
-    // increase the n of already forwarded fragments by one
-    // return the data pointer for this fragment
-    // NOTE: be carefully to not get out of sync here !
-    const uint8_t* forwardPrimaryFragment(const uint8_t fragmentIdx){
-        assert(fragmentIdx<fec.FEC_K);
-        //assert(fragmentIdx>=nAlreadyForwardedPrimaryFragments);
-        nAlreadyForwardedPrimaryFragments++;
-        return fragments[fragmentIdx].data();
+    // returns the indices for all primary fragments that have not yet been forwarded and are available (already received). Once an index is returned here, it won't be returned again
+    // (Therefore, as long as you immediately forward all primary fragments returned here,everything happens in order)
+    // @param breakOnFirstGap : if true (default), stop on the first gap (missing packet). Else, keep going, skipping packets with gaps. Use this parameter if
+    // you need to forward everything left on a block before getting rid of it.
+    // NOTE: If you call this method,all the primary fragments returned here won't be marked
+    std::vector<uint8_t> pullAvailablePrimaryFragments(const bool breakOnFirstGap= true){
+        std::vector<uint8_t> ret;
+        for(int i=nAlreadyForwardedPrimaryFragments; i < fec.FEC_K; i++){
+            if(!hasFragment(i)){
+                if(breakOnFirstGap){
+                    break;
+                }else{
+                    continue;
+                }
+            }
+            ret.push_back(i);
+        }
+        // make sure these indices won't be returned again
+        nAlreadyForwardedPrimaryFragments+=(int)ret.size();
+        return ret;
     }
-    int getNAlreadyForwardedPrimaryFragments()const{
-        return nAlreadyForwardedPrimaryFragments;
+    const uint8_t* getDataPrimaryFragment(const uint8_t fragmentIdx){
+        assert(fragmentIdx<fec.FEC_K);
+        assert(fragment_map[fragmentIdx]==AVAILABLE);
+        return fragments[fragmentIdx].data();
     }
     int getNAvailableFragments()const{
         return nAvailablePrimaryFragments+nAvailableSecondaryFragments;
@@ -361,16 +375,9 @@ private:
      * @param breakOnFirstGap : if true, stop on the first gap in all primary fragments. Else, keep going skipping packets with gaps
      */
     void forwardMissingPrimaryFragmentsIfAvailable(RxBlock& rxRingItem, const bool breakOnFirstGap= true){
-        //std::cout<<"forwardMissingPrimaryFragmentsIfAvailable\n";
-        for(int i=rxRingItem.getNAlreadyForwardedPrimaryFragments(); i < FEC_K; i++){
-            if(!rxRingItem.hasFragment(i)){
-                if(breakOnFirstGap){
-                    break;
-                }else{
-                    continue;
-                }
-            }
-            forwardPrimaryFragment(rxRingItem, i);
+        const auto indices=rxRingItem.pullAvailablePrimaryFragments(breakOnFirstGap);
+        for(auto index:indices){
+            forwardPrimaryFragment(rxRingItem,index);
         }
     }
     /**
@@ -380,7 +387,7 @@ private:
         //std::cout<<"forwardPrimaryFragment"<<(int)fragmentIdx<<"\n";
         assert(fragmentIdx<FEC_K);
         assert(rxRingItem.hasFragment(fragmentIdx));
-        const uint8_t* primaryFragment= rxRingItem.forwardPrimaryFragment(fragmentIdx);
+        const uint8_t* primaryFragment= rxRingItem.getDataPrimaryFragment(fragmentIdx);
         const FECDataHeader *packet_hdr = (FECDataHeader*) primaryFragment;
 
         const uint8_t *payload = primaryFragment + sizeof(FECDataHeader);
