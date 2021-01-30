@@ -22,7 +22,7 @@
 // I use (and highly recommend this to anyone else) the following notation:
 // A primary fragment is a data packet
 // A secondary fragment is a data correction (FEC) packet
-// primary and secondary fragments together form a FEC block
+// K primary and N-K secondary fragments together form a FEC block
 
 // c++ wrapper for the FEC library
 // If K and N were known at compile time we could make this much cleaner !
