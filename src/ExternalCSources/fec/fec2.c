@@ -296,10 +296,10 @@ generate_gf(void)
 
 #define UNROLL 16 /* 1, 4, 8, 16 */
 static void
-slow_addmul1(gf *dst1, gf *src1, gf c, int sz)
+slow_addmul1(register gf*restrict dst,const register gf*restrict src, gf c, int sz)
 {
     USE_GF_MULC ;
-    register gf *dst = dst1, *src = src1 ;
+    //register gf *dst = dst1, *src = src1 ;
     gf *lim = &dst[sz - UNROLL + 1] ;
 
     GF_MULC0(c) ;
@@ -336,7 +336,7 @@ slow_addmul1(gf *dst1, gf *src1, gf c, int sz)
 # define addmul1 slow_addmul1
 
 
-static void addmul(gf *dst, gf *src, gf c, int sz) {
+static void addmul(gf *dst,const gf *src, gf c, int sz) {
     // fprintf(stderr, "Dst=%p Src=%p, gf=%02x sz=%d\n", dst, src, c, sz);
     if (c != 0) addmul1(dst, src, c, sz);
 }
@@ -357,10 +357,11 @@ static void addmul(gf *dst, gf *src, gf c, int sz) {
 
 #define UNROLL 16 /* 1, 4, 8, 16 */
 static void
-slow_mul1(gf *dst1, gf *src1, gf c, int sz)
+slow_mul1(gf *dst1,const gf *src1, gf c,const int sz)
 {
     USE_GF_MULC ;
-    register gf *dst = dst1, *src = src1 ;
+    register gf *dst = dst1;
+    const register gf *src = src1 ;
     gf *lim = &dst[sz - UNROLL + 1] ;
 
     GF_MULC0(c) ;
@@ -396,7 +397,7 @@ slow_mul1(gf *dst1, gf *src1, gf c, int sz)
 
 # define mul1 slow_mul1
 
-static inline void mul(gf *dst,const gf *src, gf c, int sz) {
+static inline void mul(gf *dst,const gf *src, gf c,const int sz) {
     /*fprintf(stderr, "%p = %02x * %p\n", dst, c, src);*/
     if (c != 0) mul1(dst, src, c, sz); else memset(dst, 0, sz);
 }
@@ -641,7 +642,7 @@ void fec_init(void)
  * in the L2 cache...)
  */
 void fec_encode(unsigned int blockSize,
-                gf **data_blocks,
+                const gf **data_blocks,
                 unsigned int nrDataBlocks,
                 gf **fec_blocks,
                 unsigned int nrFecBlocks)

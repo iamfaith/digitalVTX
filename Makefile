@@ -15,7 +15,7 @@ src/ExternalCSources/%.o: src/ExternalCSources/radiotap/%.c src/ExternalCSources
 	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
 
 src/ExternalCSources/%.o: src/ExternalCSources/fec/%.c src/ExternalCSources/fec/*.h
-	$(CC) $(_CFLAGS) -std=gnu99 -c -o $@ $<
+	$(CC) $(_CFLAGS) -Werror -std=gnu99 -c -o $@ $<
 
 
 # the c++ part

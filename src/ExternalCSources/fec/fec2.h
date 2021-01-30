@@ -17,7 +17,7 @@ typedef unsigned char gf;
 void fec_init(void);
 
 void fec_encode(unsigned int blockSize,
-                gf **data_blocks,
+                const gf **data_blocks,
                 unsigned int nrDataBlocks,
                 gf **fec_blocks,
                 unsigned int nrFecBlocks);
