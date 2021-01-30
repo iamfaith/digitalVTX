@@ -153,10 +153,10 @@ private:
     }
 };
 
-// This encapsulates everything you need when working on a single FEC block
-// for example, addFragment() or forwardPrimaryFragment()
-// it also keeps track of how many primary fragments have already been forwarded.
-// and allows you to do the FEC step once enough secondary fragments have been received
+// This encapsulates everything you need when working on a single FEC block on the receiver
+// for example, addFragment() or pullAvailablePrimaryFragments()
+// it also provides convenient methods to query if the block is fully forwarded
+// or if it is ready for the FEC reconstruction step.
 class RxBlock{
 public:
     explicit RxBlock(const FEC& fec, const uint64_t block_idx=0): fec(fec), fragment_map(fec.FEC_N, FragmentStatus::UNAVAILABLE), fragments(fec.FEC_N), originalSizeOfFragments(fec.FEC_N){
