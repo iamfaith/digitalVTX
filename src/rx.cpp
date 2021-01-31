@@ -32,12 +32,14 @@
 #include <sstream>
 
 
-Aggregator::Aggregator(const std::string &client_addr, int client_udp_port,uint8_t radio_port, int k, int n, const std::string &keypair) :
-FECDecoder(k,n),
+Aggregator::Aggregator(const std::string &client_addr, int client_udp_port,uint8_t radio_port,const std::string &keypair) :
+FECDecoder(),
 CLIENT_UDP_PORT(client_udp_port),
 RADIO_PORT(radio_port),
 mDecryptor(keypair){
     sockfd = SocketHelper::open_udp_socket_for_tx(client_addr,client_udp_port);
+    // Default to 8,12
+    //mFecDecoder=std::make_unique<FECDecoder>(8,12);
     FECDecoder::mSendDecodedPayloadCallback=std::bind(&Aggregator::sendPacketViaUDP, this, std::placeholders::_1, std::placeholders::_2);
     //
 }
@@ -49,7 +51,7 @@ Aggregator::~Aggregator() {
 void Aggregator::dump_stats() {
     // first forward to OpenHD
     openHdStatisticsWriter.writeStats({
-        count_p_all,count_p_dec_err,count_p_dec_ok,count_p_fec_recovered,count_p_lost,count_p_bad,rssiForWifiCard
+                                              count_p_all, count_p_decryption_err, count_p_decryption_ok, count_p_fec_recovered, count_p_lost, count_p_bad, rssiForWifiCard
     });
     //timestamp in ms
     const uint64_t runTime=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-INIT_TIME).count();
@@ -60,7 +62,7 @@ void Aggregator::dump_stats() {
         wifiCard.reset();
     }
     std::stringstream ss;
-    ss<<runTime<<"\tPKT\t\t"<<count_p_all<<":"<<count_p_all<<":"<<count_p_dec_err<<":"<<count_p_dec_ok<<":"<<count_p_fec_recovered<<":"<<count_p_lost<<":"<<count_p_lost<<":";
+    ss << runTime << "\tPKT\t\t" << count_p_all << ":" << count_p_decryption_ok << ":" << count_p_decryption_err << ":" << count_p_fec_recovered << ":" << count_p_lost << ":" << count_p_lost << ":";
     std::cout<<ss.str()<<"\n";
     // it is actually much more understandable when I use the absolute values for the logging
 #ifdef ENABLE_ADVANCED_DEBUGGING
@@ -140,19 +142,22 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
                 return;
             }
             break;
-        case WFB_PACKET_KEY:
+        case WFB_PACKET_KEY:{
             if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
                 std::cerr<<"invalid session key packet\n";
                 count_p_bad++;
                 return;
             }
-            if (mDecryptor.onNewPacketWfbKey(payload)) {
-                count_p_dec_ok++;
-                FECDecoder::reset();
+            WBSessionKeyPacket& sessionKeyPacket=*((WBSessionKeyPacket*)parsedPacket->payload);
+            if (mDecryptor.onNewPacketWfbKey(sessionKeyPacket)) {
+                // We got a new session key (aka a session key that has not been received yet)
+                count_p_decryption_ok++;
+                FECDecoder::resetNewSession(sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS,sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS+sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS);
             } else {
-                count_p_dec_ok++;
+                count_p_decryption_ok++;
             }
             return;
+        }
         case WFB_PACKET_LATENCY_BEACON:{
 #ifdef ENABLE_ADVANCED_DEBUGGING
             // for testing only. It won't work if the tx and rx are running on different systems
@@ -176,11 +181,11 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     const auto decryptedPayload=mDecryptor.decryptPacket(encryptedWbDataPacket);
     if(decryptedPayload == std::nullopt){
         std::cerr << "unable to decrypt packet (block_idx,fragment_idx):" << encryptedWbDataPacket.wbDataHeader.getBlockIdx() << "," << (int)encryptedWbDataPacket.wbDataHeader.getFragmentIdx() << "\n";
-        count_p_dec_err ++;
+        count_p_decryption_err ++;
         return;
     }
 
-    count_p_dec_ok++;
+    count_p_decryption_ok++;
 
     assert(decryptedPayload->size() <= MAX_FEC_PAYLOAD);
 
@@ -195,7 +200,7 @@ void Aggregator::flushFecPipeline() {
 
 int main(int argc, char *const *argv) {
     int opt;
-    uint8_t k = 8, n = 12, radio_port = 1;
+    uint8_t radio_port = 1;
     std::chrono::milliseconds log_interval{1000};
     // use -1 for no flush interval
     std::chrono::milliseconds flush_interval{-1};
@@ -207,12 +212,6 @@ int main(int argc, char *const *argv) {
         switch (opt) {
             case 'K':
                 keypair = optarg;
-                break;
-            case 'k':
-                k = atoi(optarg);
-                break;
-            case 'n':
-                n = atoi(optarg);
                 break;
             case 'c':
                 client_addr = std::string(optarg);
@@ -232,10 +231,10 @@ int main(int argc, char *const *argv) {
             default: /* '?' */
             show_usage:
                 fprintf(stderr,
-                        "Local receiver: %s [-K rx_key] [-k RS_K] [-n RS_N] [-c client_addr] [-u client_port] [-p radio_port] [-l log_interval(ms)] [-f flush_interval(ms)] interface1 [interface2] ...\n",
+                        "Local receiver: %s [-K rx_key] [-c client_addr] [-u client_port] [-p radio_port] [-l log_interval(ms)] [-f flush_interval(ms)] interface1 [interface2] ...\n",
                         argv[0]);
-                fprintf(stderr, "Default: K='%s', k=%d, n=%d, connect=%s:%d, radio_port=%d, log_interval=%d flush_interval=%d\n",
-                        keypair.c_str(), k, n, client_addr.c_str(), client_udp_port, radio_port,
+                fprintf(stderr, "Default: K='%s', connect=%s:%d, radio_port=%d, log_interval=%d flush_interval=%d\n",
+                        keypair.c_str(),client_addr.c_str(), client_udp_port, radio_port,
                         (int)std::chrono::duration_cast<std::chrono::milliseconds>(log_interval).count(),(int)std::chrono::duration_cast<std::chrono::milliseconds>(flush_interval).count());
                 fprintf(stderr, "WFB version "
                 WFB_VERSION
@@ -255,7 +254,7 @@ int main(int argc, char *const *argv) {
         rxInterfaces.emplace_back(argv[optind + i]);
     }
     try {
-        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port,radio_port, k, n, keypair);
+        std::shared_ptr<Aggregator> agg=std::make_shared<Aggregator>(client_addr, client_udp_port,radio_port, keypair);
         //radio_loop(agg,rxInterfaces, radio_port, log_interval,flush_interval);
         //std::unique_ptr<MultiRxPcapReceiver> mMultiRxPcapReceiver=std::make_unique<MultiRxPcapReceiver>(rxInterfaces,)
         MultiRxPcapReceiver receiver(rxInterfaces,radio_port,log_interval,flush_interval,

@@ -69,11 +69,13 @@ static constexpr const auto SESSION_KEY_ANNOUNCE_DELTA=std::chrono::seconds(1);
 class WBSessionKeyPacket{
 public:
     // note how this member doesn't add up to the size of this class (c++ is so great !)
-    static constexpr auto SIZE_BYTES=(sizeof(uint8_t)+crypto_box_NONCEBYTES+crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES);
+    static constexpr auto SIZE_BYTES=1+crypto_box_NONCEBYTES+crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES+2;
 public:
     const uint8_t packet_type=WFB_PACKET_KEY;
     uint8_t session_key_nonce[crypto_box_NONCEBYTES];  // random data
     uint8_t session_key_data[crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES]; // encrypted session key
+    uint8_t FEC_N_PRIMARY_FRAGMENTS; // info about this session's K,N parameters
+    uint8_t FEC_N_SECONDARY_FRAGMENTS; // info about this session's K,N parameters
 }__attribute__ ((packed));
 static_assert(sizeof(WBSessionKeyPacket) == WBSessionKeyPacket::SIZE_BYTES, "ALWAYS_TRUE");
 

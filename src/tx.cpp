@@ -55,6 +55,9 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
     mInputSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
+    // Don't forget to write K,N into the session key packet. K,N Doesn't change on the tx
+    mEncryptor.sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS=FECEncoder::fec.N_PRIMARY_FRAGMENTS;
+    mEncryptor.sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS=FECEncoder::fec.N_SECONDARY_FRAGMENTS;
 }
 
 WBTransmitter::~WBTransmitter() {
@@ -246,6 +249,22 @@ int main(int argc, char *const *argv) {
     //RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader80211n, sizeof(OldRadiotapHeaders::u8aRadiotapHeader80211n));
     //RadiotapHelper::debugRadiotapHeader((uint8_t*)&OldRadiotapHeaders::u8aRadiotapHeader, sizeof(OldRadiotapHeaders::u8aRadiotapHeader));
     SchedulingHelper::setThreadParamsMaxRealtime();
+
+    // Validate the user input regarding K,N
+    if(k==0){
+        // Use K=0 and N=0 to have no FEC correction combined with no "holding onto packets" on the RX.
+        if(n!=0){
+            std::cerr<<"Use K=0 only in combination with N=0.\n"
+                       "This is an advanced option that not only disables FEC, but also disables the RX queue, reducing latency when working with multiple Receivers.\n"
+                       "If you don't know what this means, use FEC_K==1 and FEC_N==1 for a similar effect.\n";
+            exit(1);
+        }
+    }else{
+        if(n < k){
+            std::cerr<<"N must be bigger or equal to K\n";
+            exit(1);
+        }
+    }
 
     try {
         std::shared_ptr<WBTransmitter> t = std::make_shared<WBTransmitter>(

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cerrno>
 #include <string>
+#include <utility>
 #include <vector>
 #include <cstring>
 #include <stdexcept>
@@ -30,7 +31,6 @@ class FEC{
 public:
     explicit FEC(int k, int n) : FEC_K(k), FEC_N(n){
         assert(n>=k);
-        fec_init();
     }
 public:
     const int FEC_K;  // RS number of primary fragments in block default 8
@@ -46,24 +46,27 @@ public:
 // b) Handles packets of size up to N instead of packets of exact size N
 // Due to b) the packet size has to be written into the first two bytes of each data packet. See https://github.com/svpcom/wifibroadcast/issues/67
 // use FEC_K==0 to completely skip FEC for the lowest latency possible
-class FECEncoder : private FEC{
+class FECEncoder{
 public:
     typedef std::function<void(const WBDataPacket &wbDataPacket)> OUTPUT_DATA_CALLBACK;
     OUTPUT_DATA_CALLBACK outputDataCallback;
     // TODO: So we have to be carefully here:
     // 1) If k,n is given: fixed packet size
     // 2) If k,n is not given, but we do variable k,(n) -> what to do ?
-    explicit FECEncoder(int k, int n) : FEC(k,n){
-        fragments.resize(FEC_N);
-        for (int i = 0; i < FEC_N; i++) {
+    explicit FECEncoder(int k, int n) : fec(k,n){
+        fec_init();
+        fragments.resize(fec.FEC_N);
+        for (int i = 0; i < fec.FEC_N; i++) {
             fragments[i] = new uint8_t[MAX_FEC_PAYLOAD];
         }
     }
     ~FECEncoder() {
-        for (int i = 0; i < FEC_N; i++) {
+        for (int i = 0; i < fec.FEC_N; i++) {
             delete fragments[i];
         }
     }
+    // K, N is fixed on the encoder side
+    const FEC fec;
 private:
     uint64_t currBlockIdx = 0; //block_idx << 8 + fragment_idx = nonce (64bit)
     uint8_t currFragmentIdx = 0;
@@ -72,8 +75,8 @@ private:
 public:
     void encodePacket(const uint8_t *buf,const size_t size) {
         assert(size <= MAX_PAYLOAD_SIZE);
-        // Use FEC_K==0 to completely disable FEC
-        if(FEC_K == 0) {
+        // Use FEC_K==0 to not only disable FEC, but also the RX queue on the RX
+        if(fec.FEC_K == 0) {
             const auto nonce=WBDataHeader::calculateNonce(currBlockIdx, currFragmentIdx);
             WBDataPacket wbDataPacket{nonce, buf, size};
             outputDataCallback(wbDataPacket);
@@ -102,16 +105,16 @@ public:
         currFragmentIdx += 1;
 
         //std::cout<<"Fragment index is "<<(int)fragment_idx<<"FEC_K"<<(int)FEC_K<<"\n";
-        if (currFragmentIdx < FEC_K) {
+        if (currFragmentIdx < fec.FEC_K) {
             return;
         }
         // once enough data has been buffered, create all the secondary fragments
         //fecEncode((const uint8_t **) block, block + FEC_K, max_packet_size);
-        fec_encode(currMaxPacketSize, (const unsigned char**)fragments.data(), N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[FEC_K], N_SECONDARY_FRAGMENTS);
+        fec_encode(currMaxPacketSize, (const unsigned char**)fragments.data(), fec.N_PRIMARY_FRAGMENTS, (unsigned char**)&fragments[fec.FEC_K], fec.N_SECONDARY_FRAGMENTS);
         //fecEncode(max_packet_size,fragments,N_PRIMARY_FRAGMENTS,N_SECONDARY_FRAGMENTS);
 
         // and send all the secondary fragments one after another
-        while (currFragmentIdx < FEC_N) {
+        while (currFragmentIdx < fec.FEC_N) {
             send_block_fragment(currMaxPacketSize);
             currFragmentIdx += 1;
         }
@@ -282,7 +285,7 @@ public:
         return indicesMissingPrimaryFragments.size();
     }
 private:
-    //reference to the FEC decoder (needed for k,n)
+    //reference to the FEC decoder (needed for k,n). Doesn't change
     const FEC& fec;
 public:
     // the block idx marks which block this element currently refers to
@@ -306,51 +309,58 @@ private:
 // processes them such that the output is exactly (or as close as possible) to the
 // Input stream fed to FECEncoder.
 // Most importantly, it also handles re-ordering of packets and packet duplicates due to multiple rx cards
-class FECDecoder : public FEC{
+class FECDecoder{
 public:
-    explicit FECDecoder(int k, int n) : FEC(k,n) {
-        for(int i=0;i<RX_RING_SIZE;i++){
-            rx_ring[i]=std::make_unique<RxBlock>(*this);
-        }
+    // If K,N is known at construction time
+    FECDecoder(int k, int n){
+        fec_init();
+        resetNewSession(k,n);
+    }
+    // If K,N is not known at construction time. Don't forget to call resetNewSession() in this case !
+    FECDecoder(){
+        fec_init();
     }
     ~FECDecoder() = default;
     typedef std::function<void(const uint8_t * payload,std::size_t payloadSize)> SEND_DECODED_PACKET;
     // WARNING: Don't forget to register this callback !
     SEND_DECODED_PACKET mSendDecodedPayloadCallback;
+private:
+    //K,N can change on the receiver side !
+    std::unique_ptr<FEC> fec=nullptr;
 public:
-    // call on new session key !
-    void reset() {
+    // FEC K,N is fixed per session
+    void resetNewSession(const int K,const int N) {
         seq = 0;
-        // rx ring part
+        // rx ring part. Remove anything still in the queue
         rx_ring_front = 0;
         rx_ring_alloc = 0;
         last_known_block = (uint64_t) -1;
+        // re-allocate the rx ring if new FEC parameters are used
+        if(fec== nullptr || fec->FEC_K!=K || fec->FEC_N != N){
+            fec=std::make_unique<FEC>(K,N);
+            for(int i=0;i<RX_RING_SIZE;i++){
+                rx_ring[i]=std::make_unique<RxBlock>(*fec);
+            }
+        }
+        // we now have information about FEC K,N since it came with the encryption packet
         for(auto& rxBlock:rx_ring){
             rxBlock->repurpose();
         }
     }
-    // returns false if the packet is bad (which should never happen !)
+    // returns false if the packet fragment index doesn't match the set FEC parameters (which should never happen !)
     bool validateAndProcessPacket(const WBDataHeader& wblockHdr, const std::vector<uint8_t>& decrypted){
         assert(wblockHdr.packet_type==WFB_PACKET_DATA);
-        // Use FEC_K==0 to completely disable FEC
-        if(FEC_K == 0) {
-            // here we buffer nothing, but still make sure that packets only are forwarded with increasing sequence number
-            // If one RX was used only, this would not be needed. But with multiple RX we can have duplicates
+        if(fec==nullptr){
+            std::cout<<"FEC K,N is not set yet\n";
+            return false;
+        }
+        // Use FEC_K==0 to completely disable FEC and skip the RX queue
+        if(fec->FEC_K == 0) {
             const auto packetSeq=wblockHdr.getBlockIdx();
-            if(seq!=0 && packetSeq<=seq){
-                // we have already received this block or it is too old (for simplicity, nothing is buffered with FEC_K=0)
-                return true;
-            }
-            //also write lost packet count in this mode
-            if (packetSeq > seq + 1) {
-                const auto packetsLost=(packetSeq - seq - 1);
-                //std::cerr<<packetsLost<<"packets lost\n";
-                count_p_lost += packetsLost;
-            }
-            mSendDecodedPayloadCallback(decrypted.data(), decrypted.size());
-            seq=packetSeq;
+            processRawDataBlockFecDisabled(packetSeq,decrypted);
             return true;
         }
+        // normal FEC processing
         const uint64_t block_idx=wblockHdr.getBlockIdx();
         const uint8_t fragment_idx=wblockHdr.getFragmentIdx();
 
@@ -360,7 +370,7 @@ public:
             return false;
         }
         // fragment index must be in the range [0,...,FEC_N[
-        if (fragment_idx >= FEC_N) {
+        if (fragment_idx >= fec->FEC_N) {
             std::cerr<<"invalid fragment_idx:"<<fragment_idx<<"\n";
             return false;
         }
@@ -386,14 +396,13 @@ private:
      */
     void forwardPrimaryFragment(RxBlock& rxRingItem, const uint8_t fragmentIdx){
         //std::cout<<"forwardPrimaryFragment"<<(int)fragmentIdx<<"\n";
-        assert(fragmentIdx<FEC_K);
         assert(rxRingItem.hasFragment(fragmentIdx));
         const uint8_t* primaryFragment= rxRingItem.getDataPrimaryFragment(fragmentIdx);
         const FECDataHeader *packet_hdr = (FECDataHeader*) primaryFragment;
 
         const uint8_t *payload = primaryFragment + sizeof(FECDataHeader);
         const uint16_t packet_size = packet_hdr->get();
-        const uint64_t packet_seq = rxRingItem.block_idx * FEC_K + fragmentIdx;
+        const uint64_t packet_seq = rxRingItem.block_idx * fec->FEC_K + fragmentIdx;
 
         if (packet_seq > seq + 1) {
             const auto packetsLost=(packet_seq - seq - 1);
@@ -547,6 +556,22 @@ private:
                 rxRingPopFront();
             }
         }
+    }
+    void processRawDataBlockFecDisabled(const uint64_t packetSeq,const std::vector<uint8_t>& decrypted){
+        // here we buffer nothing, but still make sure that packets only are forwarded with increasing sequence number
+        // If one RX was used only, this would not be needed. But with multiple RX we can have duplicates
+        if(seq!=0 && packetSeq<=seq){
+            // either duplicate or we are already ahed of this index
+            return;
+        }
+        //also write lost packet count in this mode
+        if (packetSeq > seq + 1) {
+            const auto packetsLost=(packetSeq - seq - 1);
+            //std::cerr<<packetsLost<<"packets lost\n";
+            count_p_lost += packetsLost;
+        }
+        mSendDecodedPayloadCallback(decrypted.data(), decrypted.size());
+        seq=packetSeq;
     }
 public:
     // By doing so you are telling the pipeline:

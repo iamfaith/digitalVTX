@@ -54,7 +54,7 @@ struct ieee80211_radiotap_vendor_namespaces {
  * @_bitmap_shifter: internal shifter for curr u32 bitmap, b0 set == arg present
  * @_vns: vendor namespace definitions
  * @_next_ns_data: beginning of the next namespace's data
- * @_reset_on_ext: internal; reset the arg index to 0 when going to the
+ * @_reset_on_ext: internal; resetNewSession the arg index to 0 when going to the
  *	next bitmap word
  *
  * Describes the radiotap parser state. Fields prefixed with an underscore

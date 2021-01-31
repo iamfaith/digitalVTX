@@ -170,7 +170,7 @@ namespace TestEncryption{
         Encryptor encryptor("gs.key");
         Decryptor decryptor("drone.key");
         encryptor.makeSessionKey();
-        assert(decryptor.onNewPacketWfbKey((uint8_t*)&encryptor.sessionKeyPacket)==true);
+        assert(decryptor.onNewPacketWfbKey(encryptor.sessionKeyPacket)==true);
 
         const auto data=GenericHelper::createRandomDataBuffer(MAX_PAYLOAD_SIZE);
         const uint64_t block_idx = 0;

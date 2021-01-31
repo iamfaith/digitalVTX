@@ -40,9 +40,9 @@ static constexpr const auto MAX_N_ANTENNAS_PER_WIFI_CARD=4;
 
 // This class processes the received wifi data (decryption and FEC)
 // and forwards it via UDP.
-class Aggregator : private FECDecoder {
+class Aggregator: private FECDecoder{
 public:
-    Aggregator(const std::string &client_addr, int client_udp_port,uint8_t radio_port, int k, int n, const std::string &keypair);
+    Aggregator(const std::string &client_addr, int client_udp_port,uint8_t radio_port,const std::string &keypair);
 
     ~Aggregator();
 
@@ -64,11 +64,15 @@ private:
     Decryptor mDecryptor;
     int sockfd;
     std::array<RSSIForWifiCard,MAX_RX_INTERFACES> rssiForWifiCard;
+    // n of all received packets, absolute
     uint64_t count_p_all=0;
+    // n of received packets that are bad for any reason
     uint64_t count_p_bad=0;
-    uint64_t count_p_dec_err=0;
-    uint64_t count_p_dec_ok=0;
+    // encryption stats
+    uint64_t count_p_decryption_err=0;
+    uint64_t count_p_decryption_ok=0;
     OpenHDStatisticsWriter openHdStatisticsWriter{RADIO_PORT};
+    //std::unique_ptr<FECDecoder> mFecDecoder;
 public:
 #ifdef ENABLE_ADVANCED_DEBUGGING
     // time between <packet arrives at pcap processing queue> <<->> <packet is pulled out of pcap by RX>
