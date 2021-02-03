@@ -26,3 +26,24 @@ gst-launch-1.0  filesrc location=a.mp4 ! decodebin ! videorate ! video/x-raw,fra
 
 # new.mp4
 gst-launch-1.0  filesrc location=new.mp4 ! decodebin ! videorate ! video/x-raw,framerate=30/1 ! videoscale ! video/x-raw,width=320,height=240 ! omxh264enc ! video/x-h264,framerate=30/1,profile=baseline ! rtph264pay ! udpsink host=192.168.31.226  port=5600
+
+# take photos
+sudo raspistill -t 3000 -o 2.jpg
+
+
+### h264
+raspivid -n  -ex fixedfps -w 960 -h 540 -b 4000000 -fps 30 -vf -hf -t 0 -o - | \
+               gst-launch-1.0 -v fdsrc ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226  port=5600
+
+
+### h265
+raspivid -n  -ex fixedfps -w 960 -h 540 -b 4000000 -fps 30 -vf -hf -t 0 -o - | \
+               gst-launch-1.0 -v fdsrc ! h265parse ! rtph265pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226  port=5600
+
+
+ gst-launch-1.0 udpsrc port=5600 caps='application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H265' \
+               ! rtph265depay ! avdec_h265 ! clockoverlay valignment=bottom ! autovideosink fps-update-interval=1000 sync=false
+
+
+#### not used
+gst-launch-1.0 v4l2src ! video/x-h264, width=960, height=540, framerate=30/1 ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226  port=5600
