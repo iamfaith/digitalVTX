@@ -11,7 +11,7 @@ MY_TX="wlx000f00460445" # ALFA card
 
 #MY_RX="wlx244bfeb71c05" #Asus card
 #MY_RX="wlx0018e7bd24db" #Ralink card aliexpress
-MY_RX="wlxc4e9840e3cbe" #tp-link rx
+MY_RX="wlx70f11c507eb2" #tp-link rx
 #MY_RX_SECONDARY="wlxc4e984126183"
 WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
 
@@ -45,10 +45,13 @@ sudo iwconfig $MY_RX channel $MY_WIFI_CHANNEL
 
 
 # $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 7 -K $WFB_FOLDER/drone.key $MY_TX
-xterm -hold -e $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 4 -B 40 -K $WFB_FOLDER/drone.key -f 2 $MY_TX &
+xterm -hold -e $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 5600 -p 60 -M 4 -B 40 -K $WFB_FOLDER/drone.key -f 2 $MY_TX &
 
 $WFB_FOLDER/wfb_rx -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key -f 10 $MY_RX
 
+
+
+./wfb_tx -k $FEC_K -n $FEC_N -u 5600 -p 60 -M 4 -B 40 -K drone.key -f 2 wlan0
 #other usefull commands:
 #sudo iw dev
 #nc -u localhost 6000

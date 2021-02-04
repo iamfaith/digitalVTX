@@ -47,3 +47,14 @@ raspivid -n  -ex fixedfps -w 960 -h 540 -b 4000000 -fps 30 -vf -hf -t 0 -o - | \
 
 #### not used
 gst-launch-1.0 v4l2src ! video/x-h264, width=960, height=540, framerate=30/1 ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226  port=5600
+
+
+
+TX: ./wfb_tx -p 3 -u 5600 -K drone.key -S 1 -L 1 -B 20 wlan0
+RX: ./wfb.rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key $rx
+
+
+
+
+TX: ./wfb_tx -k 4 -n 8 -u 5600 -p 3 -M 4 -B 40 -K drone.key -f 2 wlan0mon
+RX: ./wfb.rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key -f 10 -k 4 -n 8 $rx

@@ -13,13 +13,18 @@ WLAN=$1
 BAND="5G"
 #BAND="2G"
 
-CHANNEL2G="6"
+CHANNEL2G="13"
 CHANNEL5G="149"
 
 ifconfig $WLAN down
 iw dev $WLAN set monitor otherbss
 iw reg set BO
 ifconfig $WLAN up
+
+ifconfig $WLAN down
+iw dev $WLAN set monitor otherbss fcsfail
+ifconfig $WLAN up
+iwconfig $WLAN channel $MY_WIFI_CHANNEL
 
 case $BAND in
   "5G")
