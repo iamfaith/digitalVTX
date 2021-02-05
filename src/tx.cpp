@@ -51,13 +51,13 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     if(FLUSH_INTERVAL==std::chrono::milliseconds(0)){
         std::cerr<<"Please do not use a flush interval of 0 (would hog the cpu)\n";
     }
-    mEncryptor.makeNewSessionKey();
+    mEncryptor.makeNewSessionKey(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData);
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
     mInputSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
     // Don't forget to write K,N into the session key packet. K,N Doesn't change on the tx
-    mEncryptor.sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS=FECEncoder::fec.N_PRIMARY_FRAGMENTS;
-    mEncryptor.sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS=FECEncoder::fec.N_SECONDARY_FRAGMENTS;
+    sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS=FECEncoder::fec.N_PRIMARY_FRAGMENTS;
+    sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS=FECEncoder::fec.N_SECONDARY_FRAGMENTS;
 }
 
 WBTransmitter::~WBTransmitter() {
@@ -98,7 +98,7 @@ void WBTransmitter::sendFecBlock(const uint64_t nonce,const uint8_t* payload,con
 
 void WBTransmitter::sendSessionKey() {
     std::cout << "sendSessionKey()\n";
-    sendPacket({(uint8_t *)&mEncryptor.sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES});
+    sendPacket({(uint8_t *)&sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES});
 }
 
 void WBTransmitter::processInputPacket(const uint8_t *buf, size_t size) {
@@ -107,7 +107,7 @@ void WBTransmitter::processInputPacket(const uint8_t *buf, size_t size) {
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
         // running out of sequence numbers should never happen during the lifetime of the TX instance
-        mEncryptor.makeNewSessionKey();
+        mEncryptor.makeNewSessionKey(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData);
         sendSessionKey();
     }
 }

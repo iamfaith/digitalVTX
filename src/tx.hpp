@@ -75,6 +75,7 @@ private:
     // use -1 for no flush interval
     const std::chrono::milliseconds FLUSH_INTERVAL;
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
+    WBSessionKeyPacket sessionKeyPacket;
 public:
     // run as long as nothing goes completely wrong
     void loop();

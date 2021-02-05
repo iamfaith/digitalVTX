@@ -2,7 +2,6 @@
 #ifndef ENCRYPTION_HPP
 #define ENCRYPTION_HPP
 
-#include "wifibroadcast.hpp"
 #include "Helper.hpp"
 #include <cstdio>
 #include <stdexcept>
@@ -42,18 +41,17 @@ public:
             fclose(fp);
         }
     }
-    //uint8_t session_key_nonce[crypto_box_NONCEBYTES];  // random data
-    //    uint8_t session_key_data[crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES]; // encrypted session key
-
     // Don't forget to send the session key after creating a new one
-    void makeNewSessionKey() {
+    void makeNewSessionKey(std::array<uint8_t,crypto_box_NONCEBYTES>& sessionKeyNonce,std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES>& sessionKeyData){
         randombytes_buf(session_key.data(), sizeof(session_key));
-        randombytes_buf(sessionKeyPacket.session_key_nonce, sizeof(sessionKeyPacket.session_key_nonce));
-        if (crypto_box_easy(sessionKeyPacket.session_key_data, session_key.data(), sizeof(session_key),
-                            sessionKeyPacket.session_key_nonce, rx_publickey.data(), tx_secretkey.data()) != 0) {
+        randombytes_buf(sessionKeyNonce.data(), sizeof(sessionKeyNonce));
+        if (crypto_box_easy(sessionKeyData.data(), session_key.data(), sizeof(session_key),
+                            sessionKeyNonce.data(), rx_publickey.data(), tx_secretkey.data()) != 0) {
             throw std::runtime_error("Unable to make session key!");
         }
     }
+    // Encrypt the payload using a public nonce. (aka sequence number)
+    // The nonce is not included in the raw encrypted payload, but used for the checksum stuff
     std::vector<uint8_t> encryptPacket(const uint64_t nonce,const uint8_t* payload,std::size_t payloadSize){
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
         return std::vector<uint8_t>(payload,payload+payloadSize);
@@ -71,28 +69,6 @@ public:
         return encryptedData;
 #endif
     }
-
-    // encrypt the payload of the WBDataPacket
-    // and return a new WBDataPacket where payload now points to the encrypted payload and payloadSize=originalPayloadSize+crypto_aead_chacha20poly1305_ABYTES
-    /*WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
-        // we need to allocate a new buffer to also hold the encrypted bytes
-        std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_shared<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
-#ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
-        return {wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize};
-#else
-        // encryption method is c-style
-        long long unsigned int ciphertext_len;
-        crypto_aead_chacha20poly1305_encrypt(encryptedData->data(), &ciphertext_len,
-                                             wbDataPacket.payload, wbDataPacket.payloadSize,
-                                             (uint8_t *) &wbDataPacket.wbDataHeader.nonce, sizeof(uint64_t),
-                                             nullptr,
-                                             (uint8_t *) (&(wbDataPacket.wbDataHeader.nonce)), session_key.data());
-        // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
-        // (the documentation says 'write up to n bytes' but they probably mean (write exactly n bytes unless an error occurs)
-        assert(encryptedData->size()==ciphertext_len);
-        return {wbDataPacket.wbDataHeader.nonce, encryptedData};
-#endif
-    }*/
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey{};
@@ -100,7 +76,6 @@ private:
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
     // re-send this packet each time a new session key is created
-    WBSessionKeyPacket sessionKeyPacket;
 };
 
 class Decryptor {
@@ -135,11 +110,11 @@ public:
     std::array<uint8_t, crypto_aead_chacha20poly1305_KEYBYTES> session_key{};
 public:
     // return true if a new session was detected (The same session key can be sent multiple times by the tx)
-    bool onNewPacketWfbKey(const WBSessionKeyPacket& sessionKeyPacket) {
+    bool onNewPacketSessionKeyData(std::array<uint8_t,crypto_box_NONCEBYTES>& sessionKeyNonce,std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES>& sessionKeyData) {
         std::array<uint8_t, sizeof(session_key)> new_session_key{};
         if (crypto_box_open_easy(new_session_key.data(),
-                                 sessionKeyPacket.session_key_data, sizeof(WBSessionKeyPacket::session_key_data),
-                                 sessionKeyPacket.session_key_nonce,
+                                 sessionKeyData.data(), sessionKeyData.size(),
+                                 sessionKeyNonce.data(),
                                  tx_publickey.data(), rx_secretkey.data()) != 0) {
             // this basically should just never happen, and is an error
             std::cerr<<"unable to decrypt session key\n";
@@ -176,13 +151,6 @@ public:
         return decrypted;
 #endif
     }
-    /*std::optional<std::vector<uint8_t>> decryptPacket(const WBDataPacket& wbDataPacket){
-        return decryptPacket(wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize);
-    }
-
-    std::optional<WBDataPacket> lol(const WBDataPacket& wbDataPacket){
-        return WBDataPacket{wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize};
-    }*/
 };
 
 #endif //ENCRYPTION_HPP

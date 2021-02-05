@@ -149,7 +149,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
                 return;
             }
             WBSessionKeyPacket& sessionKeyPacket=*((WBSessionKeyPacket*)parsedPacket->payload);
-            if (mDecryptor.onNewPacketWfbKey(sessionKeyPacket)) {
+            if (mDecryptor.onNewPacketSessionKeyData(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData)) {
                 // We got a new session key (aka a session key that has not been received yet)
                 count_p_decryption_ok++;
                 FECDecoder::resetNewSession(sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS,sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS+sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS);

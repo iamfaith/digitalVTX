@@ -164,8 +164,9 @@ namespace TestEncryption{
     static void test(){
         Encryptor encryptor("gs.key");
         Decryptor decryptor("drone.key");
-        encryptor.makeNewSessionKey();
-        assert(decryptor.onNewPacketWfbKey(encryptor.sessionKeyPacket)==true);
+        WBSessionKeyPacket sessionKeyPacket;
+        encryptor.makeNewSessionKey(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData);
+        assert(decryptor.onNewPacketSessionKeyData(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData) == true);
 
         const auto data=GenericHelper::createRandomDataBuffer(MAX_PAYLOAD_SIZE);
         const uint64_t block_idx = 0;
