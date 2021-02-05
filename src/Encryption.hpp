@@ -8,6 +8,7 @@
 #include <vector>
 #include <optional>
 #include <iostream>
+#include <array>
 #include <sodium.h>
 
 // For developing or when encryption is not important, you can use this default seed to
