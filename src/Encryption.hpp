@@ -42,8 +42,11 @@ public:
             fclose(fp);
         }
     }
+    //uint8_t session_key_nonce[crypto_box_NONCEBYTES];  // random data
+    //    uint8_t session_key_data[crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES]; // encrypted session key
+
     // Don't forget to send the session key after creating a new one
-    void makeSessionKey() {
+    void makeNewSessionKey() {
         randombytes_buf(session_key.data(), sizeof(session_key));
         randombytes_buf(sessionKeyPacket.session_key_nonce, sizeof(sessionKeyPacket.session_key_nonce));
         if (crypto_box_easy(sessionKeyPacket.session_key_data, session_key.data(), sizeof(session_key),
@@ -51,9 +54,27 @@ public:
             throw std::runtime_error("Unable to make session key!");
         }
     }
+    std::vector<uint8_t> encryptPacket(const uint64_t nonce,const uint8_t* payload,std::size_t payloadSize){
+#ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
+        return std::vector<uint8_t>(payload,payload+payloadSize);
+#else
+        std::vector<uint8_t> encryptedData=std::vector<uint8_t>(payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
+        long long unsigned int ciphertext_len;
+        crypto_aead_chacha20poly1305_encrypt(encryptedData.data(), &ciphertext_len,
+                                             payload, payloadSize,
+                                             (uint8_t *)&nonce, sizeof(uint64_t),
+                                             nullptr,
+                                             (uint8_t *) (&nonce), session_key.data());
+        // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
+        // (the documentation says 'write up to n bytes' but they probably mean (write exactly n bytes unless an error occurs)
+        assert(encryptedData.size()==ciphertext_len);
+        return encryptedData;
+#endif
+    }
+
     // encrypt the payload of the WBDataPacket
     // and return a new WBDataPacket where payload now points to the encrypted payload and payloadSize=originalPayloadSize+crypto_aead_chacha20poly1305_ABYTES
-    WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
+    /*WBDataPacket encryptWBDataPacket(const WBDataPacket& wbDataPacket){
         // we need to allocate a new buffer to also hold the encrypted bytes
         std::shared_ptr<std::vector<uint8_t>> encryptedData=std::make_shared<std::vector<uint8_t>>(wbDataPacket.payloadSize+ crypto_aead_chacha20poly1305_ABYTES);
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
@@ -63,7 +84,7 @@ public:
         long long unsigned int ciphertext_len;
         crypto_aead_chacha20poly1305_encrypt(encryptedData->data(), &ciphertext_len,
                                              wbDataPacket.payload, wbDataPacket.payloadSize,
-                                             (uint8_t *) &wbDataPacket.wbDataHeader, sizeof(WBDataHeader),
+                                             (uint8_t *) &wbDataPacket.wbDataHeader.nonce, sizeof(uint64_t),
                                              nullptr,
                                              (uint8_t *) (&(wbDataPacket.wbDataHeader.nonce)), session_key.data());
         // we allocate the right size in the beginning, but check if ciphertext_len is actually matching what we calculated
@@ -71,7 +92,7 @@ public:
         assert(encryptedData->size()==ciphertext_len);
         return {wbDataPacket.wbDataHeader.nonce, encryptedData};
 #endif
-    }
+    }*/
 private:
     // tx->rx keypair
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> tx_secretkey{};
@@ -134,7 +155,7 @@ public:
     }
 
     // returns decrypted data on success
-    std::optional<std::vector<uint8_t>> decryptPacket(const WBDataHeader& wblockHdr,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
+    std::optional<std::vector<uint8_t>> decryptPacket(const uint64_t nonce,const uint8_t* encryptedPayload,std::size_t encryptedPayloadSize) {
 #ifdef DO_NOT_ENCRYPT_DATA_BUT_PROVIDE_BACKWARDS_COMPABILITY
         return std::vector<uint8_t>(encryptedPayload,encryptedPayload+encryptedPayloadSize);
 #else
@@ -147,21 +168,21 @@ public:
         if (crypto_aead_chacha20poly1305_decrypt(decrypted.data(), &decrypted_len,
                                                  nullptr,
                                                  encryptedPayload,cLen,
-                                                 (uint8_t*)&wblockHdr,sizeof(WBDataHeader),
-                                                 (uint8_t *) (&(wblockHdr.nonce)), session_key.data()) != 0) {
+                                                 (uint8_t*)&nonce,sizeof(uint64_t),
+                                                 (uint8_t *) (&nonce), session_key.data()) != 0) {
             return std::nullopt;
         }
         assert(decrypted.size()==decrypted_len);
         return decrypted;
 #endif
     }
-    std::optional<std::vector<uint8_t>> decryptPacket(const WBDataPacket& wbDataPacket){
-        return decryptPacket(wbDataPacket.wbDataHeader,wbDataPacket.payload,wbDataPacket.payloadSize);
+    /*std::optional<std::vector<uint8_t>> decryptPacket(const WBDataPacket& wbDataPacket){
+        return decryptPacket(wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize);
     }
 
     std::optional<WBDataPacket> lol(const WBDataPacket& wbDataPacket){
         return WBDataPacket{wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize};
-    }
+    }*/
 };
 
 #endif //ENCRYPTION_HPP

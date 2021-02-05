@@ -178,7 +178,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     // FEC data or FEC correction packet
     WBDataPacket encryptedWbDataPacket=WBDataPacket::createFromRawMemory(payload, payloadSize);
 
-    const auto decryptedPayload=mDecryptor.decryptPacket(encryptedWbDataPacket);
+    const auto decryptedPayload=mDecryptor.decryptPacket(encryptedWbDataPacket.wbDataHeader.nonce,payload,payloadSize);
     if(decryptedPayload == std::nullopt){
         std::cerr << "unable to decrypt packet (block_idx,fragment_idx):" << encryptedWbDataPacket.wbDataHeader.getBlockIdx() << "," << (int)encryptedWbDataPacket.wbDataHeader.getFragmentIdx() << "\n";
         count_p_decryption_err ++;

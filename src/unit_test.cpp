@@ -169,7 +169,7 @@ namespace TestEncryption{
     static void test(){
         Encryptor encryptor("gs.key");
         Decryptor decryptor("drone.key");
-        encryptor.makeSessionKey();
+        encryptor.makeNewSessionKey();
         assert(decryptor.onNewPacketWfbKey(encryptor.sessionKeyPacket)==true);
 
         const auto data=GenericHelper::createRandomDataBuffer(MAX_PAYLOAD_SIZE);
@@ -178,9 +178,10 @@ namespace TestEncryption{
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
         const WBDataPacket wbDataPacket{nonce,data.data(),data.size()};
 
-        const auto encrypted= encryptor.encryptWBDataPacket(wbDataPacket);
+        //const auto encrypted= encryptor.encryptWBDataPacket(wbDataPacket);
+        const auto encrypted=encryptor.encryptPacket(wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize);
 
-        const auto decrypted=decryptor.decryptPacket(encrypted.wbDataHeader,encrypted.payload, encrypted.payloadSize);
+        const auto decrypted=decryptor.decryptPacket(wbDataPacket.wbDataHeader.nonce,encrypted.data(), encrypted.size());
 
         assert(decrypted!=std::nullopt);
         assert(GenericHelper::compareVectors(data,*decrypted) == true);

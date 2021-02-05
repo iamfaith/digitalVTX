@@ -499,9 +499,6 @@ private:
 
     void processFECBlockWitRxQueue(const uint64_t block_idx, const uint8_t fragment_idx, const std::vector<uint8_t>& decrypted){
         const int ring_idx = get_block_ring_idx(block_idx);
-
-        //printf("got 0x%lx %d, ring_idx=%d\n", block_idx, fragment_idx, ring_idx);
-
         //ignore already processed blocks
         if (ring_idx < 0) return;
         // cannot be nullptr
@@ -561,7 +558,7 @@ private:
         // here we buffer nothing, but still make sure that packets only are forwarded with increasing sequence number
         // If one RX was used only, this would not be needed. But with multiple RX we can have duplicates
         if(seq!=0 && packetSeq<=seq){
-            // either duplicate or we are already ahed of this index
+            // either duplicate or we are already ahead of this index
             return;
         }
         //also write lost packet count in this mode
@@ -578,8 +575,8 @@ public:
     // It makes no sense to hold on to any blocks. Future packets won't help you to recover any blocks that might still be in the pipeline
     // For example, if the RX doesn't receive anything for N ms any data that is going to arrive will not have a smaller or equal block index than the blocks that are currently in the queue
     void flushRxRing(){
+        std::cout<<"Flushing pipeline\n";
         while(rx_ring_alloc>0){
-            std::cout<<"Flushing pipeline\n";
             auto idx=rxRingPopFront();
             forwardMissingPrimaryFragmentsIfAvailable(*rx_ring[idx],false);
         }

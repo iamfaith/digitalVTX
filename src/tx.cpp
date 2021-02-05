@@ -51,7 +51,7 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     if(FLUSH_INTERVAL==std::chrono::milliseconds(0)){
         std::cerr<<"Please do not use a flush interval of 0 (would hog the cpu)\n";
     }
-    mEncryptor.makeSessionKey();
+    mEncryptor.makeNewSessionKey();
     outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
     mInputSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
@@ -83,8 +83,11 @@ void WBTransmitter::sendPacket(const AbstractWBPacket& abstractWbPacket) {
 void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
     //const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
-    const auto encryptedData=mEncryptor.encryptWBDataPacket(wbDataPacket);
-    sendPacket({(const uint8_t*)&encryptedData.wbDataHeader,sizeof(WBDataHeader),encryptedData.payload,encryptedData.payloadSize});
+    //const auto encryptedData=mEncryptor.encryptWBDataPacket(wbDataPacket);
+    const auto encryptedData=mEncryptor.encryptPacket(wbDataPacket.wbDataHeader.nonce,wbDataPacket.payload,wbDataPacket.payloadSize);
+    WBDataHeader wbDataHeader(wbDataPacket.wbDataHeader.nonce);
+
+    sendPacket({(const uint8_t*)&wbDataHeader,sizeof(WBDataHeader),encryptedData.data(),encryptedData.size()});
     //const auto encryptedWBDataPacket=mEncryptor.encryptWBDataPacket(wbDataPacket);
     //sendPacket((uint8_t*)&encryptedWBDataPacket.wbDataHeader,sizeof(WBDataHeader),encryptedWBDataPacket.payload,encryptedWBDataPacket.payloadSize);
 #ifdef ENABLE_ADVANCED_DEBUGGING
@@ -104,7 +107,7 @@ void WBTransmitter::processInputPacket(const uint8_t *buf, size_t size) {
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
         // running out of sequence numbers should never happen during the lifetime of the TX instance
-        mEncryptor.makeSessionKey();
+        mEncryptor.makeNewSessionKey();
         sendSessionKey();
     }
 }
