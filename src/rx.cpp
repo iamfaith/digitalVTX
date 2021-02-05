@@ -126,7 +126,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     }
 
     //RawTransmitterHelper::writeAntennaStats(antenna_stat, WLAN_IDX, parsedPacket->antenna, parsedPacket->rssi);
-    const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
+    //const Ieee80211Header* tmpHeader=parsedPacket->ieee80211Header;
     //std::cout<<"RADIO_PORT"<<(int)tmpHeader->getRadioPort()<<" IEEE_SEQ_NR "<<(int)tmpHeader->getSequenceNumber()<<"\n";
     //std::cout<<"FrameControl:"<<(int)tmpHeader->getFrameControl()<<"\n";
     //std::cout<<"DurationOrConnectionId:"<<(int)tmpHeader->getDurationOrConnectionId()<<"\n";
@@ -134,33 +134,49 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
     // now to the actual payload
     const uint8_t *payload=parsedPacket->payload;
     const size_t payloadSize=parsedPacket->payloadSize;
-    switch (payload[0]) {
-        case WFB_PACKET_DATA:
-            if (payloadSize < sizeof(WBDataHeader) + sizeof(FECDataHeader)) {
-                std::cerr<<"short packet (fec header)\n";
-                count_p_bad++;
-                return;
-            }
-            break;
-        case WFB_PACKET_KEY:{
-            if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
-                std::cerr<<"invalid session key packet\n";
-                count_p_bad++;
-                return;
-            }
-            WBSessionKeyPacket& sessionKeyPacket=*((WBSessionKeyPacket*)parsedPacket->payload);
-            if (mDecryptor.onNewPacketSessionKeyData(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData)) {
-                // We got a new session key (aka a session key that has not been received yet)
-                count_p_decryption_ok++;
-                FECDecoder::resetNewSession(sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS,sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS+sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS);
-            } else {
-                count_p_decryption_ok++;
-            }
+    if(payload[0]==WFB_PACKET_DATA){
+        if (payloadSize < sizeof(WBDataHeader) + sizeof(FECDataHeader)) {
+            std::cerr<<"short packet (fec header)\n";
+            count_p_bad++;
             return;
         }
-        case WFB_PACKET_LATENCY_BEACON:{
+        // FEC data or FEC correction packet
+        //WBDataPacket encryptedWbDataPacket=WBDataPacket::createFromRawMemory(payload, payloadSize);
+        const WBDataHeader& wbDataHeader=*((WBDataHeader*)payload);
+        assert(wbDataHeader.packet_type==WFB_PACKET_DATA);
+
+        const auto decryptedPayload=mDecryptor.decryptPacket(wbDataHeader.nonce,payload,payloadSize);
+        if(decryptedPayload == std::nullopt){
+            std::cerr << "unable to decrypt packet (block_idx,fragment_idx):" << wbDataHeader.getBlockIdx() << "," << (int)wbDataHeader.getFragmentIdx() << "\n";
+            count_p_decryption_err ++;
+            return;
+        }
+
+        count_p_decryption_ok++;
+
+        assert(decryptedPayload->size() <= MAX_FEC_PAYLOAD);
+
+        if(!FECDecoder::validateAndProcessPacket(wbDataHeader.nonce, *decryptedPayload)){
+            count_p_bad++;
+        }
+    }else if(payload[0]==WFB_PACKET_KEY){
+        if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
+            std::cerr<<"invalid session key packet\n";
+            count_p_bad++;
+            return;
+        }
+        WBSessionKeyPacket& sessionKeyPacket=*((WBSessionKeyPacket*)parsedPacket->payload);
+        if (mDecryptor.onNewPacketSessionKeyData(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData)) {
+            // We got a new session key (aka a session key that has not been received yet)
+            count_p_decryption_ok++;
+            FECDecoder::resetNewSession(sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS,sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS+sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS);
+        } else {
+            count_p_decryption_ok++;
+        }
+        return;
+    }else if(payload[0]==WFB_PACKET_LATENCY_BEACON){
 #ifdef ENABLE_ADVANCED_DEBUGGING
-            // for testing only. It won't work if the tx and rx are running on different systems
+        // for testing only. It won't work if the tx and rx are running on different systems
             assert(payloadSize==sizeof(LatencyTestingPacket));
             const LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
             const auto timestamp=std::chrono::time_point<std::chrono::steady_clock>(std::chrono::nanoseconds(latencyTestingPacket->timestampNs));
@@ -168,31 +184,10 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             //std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
             avgLatencyBeaconPacketLatency.add(latency);
 #endif
-        }
-            return;
-        default:
-            std::cerr<<"Unknown packet type "<<(int)payload[0]<<" \n";
-            count_p_bad += 1;
-            return;
-    }
-    // FEC data or FEC correction packet
-    //WBDataPacket encryptedWbDataPacket=WBDataPacket::createFromRawMemory(payload, payloadSize);
-    const WBDataHeader& wbDataHeader=*((WBDataHeader*)payload);
-    assert(wbDataHeader.packet_type==WFB_PACKET_DATA);
-
-    const auto decryptedPayload=mDecryptor.decryptPacket(wbDataHeader.nonce,payload,payloadSize);
-    if(decryptedPayload == std::nullopt){
-        std::cerr << "unable to decrypt packet (block_idx,fragment_idx):" << wbDataHeader.getBlockIdx() << "," << (int)wbDataHeader.getFragmentIdx() << "\n";
-        count_p_decryption_err ++;
+    }else{
+        std::cerr<<"Unknown packet type "<<(int)payload[0]<<" \n";
+        count_p_bad += 1;
         return;
-    }
-
-    count_p_decryption_ok++;
-
-    assert(decryptedPayload->size() <= MAX_FEC_PAYLOAD);
-
-    if(!FECDecoder::validateAndProcessPacket(wbDataHeader.nonce, *decryptedPayload)){
-        count_p_bad++;
     }
 }
 
