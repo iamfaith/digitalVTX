@@ -176,11 +176,13 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             return;
     }
     // FEC data or FEC correction packet
-    WBDataPacket encryptedWbDataPacket=WBDataPacket::createFromRawMemory(payload, payloadSize);
+    //WBDataPacket encryptedWbDataPacket=WBDataPacket::createFromRawMemory(payload, payloadSize);
+    const WBDataHeader& wbDataHeader=*((WBDataHeader*)payload);
+    assert(wbDataHeader.packet_type==WFB_PACKET_DATA);
 
-    const auto decryptedPayload=mDecryptor.decryptPacket(encryptedWbDataPacket.wbDataHeader.nonce,payload,payloadSize);
+    const auto decryptedPayload=mDecryptor.decryptPacket(wbDataHeader.nonce,payload,payloadSize);
     if(decryptedPayload == std::nullopt){
-        std::cerr << "unable to decrypt packet (block_idx,fragment_idx):" << encryptedWbDataPacket.wbDataHeader.getBlockIdx() << "," << (int)encryptedWbDataPacket.wbDataHeader.getFragmentIdx() << "\n";
+        std::cerr << "unable to decrypt packet (block_idx,fragment_idx):" << wbDataHeader.getBlockIdx() << "," << (int)wbDataHeader.getFragmentIdx() << "\n";
         count_p_decryption_err ++;
         return;
     }
@@ -189,7 +191,7 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
 
     assert(decryptedPayload->size() <= MAX_FEC_PAYLOAD);
 
-    if(!FECDecoder::validateAndProcessPacket(encryptedWbDataPacket.wbDataHeader, *decryptedPayload)){
+    if(!FECDecoder::validateAndProcessPacket(wbDataHeader.nonce, *decryptedPayload)){
         count_p_bad++;
     }
 }

@@ -48,7 +48,7 @@ public:
 // use FEC_K==0 to completely skip FEC for the lowest latency possible
 class FECEncoder{
 public:
-    typedef std::function<void(const WBDataPacket &wbDataPacket)> OUTPUT_DATA_CALLBACK;
+    typedef std::function<void(const uint64_t nonce,const uint8_t* payload,const std::size_t payloadSize)> OUTPUT_DATA_CALLBACK;
     OUTPUT_DATA_CALLBACK outputDataCallback;
     // TODO: So we have to be carefully here:
     // 1) If k,n is given: fixed packet size
@@ -78,8 +78,9 @@ public:
         // Use FEC_K==0 to not only disable FEC, but also the RX queue on the RX
         if(fec.FEC_K == 0) {
             const auto nonce=WBDataHeader::calculateNonce(currBlockIdx, currFragmentIdx);
-            WBDataPacket wbDataPacket{nonce, buf, size};
-            outputDataCallback(wbDataPacket);
+            //WBDataPacket wbDataPacket{nonce, buf, size};
+            //outputDataCallback(wbDataPacket);
+            outputDataCallback(nonce,buf,size);
             currBlockIdx++;
             return;
         }
@@ -153,8 +154,9 @@ private:
     void send_block_fragment(const std::size_t packet_size) const {
         const auto nonce=WBDataHeader::calculateNonce(currBlockIdx, currFragmentIdx);
         const uint8_t *dataP = fragments[currFragmentIdx];
-        WBDataPacket packet{nonce, dataP, packet_size};
-        outputDataCallback(packet);
+        //WBDataPacket packet{nonce, dataP, packet_size};
+        //outputDataCallback(packet);
+        outputDataCallback(nonce,dataP,packet_size);
     }
 };
 
@@ -348,21 +350,20 @@ public:
         }
     }
     // returns false if the packet fragment index doesn't match the set FEC parameters (which should never happen !)
-    bool validateAndProcessPacket(const WBDataHeader& wblockHdr, const std::vector<uint8_t>& decrypted){
-        assert(wblockHdr.packet_type==WFB_PACKET_DATA);
+    bool validateAndProcessPacket(const uint64_t nonce, const std::vector<uint8_t>& decrypted){
         if(fec==nullptr){
             std::cout<<"FEC K,N is not set yet\n";
             return false;
         }
         // Use FEC_K==0 to completely disable FEC and skip the RX queue
         if(fec->FEC_K == 0) {
-            const auto packetSeq=wblockHdr.getBlockIdx();
+            const auto packetSeq=WBDataHeader::calculateBlockIdx(nonce);
             processRawDataBlockFecDisabled(packetSeq,decrypted);
             return true;
         }
         // normal FEC processing
-        const uint64_t block_idx=wblockHdr.getBlockIdx();
-        const uint8_t fragment_idx=wblockHdr.getFragmentIdx();
+        const uint64_t block_idx=WBDataHeader::calculateBlockIdx(nonce);
+        const uint8_t fragment_idx=WBDataHeader::calculateFragmentIdx(nonce);
 
         // Should never happen due to generating new session key on tx side
         if (block_idx > WBDataHeader::MAX_BLOCK_IDX) {
