@@ -11,6 +11,8 @@
 #include <array>
 #include <sodium.h>
 
+// Single Header file that can be used to add encryption to a lossy unidirectional link
+
 // For developing or when encryption is not important, you can use this default seed to
 // create deterministic rx and tx keys
 static const std::array<unsigned char,crypto_box_SEEDBYTES> DEFAULT_ENCRYPTION_SEED={0};
