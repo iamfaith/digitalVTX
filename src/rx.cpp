@@ -159,23 +159,26 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
         if(!FECDecoder::validateAndProcessPacket(wbDataHeader.nonce, *decryptedPayload)){
             count_p_bad++;
         }
-    }else if(payload[0]==WFB_PACKET_KEY){
+    }else if(payload[0]==WFB_PACKET_KEY) {
         if (payloadSize != WBSessionKeyPacket::SIZE_BYTES) {
-            std::cerr<<"invalid session key packet\n";
+            std::cerr << "invalid session key packet\n";
             count_p_bad++;
             return;
         }
-        WBSessionKeyPacket& sessionKeyPacket=*((WBSessionKeyPacket*)parsedPacket->payload);
+        WBSessionKeyPacket &sessionKeyPacket = *((WBSessionKeyPacket *) parsedPacket->payload);
         if (mDecryptor.onNewPacketSessionKeyData(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData)) {
             // We got a new session key (aka a session key that has not been received yet)
             count_p_decryption_ok++;
-            FECDecoder::resetNewSession(sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS,sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS+sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS);
+            FECDecoder::resetNewSession(sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS,
+                                        sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS +
+                                        sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS);
         } else {
             count_p_decryption_ok++;
         }
         return;
-    }else if(payload[0]==WFB_PACKET_LATENCY_BEACON){
+    }
 #ifdef ENABLE_ADVANCED_DEBUGGING
+    else if(payload[0]==WFB_PACKET_LATENCY_BEACON){
         // for testing only. It won't work if the tx and rx are running on different systems
             assert(payloadSize==sizeof(LatencyTestingPacket));
             const LatencyTestingPacket* latencyTestingPacket=(LatencyTestingPacket*)payload;
@@ -183,8 +186,9 @@ void Aggregator::processPacket(const uint8_t WLAN_IDX,const pcap_pkthdr& hdr,con
             const auto latency=std::chrono::steady_clock::now()-timestamp;
             //std::cout<<"Packet latency on this system is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(latency).count()<<"\n";
             avgLatencyBeaconPacketLatency.add(latency);
+    }
 #endif
-    }else{
+    else{
         std::cerr<<"Unknown packet type "<<(int)payload[0]<<" \n";
         count_p_bad += 1;
         return;
