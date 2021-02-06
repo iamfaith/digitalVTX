@@ -51,10 +51,22 @@ gst-launch-1.0 v4l2src ! video/x-h264, width=960, height=540, framerate=30/1 ! h
 
 
 TX: ./wfb_tx -p 3 -u 5600 -K drone.key -S 1 -L 1 -B 20 wlan0
-RX: ./wfb.rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key $rx
+RX: ./wfb_rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key $rx
 
 
 
 
-TX: ./wfb_tx -k 4 -n 8 -u 5600 -p 3 -M 4 -B 40 -K drone.key -f 2 wlan0mon
-RX: ./wfb.rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key -f 10 -k 4 -n 8 $rx
+TX: ./wfb_tx -k 4 -n 8 -u 5600 -p 3 -M 4 -B 20 -K drone.key -f 2 wlan0mon
+RX: ./wfb_rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key -f 10 $rx
+
+
+
+raspivid -n  -ex fixedfps -w 640 -h 320 -b 100000 -fps 30 -vf -hf -t 0 -o - | gst-launch-1.0 -v fdsrc ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=127.0.0.1 port=5600
+
+
+raspivid -n  -ex fixedfps -w 640 -h 480 -b 100000 -fps 30 -vf -hf -t 0 -o - | gst-launch-1.0 -v fdsrc !  decodebin ! video/x-raw, width=640, height=480 ! progressreport name=progress ! omxh264enc target-bitrate=7500000 control-rate=variable ! video/x-h264, profile=baseline ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226 port=5600
+
+
+
+
+raspivid -n  -ex fixedfps -w 640 -h 480 -b 100000 -fps 30 -vf -hf -t 0 -o - | gst-launch-1.0 -v fdsrc !  decodebin ! omxh264enc ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226 port=5600
