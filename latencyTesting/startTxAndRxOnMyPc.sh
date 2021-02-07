@@ -4,7 +4,7 @@
 
 #MY_TX="wlp3s0"
 #MY_TX="wlxc4e984126183"
-MY_TX="wlx000f00460445" # ALFA card
+MY_TX="wlx1cbfce131eac" # ALFA card
 #MY_TX="wlx6cfdb9b2a156" #PW-DN421
 #MY_TX="wlx0018e7bd24db"
 #MY_TX="wlx00e0863200b9" #Taobao card
@@ -13,7 +13,7 @@ MY_TX="wlx000f00460445" # ALFA card
 #MY_RX="wlx0018e7bd24db" #Ralink card aliexpress
 MY_RX="wlx70f11c507eb2" #tp-link rx
 #MY_RX_SECONDARY="wlxc4e984126183"
-WFB_FOLDER="/home/consti10/Desktop/wifibroadcast"
+WFB_FOLDER="/home/faith/digitalVTX"
 
 FEC_K=4
 FEC_N=8
