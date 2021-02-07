@@ -49,7 +49,7 @@ private:
     // send the current session key via WIFI (located in mEncryptor)
     void sendSessionKey();
     // for the FEC encoder
-    void sendFecBlock(const WBDataPacket &wbDataPacket);
+    void sendFecBlock(uint64_t nonce,const uint8_t* payload,std::size_t payloadSize);
     // send packet by prefixing data with the current IEE and Radiotap header
     void sendPacket(const AbstractWBPacket& abstractWbPacket);
     // this one is used for injecting packets
@@ -75,6 +75,7 @@ private:
     // use -1 for no flush interval
     const std::chrono::milliseconds FLUSH_INTERVAL;
     Chronometer pcapInjectionTime{"PcapInjectionTime"};
+    WBSessionKeyPacket sessionKeyPacket;
 public:
     // run as long as nothing goes completely wrong
     void loop();

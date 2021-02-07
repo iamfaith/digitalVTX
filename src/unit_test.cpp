@@ -41,10 +41,8 @@ namespace TestFEC{
         FECDecoder decoder(k,n);
         std::vector<std::vector<uint8_t>> testOut;
 
-        const auto cb1=[&decoder](const WBDataPacket &wbDataPacket)mutable {
-            decoder.validateAndProcessPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload,
-                                                                                             wbDataPacket.payload +
-                                                                                             wbDataPacket.payloadSize));
+        const auto cb1=[&decoder](const uint64_t nonce,const uint8_t* payload,const std::size_t payloadSize)mutable {
+            decoder.validateAndProcessPacket(nonce, std::vector<uint8_t>(payload,payload +payloadSize));
         };
         const auto cb2=[&testOut](const uint8_t * payload,std::size_t payloadSize)mutable{
             testOut.emplace_back(payload,payload+payloadSize);
@@ -91,9 +89,9 @@ namespace TestFEC{
         FECEncoder encoder(k, n);
         FECDecoder decoder(k, n);
         std::vector <std::vector<uint8_t>> testOut;
-        const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const WBDataPacket &wbDataPacket)mutable {
-            const auto blockIdx=wbDataPacket.wbDataHeader.getBlockIdx();
-            const auto fragmentIdx=wbDataPacket.wbDataHeader.getFragmentIdx();
+        const auto cb1 = [&decoder,n,k,DROP_MODE,SEND_DUPLICATES](const uint64_t nonce,const uint8_t* payload,const std::size_t payloadSize)mutable {
+            const auto blockIdx=WBDataHeader::calculateBlockIdx(nonce);
+            const auto fragmentIdx=WBDataHeader::calculateFragmentIdx(nonce);
             if(DROP_MODE==0){
                 // drop all FEC correction packets but no data packets (everything should be still recoverable
                 if(fragmentIdx>=k){
@@ -120,14 +118,11 @@ namespace TestFEC{
                 // emulate not more than N multiple wifi cards as rx
                 const auto duplicates=std::rand() % 8;
                 for(int i=0;i<duplicates+1;i++){
-                    decoder.validateAndProcessPacket(wbDataPacket.wbDataHeader,
-                                                     std::vector<uint8_t>(wbDataPacket.payload, wbDataPacket.payload +
-                                                                                                wbDataPacket.payloadSize));
+                    decoder.validateAndProcessPacket(nonce,
+                                                     std::vector<uint8_t>(payload, payload +payloadSize));
                 }
             }else{
-                decoder.validateAndProcessPacket(wbDataPacket.wbDataHeader, std::vector<uint8_t>(wbDataPacket.payload,
-                                                                                                 wbDataPacket.payload +
-                                                                                                 wbDataPacket.payloadSize));
+                decoder.validateAndProcessPacket(nonce, std::vector<uint8_t>(payload,payload + payloadSize));
             }
         };
         const auto cb2 = [&testOut](const uint8_t *payload, std::size_t payloadSize)mutable {
@@ -169,18 +164,20 @@ namespace TestEncryption{
     static void test(){
         Encryptor encryptor("gs.key");
         Decryptor decryptor("drone.key");
-        encryptor.makeSessionKey();
-        assert(decryptor.onNewPacketWfbKey(encryptor.sessionKeyPacket)==true);
+        WBSessionKeyPacket sessionKeyPacket;
+        encryptor.makeNewSessionKey(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData);
+        assert(decryptor.onNewPacketSessionKeyData(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData) == true);
 
         const auto data=GenericHelper::createRandomDataBuffer(MAX_PAYLOAD_SIZE);
         const uint64_t block_idx = 0;
         const uint8_t fragment_idx = 0;
         const auto nonce=WBDataHeader::calculateNonce(block_idx,fragment_idx);
-        const WBDataPacket wbDataPacket{nonce,data.data(),data.size()};
+        const WBDataHeader wbDataHeader{nonce};
 
-        const auto encrypted= encryptor.encryptWBDataPacket(wbDataPacket);
+        //const auto encrypted= encryptor.encryptWBDataPacket(wbDataPacket);
+        const auto encrypted=encryptor.encryptPacket(wbDataHeader.nonce,data.data(),data.size());
 
-        const auto decrypted=decryptor.decryptPacket(encrypted.wbDataHeader,encrypted.payload, encrypted.payloadSize);
+        const auto decrypted=decryptor.decryptPacket(wbDataHeader.nonce,encrypted.data(), encrypted.size());
 
         assert(decrypted!=std::nullopt);
         assert(GenericHelper::compareVectors(data,*decrypted) == true);

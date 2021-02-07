@@ -72,8 +72,8 @@ public:
     static constexpr auto SIZE_BYTES=1+crypto_box_NONCEBYTES+crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES+2;
 public:
     const uint8_t packet_type=WFB_PACKET_KEY;
-    uint8_t session_key_nonce[crypto_box_NONCEBYTES];  // random data
-    uint8_t session_key_data[crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES]; // encrypted session key
+    std::array<uint8_t,crypto_box_NONCEBYTES> sessionKeyNonce;  // random data
+    std::array<uint8_t,crypto_aead_chacha20poly1305_KEYBYTES + crypto_box_MACBYTES> sessionKeyData; // encrypted session key
     uint8_t FEC_N_PRIMARY_FRAGMENTS; // info about this session's K,N parameters
     uint8_t FEC_N_SECONDARY_FRAGMENTS; // info about this session's K,N parameters
 }__attribute__ ((packed));
@@ -131,39 +131,6 @@ public:
 }  __attribute__ ((packed));
 static_assert(sizeof(FECDataHeader) == 2, "ALWAYS_TRUE");
 
-// This one does not specify if it is an FEC data or FEC correction packet (see WBDataHeader / FECDataHeader)
-// but it is always of type WFB_PACKET_DATA
-// NOTE: This cannot be casted directly from / to a memory location (unlike the classes above) since the payload size is dynamic
-// Use the constructor(s) or use the createFromRawMemory() method
-class WBDataPacket{
-public:
-    // construct in c-style (light),used on TX
-    WBDataPacket(const uint64_t nonce1,const uint8_t* payload1,const std::size_t payloadSize1):
-            wbDataHeader(nonce1), payload(payload1), payloadSize(payloadSize1){};
-    // construct in c++-style (just as light,too),used on TX
-    WBDataPacket(const uint64_t nonce1,const std::shared_ptr<std::vector<uint8_t>>& payload1):
-            wbDataHeader(nonce1), payload(payload1->data()), payloadSize(payload1->size()), optionalPayloadDataReference(payload1){};
-    // to re-interpret on the RX
-    static WBDataPacket createFromRawMemory(const uint8_t* data,std::size_t dataSize){
-        assert(data[0]==WFB_PACKET_DATA);
-        const WBDataHeader* wbDataHeader=(WBDataHeader*)data;
-        return {wbDataHeader->nonce,&data[sizeof(WBDataHeader)],dataSize-sizeof(WBDataHeader)};
-    }
-    // don't allow copying or moving, since creating a new one is light enough
-    //WBDataPacket(const WBDataPacket&)=delete;
-    //WBDataPacket(const WBDataPacket&&)=delete;
-public:
-    // each data packet has the WBDataHeader
-    const WBDataHeader wbDataHeader;
-    // If this is an FEC data packet, first two bytes of payload are the FECDataHeader
-    // If this is an FEC correction packet, that's not the case
-    // Use the "Encryptor" class to encrypt / decrypt the payload
-    const uint8_t* payload;
-    const std::size_t payloadSize;
-private:
-    // this one is for the c++-constructor only
-    const std::shared_ptr<std::vector<uint8_t>> optionalPayloadDataReference=nullptr;
-};
 
 
 struct LatencyTestingPacket{

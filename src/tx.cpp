@@ -51,13 +51,13 @@ WBTransmitter::WBTransmitter(RadiotapHeader radiotapHeader, int k, int n, const 
     if(FLUSH_INTERVAL==std::chrono::milliseconds(0)){
         std::cerr<<"Please do not use a flush interval of 0 (would hog the cpu)\n";
     }
-    mEncryptor.makeSessionKey();
-    outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1);
+    mEncryptor.makeNewSessionKey(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData);
+    outputDataCallback=std::bind(&WBTransmitter::sendFecBlock, this, std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
     mInputSocket=SocketHelper::openUdpSocketForRx(udp_port);
     fprintf(stderr, "WB-TX Listen on UDP Port %d assigned ID %d assigned WLAN %s FLUSH_INTERVAL(ms) %d\n", udp_port,radio_port,wlan.c_str(),(int)flushInterval.count());
     // Don't forget to write K,N into the session key packet. K,N Doesn't change on the tx
-    mEncryptor.sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS=FECEncoder::fec.N_PRIMARY_FRAGMENTS;
-    mEncryptor.sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS=FECEncoder::fec.N_SECONDARY_FRAGMENTS;
+    sessionKeyPacket.FEC_N_PRIMARY_FRAGMENTS=FECEncoder::fec.N_PRIMARY_FRAGMENTS;
+    sessionKeyPacket.FEC_N_SECONDARY_FRAGMENTS=FECEncoder::fec.N_SECONDARY_FRAGMENTS;
 }
 
 WBTransmitter::~WBTransmitter() {
@@ -80,11 +80,14 @@ void WBTransmitter::sendPacket(const AbstractWBPacket& abstractWbPacket) {
 #endif
 }
 
-void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
+void WBTransmitter::sendFecBlock(const uint64_t nonce,const uint8_t* payload,const std::size_t payloadSize) {
     //std::cout << "WBTransmitter::sendFecBlock"<<(int)wbDataPacket.payloadSize<<"\n";
     //const auto data= mEncryptor.makeEncryptedPacketIncludingHeader(wbDataPacket);
-    const auto encryptedData=mEncryptor.encryptWBDataPacket(wbDataPacket);
-    sendPacket({(const uint8_t*)&encryptedData.wbDataHeader,sizeof(WBDataHeader),encryptedData.payload,encryptedData.payloadSize});
+    //const auto encryptedData=mEncryptor.encryptWBDataPacket(wbDataPacket);
+    const auto encryptedData=mEncryptor.encryptPacket(nonce,payload,payloadSize);
+    WBDataHeader wbDataHeader(nonce);
+
+    sendPacket({(const uint8_t*)&wbDataHeader,sizeof(WBDataHeader),encryptedData.data(),encryptedData.size()});
     //const auto encryptedWBDataPacket=mEncryptor.encryptWBDataPacket(wbDataPacket);
     //sendPacket((uint8_t*)&encryptedWBDataPacket.wbDataHeader,sizeof(WBDataHeader),encryptedWBDataPacket.payload,encryptedWBDataPacket.payloadSize);
 #ifdef ENABLE_ADVANCED_DEBUGGING
@@ -95,7 +98,7 @@ void WBTransmitter::sendFecBlock(const WBDataPacket &wbDataPacket) {
 
 void WBTransmitter::sendSessionKey() {
     std::cout << "sendSessionKey()\n";
-    sendPacket({(uint8_t *)&mEncryptor.sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES});
+    sendPacket({(uint8_t *)&sessionKeyPacket, WBSessionKeyPacket::SIZE_BYTES});
 }
 
 void WBTransmitter::processInputPacket(const uint8_t *buf, size_t size) {
@@ -104,7 +107,7 @@ void WBTransmitter::processInputPacket(const uint8_t *buf, size_t size) {
     FECEncoder::encodePacket(buf,size);
     if(FECEncoder::resetOnOverflow()){
         // running out of sequence numbers should never happen during the lifetime of the TX instance
-        mEncryptor.makeSessionKey();
+        mEncryptor.makeNewSessionKey(sessionKeyPacket.sessionKeyNonce, sessionKeyPacket.sessionKeyData);
         sendSessionKey();
     }
 }
