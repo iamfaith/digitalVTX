@@ -19,7 +19,7 @@ FEC_K=4
 FEC_N=8
 
 #MY_WIFI_CHANNEL=149
-MY_WIFI_CHANNEL=13
+MY_WIFI_CHANNEL=8
 
 sudo rfkill unblock wifi
 #sudo killall ifplugd #stop management of interface
@@ -47,11 +47,11 @@ sudo iwconfig $MY_RX channel $MY_WIFI_CHANNEL
 # $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 6000 -p 60 -M 7 -K $WFB_FOLDER/drone.key $MY_TX
 xterm -hold -e $WFB_FOLDER/wfb_tx -k $FEC_K -n $FEC_N -u 5600 -p 60 -M 4 -B 40 -K $WFB_FOLDER/drone.key -f 2 $MY_TX &
 
-$WFB_FOLDER/wfb_rx -c 127.0.0.1 -u 6100 -p 60 -K $WFB_FOLDER/gs.key -f 10 $MY_RX
+$WFB_FOLDER/wfb_rx -c 192.168.31.226 -u 6100 -p 60 -K $WFB_FOLDER/gs.key -f 10 $MY_RX
 
 
 
-./wfb_tx -k $FEC_K -n $FEC_N -u 5600 -p 60 -M 4 -B 40 -K drone.key -f 2 wlan0
+
 #other usefull commands:
 #sudo iw dev
 #nc -u localhost 6000
