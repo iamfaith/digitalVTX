@@ -57,7 +57,7 @@ RX: ./wfb_rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key $rx
 
 
 TX: ./wfb_tx -k 4 -n 8 -u 5600 -p 3 -M 4 -B 20 -K drone.key -f 2 wlan0mon
-RX: ./wfb_rx -c 10.0.2.15 -p 3 -u 5600 -K gs.key -f 10 $rx
+RX: ./wfb_rx -c 192.168.31.226 -p 3 -u 5600 -K gs.key -f 10 $rx
 
 
 
@@ -70,3 +70,16 @@ raspivid -n  -ex fixedfps -w 640 -h 480 -b 100000 -fps 30 -vf -hf -t 0 -o - | gs
 
 
 raspivid -n  -ex fixedfps -w 640 -h 480 -b 100000 -fps 30 -vf -hf -t 0 -o - | gst-launch-1.0 -v fdsrc !  decodebin ! omxh264enc ! h264parse ! rtph264pay config-interval=1 pt=35 ! udpsink sync=false host=192.168.31.226 port=5600
+
+
+
+For test
+
+
+gst-launch-1.0  filesrc location=a.mp4 ! decodebin ! videorate ! video/x-raw,framerate=30/1 ! videoscale ! video/x-raw,width=320,height=240 ! omxh264enc ! video/x-h264,framerate=30/1,profile=baseline ! rtph264pay ! udpsink host=127.0.0.1  port=5600
+
+
+
+
+## vb
+gst-launch-1.0  filesrc location=a.mp4 ! decodebin ! videorate ! video/x-raw,framerate=30/1 ! videoscale ! video/x-raw,width=320,height=240 ! x264enc ! video/x-h264,framerate=30/1,profile=baseline ! rtph264pay ! udpsink host=192.168.31.226 port=5600
